@@ -1,14 +1,14 @@
-# Setup & Konfiguration
+# Setup & Configuration
 
-## NuGet-Installation
+## NuGet Installation
 
 ```bash
 dotnet add package BieberWorks.SDK.Auth
-dotnet add package BieberWorks.SDK.Auth.Management   # optional: Admin-Endpunkte
-dotnet add package BieberWorks.SDK.Auth.UI.MudBlazor  # optional: Blazor-Seiten
+dotnet add package BieberWorks.SDK.Auth.Management   # optional: admin endpoints
+dotnet add package BieberWorks.SDK.Auth.UI.MudBlazor  # optional: Blazor pages
 ```
 
-Andere Module, die nur `ICurrentUserProvider` oder Permission-Contracts benötigen:
+Other modules that only need `ICurrentUserProvider` or permission contracts:
 
 ```bash
 dotnet add package BieberWorks.SDK.Auth.Contracts
@@ -16,7 +16,7 @@ dotnet add package BieberWorks.SDK.Auth.Contracts
 
 ## Program.cs
 
-Die Reihenfolge der Aufrufe ist verbindlich — `AddBieberWorksModules` muss alle registrierten `IModule`-Implementierungen einsammeln, bevor die Pipeline gebaut wird.
+The order of calls is mandatory — `AddBieberWorksModules` must collect all registered `IModule` implementations before the pipeline is built.
 
 ```csharp
 using BieberWorks.SDK.Auth;
@@ -25,13 +25,13 @@ using BieberWorks.SDK.Core.Web.Modularity;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Alle IModule-Implementierungen per Self-Wiring registrieren
+// 1. Register all IModule implementations via self-wiring
 builder.Services.AddBieberWorksModules(builder.Configuration,
     new AuthModule(),
     new UserManagementModule()   // optional
 );
 
-// 2. Blazor-Komponenten-Assemblies eintragen (wenn Auth.UI.MudBlazor genutzt wird)
+// 2. Register Blazor component assemblies (if Auth.UI.MudBlazor is used)
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -41,28 +41,28 @@ builder.Services
 
 var app = builder.Build();
 
-// 3. Middleware-Reihenfolge: Auth vor Authorization
+// 3. Middleware order: Auth before Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 4. Endpunkte aller IEndpointModule mappen
+// 4. Map endpoints of all IEndpointModule
 app.MapBieberWorksModules();
 
-// 5. EF Core-Migrationen + Startup-Tasks (Rollen, Permissions) ausführen
+// 5. Run EF Core migrations + startup tasks (roles, permissions)
 await app.InitializeBieberWorksModulesAsync();
 
 await app.RunAsync();
 ```
 
-::: warning Reihenfolge beachten
-`UseAuthentication()` muss **vor** `UseAuthorization()` stehen. `InitializeBieberWorksModulesAsync()` führt EF-Migrationen und den `PermissionStartupTasks`-Lauf aus — dieser muss vor dem ersten Request abgeschlossen sein.
+::: warning Note the order
+`UseAuthentication()` must come **before** `UseAuthorization()`. `InitializeBieberWorksModulesAsync()` runs EF migrations and `PermissionStartupTasks` — this must complete before the first request.
 :::
 
 ## appsettings.json
 
-### Datenbank-Verbindung
+### Database connection
 
-Das Auth-Modul verwendet standardmäßig den Connection-String `AuthDb`. Ist dieser nicht gesetzt, fällt es auf `DefaultConnection` zurück.
+The Auth module uses the connection string `AuthDb` by default. If not set, it falls back to `DefaultConnection`.
 
 ```json
 {
@@ -72,56 +72,56 @@ Das Auth-Modul verwendet standardmäßig den Connection-String `AuthDb`. Ist die
 }
 ```
 
-### JWT-Konfiguration
+### JWT configuration
 
-Alle JWT-Einstellungen werden aus dem Abschnitt `JwtSettings` gebunden (`JwtSettings.SectionName = "JwtSettings"`).
+All JWT settings are bound from the `JwtSettings` section (`JwtSettings.SectionName = "JwtSettings"`).
 
 ```json
 {
   "JwtSettings": {
-    "Secret": "mindestens-32-zeichen-langer-schluessel",
-    "Issuer": "https://meine-app.example.com",
-    "Audience": "https://meine-app.example.com",
+    "Secret": "at-least-32-character-long-key",
+    "Issuer": "https://my-app.example.com",
+    "Audience": "https://my-app.example.com",
     "AccessTokenExpirationMinutes": 60,
     "RefreshTokenExpirationDays": 30
   }
 }
 ```
 
-| Eigenschaft | Typ | Beschreibung |
+| Property | Type | Description |
 |---|---|---|
-| `Secret` | `string` | HMAC-SHA256-Schlüssel; mindestens 32 Zeichen empfohlen |
-| `Issuer` | `string` | JWT `iss`-Claim; muss mit `ValidIssuer` bei der Validierung übereinstimmen |
-| `Audience` | `string` | JWT `aud`-Claim |
-| `AccessTokenExpirationMinutes` | `int` | Gültigkeitsdauer des Access-Tokens in Minuten |
-| `RefreshTokenExpirationDays` | `int` | Gültigkeitsdauer des Refresh-Tokens in Tagen |
+| `Secret` | `string` | HMAC-SHA256 key; at least 32 characters recommended |
+| `Issuer` | `string` | JWT `iss` claim; must match `ValidIssuer` during validation |
+| `Audience` | `string` | JWT `aud` claim |
+| `AccessTokenExpirationMinutes` | `int` | Access token validity in minutes |
+| `RefreshTokenExpirationDays` | `int` | Refresh token validity in days |
 
-::: danger Secret aus Konfiguration
-Das `Secret` darf **niemals** in versionierten Dateien landen. Verwende `dotnet user-secrets` für die lokale Entwicklung und Environment-Variables / Secret-Manager in Produktion.
+::: danger Secret from configuration
+The `Secret` must **never** end up in versioned files. Use `dotnet user-secrets` for local development and environment variables / secret manager in production.
 :::
 
-### Cookie-Konfiguration
+### Cookie configuration
 
-Die Cookie-Einstellungen sind im Code fest definiert und ergeben sich aus `AuthModule`:
+Cookie settings are defined in code and come from `AuthModule`:
 
-| Eigenschaft | Wert |
+| Property | Value |
 |---|---|
-| Cookie-Name | `bw.auth` |
+| Cookie name | `bw.auth` |
 | `HttpOnly` | `true` |
 | `SameSite` | `Strict` |
 | `SecurePolicy` | `SameAsRequest` |
 | `SlidingExpiration` | `true` |
-| Laufzeit | 8 Stunden |
+| Lifetime | 8 hours |
 
-Beim Zugriff ohne Cookie (z. B. API-Client mit `Authorization: Bearer …`) weicht der `Smart`-Policy-Scheme automatisch auf JWT Bearer um.
+When accessing without a cookie (e.g., API client with `Authorization: Bearer …`), the `Smart` policy scheme automatically switches to JWT Bearer.
 
-## Migrationen
+## Migrations
 
-Das Modul führt seine EF Core-Migrationen automatisch beim Startup aus (`IModuleInitializer.InitializeAsync`). Eine manuelle Migration ist nicht nötig. Das PostgreSQL-Schema lautet `auth`.
+The module runs its EF Core migrations automatically on startup (`IModuleInitializer.InitializeAsync`). Manual migration is not necessary. The PostgreSQL schema is named `auth`.
 
-::: info Eigene Migration hinzufügen
+::: info Adding your own migration
 ```bash
-dotnet ef migrations add <Name> --project src/Auth --startup-project <HostProjekt>
+dotnet ef migrations add <Name> --project src/Auth --startup-project <HostProject>
 ```
-Das Migrations-Verzeichnis liegt unter `src/Auth/Migrations/`.
+The migrations directory is located under `src/Auth/Migrations/`.
 :::

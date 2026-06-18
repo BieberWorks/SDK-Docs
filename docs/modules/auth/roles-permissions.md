@@ -1,8 +1,8 @@
-# Rollen & Permissions
+# Roles & Permissions
 
-## Rollen-Modell
+## Role Model
 
-Das Modul verwendet ASP.NET Core Identity-Rollen (`ApplicationRole`). Vordefinierte Rollennamen sind in `Roles` (aus `Auth.Contracts`) als Konstanten hinterlegt:
+The module uses ASP.NET Core Identity roles (`ApplicationRole`). Predefined role names are stored as constants in `Roles` (from `Auth.Contracts`):
 
 ```csharp
 public readonly record struct Roles
@@ -12,85 +12,85 @@ public readonly record struct Roles
 }
 ```
 
-Rollen werden beim Start durch `PermissionStartupTasks` automatisch in der Datenbank angelegt, falls sie noch nicht vorhanden sind. Der Startup-Task läuft als Teil von `InitializeBieberWorksModulesAsync()`.
+Roles are automatically created in the database on startup via `PermissionStartupTasks` if they don't exist yet. The startup task runs as part of `InitializeBieberWorksModulesAsync()`.
 
-## Permission-System
+## Permission System
 
-### Konzept
+### Concept
 
-Permissions sind feinkörnige Berechtigungen, die Rollen zugewiesen werden. Ein Benutzer erhält eine Permission, wenn er einer Rolle angehört, der diese Permission zugewiesen wurde.
+Permissions are fine-grained authorizations assigned to roles. A user gets a permission if they belong to a role that has been assigned that permission.
 
-Der Schlüssel einer Permission folgt dem Format `{modul}:{ressource}:{aktion}`, z. B. `auth:users:read`.
+The key of a permission follows the format `{module}:{resource}:{action}`, e.g. `auth:users:read`.
 
-### Permissions definieren (IPermissionContributor)
+### Defining Permissions (IPermissionContributor)
 
-Jedes Modul, das eigene Permissions bereitstellen möchte, implementiert `IPermissionContributor` und registriert sich als Singleton:
+Each module that wants to provide custom permissions implements `IPermissionContributor` and registers itself as a singleton:
 
 ```csharp
-// In einem eigenen Modul:
+// In your own module:
 public sealed class MyModulePermissionContributor : IPermissionContributor
 {
     public IEnumerable<PermissionDefinition> GetPermissions()
     {
         yield return new PermissionDefinition(
             Key: "mymodule:orders:read",
-            DisplayName: "Bestellungen anzeigen",
+            DisplayName: "View orders",
             Module: "MyModule",
-            Group: "Bestellungen");
+            Group: "Orders");
 
         yield return new PermissionDefinition(
             Key: "mymodule:orders:manage",
-            DisplayName: "Bestellungen verwalten",
+            DisplayName: "Manage orders",
             Module: "MyModule",
-            Group: "Bestellungen",
-            Description: "Erstellen, bearbeiten und stornieren von Bestellungen");
+            Group: "Orders",
+            Description: "Create, edit, and cancel orders");
     }
 }
 
-// In der Modul-Registrierung:
+// In module registration:
 services.AddSingleton<IPermissionContributor, MyModulePermissionContributor>();
 ```
 
-`IPermissionService.GetCatalog()` gibt alle registrierten Permissions aller Module zurück.
+`IPermissionService.GetCatalog()` returns all registered permissions of all modules.
 
-### Auth-eigene Permissions
+### Auth-specific permissions
 
-Das Auth-Modul stellt folgende Permissions bereit (`AuthPermissions`):
+The Auth module provides the following permissions (`AuthPermissions`):
 
-| Schlüssel | Beschreibung |
+| Key | Description |
 |---|---|
-| `auth:users:read` | Benutzerliste und -details anzeigen |
-| `auth:users:manage` | Benutzer sperren/entsperren, Rollen zuweisen |
-| `auth:roles:read` | Rollenliste und -details anzeigen |
-| `auth:roles:manage` | Rollen erstellen, bearbeiten, löschen, Permissions zuweisen |
+| `auth:users:read` | View user list and details |
+| `auth:users:manage` | Lock/unlock users, assign roles |
+| `auth:roles:read` | View role list and details |
+| `auth:roles:manage` | Create, edit, delete roles, assign permissions |
 
-### Permissions prüfen
+### Checking permissions
 
-#### In Minimal-API-Endpoints
+#### In Minimal API endpoints
 
 ```csharp
 app.MapGet("/api/orders", HandleAsync)
    .RequirePermission("mymodule:orders:read");
 ```
 
-Die Extension-Methode `RequirePermission` (aus `Auth`) erzeugt eine Policy mit dem Namen `perm:{key}`.
+The `RequirePermission` extension method (from `Auth`) creates a policy with the name `perm:{key}`.
 
-#### In Razor-Komponenten / Seiten
+#### In Razor components / pages
 
 ```razor
 @attribute [Authorize(Policy = "perm:auth:users:read")]
 ```
 
-oder mit dem `RequiresPermissionAttribute`:
+or with the `RequiresPermissionAttribute`:
 
 ```csharp
 [RequiresPermission("auth:users:read")]
 public class MyAdminPage : ComponentBase { }
 ```
 
-Das Attribut generiert automatisch den Policy-Namen `perm:{key}` und ist mit `IAuthorizeData` kompatibel.
+The attribute automatically generates the policy name `perm:{key}` and is compatible with `IAuthorizeData`.
 
-#### Programmatisch
+#### Programmatically
 
 ```csharp
 public class MyService(IPermissionService permissionService)
@@ -113,15 +113,15 @@ public interface IPermissionService
     Task<bool> HasPermissionAsync(ClaimsPrincipal user, string permissionKey, CancellationToken ct = default);
     Task<IReadOnlySet<string>> GetEffectivePermissionsAsync(ClaimsPrincipal user, CancellationToken ct = default);
     IReadOnlyList<PermissionDefinition> GetCatalog();
-    void Invalidate();  // Cache leeren nach Rollen-/Permission-Änderungen
+    void Invalidate();  // Clear cache after role / permission changes
 }
 ```
 
-`IPermissionService` ist als **Singleton** registriert und cached die effektiven Permissions pro Benutzer im Arbeitsspeicher. Nach einer Änderung an Rollen oder Permission-Zuweisungen muss `Invalidate()` aufgerufen werden — `RoleManagementService` erledigt das automatisch.
+`IPermissionService` is registered as a **singleton** and caches effective permissions per user in memory. After changing roles or permission assignments, `Invalidate()` must be called — `RoleManagementService` does this automatically.
 
-## Rollen-Verwaltung (IRoleManagementService)
+## Role Management (IRoleManagementService)
 
-`IRoleManagementService` ist der zentrale Einstiegspunkt für programmatische Rollen-Verwaltung:
+`IRoleManagementService` is the central entry point for programmatic role management:
 
 ```csharp
 public interface IRoleManagementService
@@ -135,16 +135,16 @@ public interface IRoleManagementService
 }
 ```
 
-::: warning Systemrollen
-`Admin` und `Customer` sind Systemrollen. Das Umbenennen und Löschen von Systemrollen wirft eine `InvalidOperationException`. Die Permission-Zuweisung ist jedoch auch für Systemrollen möglich.
+::: warning System Roles
+`Admin` and `Customer` are system roles. Renaming and deleting system roles throws an `InvalidOperationException`. Permission assignment is allowed for system roles.
 :::
 
-## User-Management (IUserManagementService)
+## User Management (IUserManagementService)
 
-`IUserManagementService` (aus `Auth.Contracts`) wird vom `UserManagementModule` registriert und ist nicht im Kern-`AuthModule` enthalten:
+`IUserManagementService` (from `Auth.Contracts`) is registered by the `UserManagementModule` and is not included in the core `AuthModule`:
 
 ```csharp
-// Verfügbar wenn UserManagementModule registriert ist
+// Available when UserManagementModule is registered
 public interface IUserManagementService
 {
     Task<IReadOnlyList<UserSummaryDto>> GetUsersAsync(CancellationToken ct = default);
@@ -154,34 +154,34 @@ public interface IUserManagementService
 }
 ```
 
-### Admin-REST-Endpunkte
+### Admin REST endpoints
 
-Das `UserManagementModule` mappt folgende Endpunkte (alle erfordern die entsprechende Permission):
+The `UserManagementModule` maps the following endpoints (all require the appropriate permission):
 
-| Methode | Pfad | Permission |
+| Method | Path | Permission |
 |---|---|---|
 | `GET` | `/api/admin/users` | `auth:users:read` |
 | `GET` | `/api/admin/users/{userId}` | `auth:users:read` |
 | `PUT` | `/api/admin/users/{userId}/lock` | `auth:users:manage` |
 | `PUT` | `/api/admin/users/{userId}/roles` | `auth:users:manage` |
 
-## Domain-Events
+## Domain Events
 
-Das Auth-Modul veröffentlicht folgende Domain-Events (alle in `Auth.Contracts.DomainEvents`):
+The Auth module publishes the following domain events (all in `Auth.Contracts.DomainEvents`):
 
-| Event | Auslöser |
+| Event | Trigger |
 |---|---|
-| `UserRegisteredEvent` | Erfolgreiche Registrierung |
-| `UserLoggedInEvent` | Erfolgreicher Login |
-| `EmailConfirmationRequestedEvent` | Registrierung oder erneutes Senden |
-| `PasswordResetRequestedEvent` | Passwort-vergessen-Anfrage |
-| `PasswordChangedEvent` | Passwort-Änderung oder -Reset |
-| `TokenRefreshedEvent` | Token-Refresh |
-| `RoleCreatedEvent` | Neue Rolle erstellt |
-| `RoleUpdatedEvent` | Rolle aktualisiert |
-| `RoleDeletedEvent` | Rolle gelöscht |
-| `UserLockStateChangedEvent` | Benutzer gesperrt/entsperrt |
+| `UserRegisteredEvent` | Successful registration |
+| `UserLoggedInEvent` | Successful login |
+| `EmailConfirmationRequestedEvent` | Registration or resend |
+| `PasswordResetRequestedEvent` | Forgot password request |
+| `PasswordChangedEvent` | Password change or reset |
+| `TokenRefreshedEvent` | Token refresh |
+| `RoleCreatedEvent` | New role created |
+| `RoleUpdatedEvent` | Role updated |
+| `RoleDeletedEvent` | Role deleted |
+| `UserLockStateChangedEvent` | User locked/unlocked |
 
 ::: tip Auto-Auditing
-Events, die `IAuditableEvent` implementieren, werden automatisch vom `SDK-Audit`-Modul protokolliert — ohne jeglichen Auth-seitigen Audit-Code.
+Events implementing `IAuditableEvent` are automatically logged by the `SDK-Audit` module — without any audit code on the Auth side.
 :::
