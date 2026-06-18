@@ -1,0 +1,8 @@
+name: CI
+on:
+  pull_request:
+    branches: [dev, staging, main]
+jobs:
+  ci:
+    uses: BieberWorks/tooling/.github/workflows/dotnet-ci.yml@v1
+    secrets: inherit
