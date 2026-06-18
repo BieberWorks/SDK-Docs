@@ -29,6 +29,9 @@ export default defineConfig({
           collapsed: false,
           items: [
             { text: 'Overview', link: '/modules/foundation/' },
+            { text: 'SharedKernel', link: '/modules/foundation/shared-kernel' },
+            { text: 'IModule & Setup', link: '/modules/foundation/imodule' },
+            { text: 'Messaging', link: '/modules/foundation/messaging' },
           ]
         },
         {
