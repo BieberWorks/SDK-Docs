@@ -1,8 +1,8 @@
-# Key-Strategie & Sichtbarkeit
+# Key strategy & visibility
 
 ## IStorageKeyStrategy
 
-`IStorageKeyStrategy` bestimmt, unter welchem physischen Pfad (Key) eine Datei im Backend gespeichert wird. Der Key ist der einzige Bezugspunkt zwischen Metadaten-Index (`storage_files.StorageKey`) und dem physischen Objekt — er ändert sich nach dem Upload nie mehr.
+`IStorageKeyStrategy` determines under which physical path (key) a file is stored in the backend. The key is the only reference between metadata index (`storage_files.StorageKey`) and the physical object — it never changes after upload.
 
 ```csharp
 public interface IStorageKeyStrategy
@@ -11,21 +11,21 @@ public interface IStorageKeyStrategy
 }
 ```
 
-- `fileId` garantiert Kollisionsfreiheit (wird immer in den Key eingebettet).
-- `fileName` wird auf den Dateinamen-Anteil reduziert (`Path.GetFileName`) — Verzeichnis-Segmente im Original-Dateinamen werden entfernt.
-- `ownerUserId` ist `null` für systemseitige / unzugeordnete Dateien (wird als `shared` dargestellt).
+- `fileId` guarantees collision freedom (always embedded in the key).
+- `fileName` is reduced to the filename part (`Path.GetFileName`) — directory segments in the original filename are removed.
+- `ownerUserId` is `null` for system / unassigned files (shown as `shared`).
 
-### Eingebaute Strategien
+### Built-in strategies
 
-Drei Strategien sind im Modul enthalten und über `appsettings.json` wählbar:
+Three strategies are included and selectable via `appsettings.json`:
 
-| Name | Key-Format | Konfigurationswert |
+| Name | Key format | Config value |
 |---|---|---|
-| `DateStorageKeyStrategy` | `yyyy/MM/dd/{id}_{name}` | `Date` (Standard) |
+| `DateStorageKeyStrategy` | `yyyy/MM/dd/{id}_{name}` | `Date` (default) |
 | `OwnerStorageKeyStrategy` | `{ownerId}/{id}_{name}` | `Owner` |
 | `HybridStorageKeyStrategy` | `{ownerId}/yyyy/MM/{id}_{name}` | `Hybrid` |
 
-#### Beispiele
+#### Examples
 
 ```
 Date:   2026/06/18/3f4a1b2c3d4e5f6a7b8c9d0e1f2a3b4c_report.pdf
@@ -33,7 +33,7 @@ Owner:  a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6/3f4a1b2c3d4e5f6a7b8c9d0e1f2a3b4c_report
 Hybrid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6/2026/06/3f4a1b2c3d4e5f6a7b8c9d0e1f2a3b4c_report.pdf
 ```
 
-### Konfiguration
+### Configuration
 
 ```json
 {
@@ -43,45 +43,45 @@ Hybrid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6/2026/06/3f4a1b2c3d4e5f6a7b8c9d0e1f2a3b4
 }
 ```
 
-### Eigene Strategie
+### Custom strategy
 
-`IStorageKeyStrategy` kann nach `AddBieberWorksModules` durch eine eigene Implementierung ersetzt werden:
+`IStorageKeyStrategy` can be replaced with a custom implementation after `AddBieberWorksModules`:
 
 ```csharp
 builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// Eigene Strategie überschreibt die Modul-Registrierung:
+// Custom strategy overrides module registration:
 builder.Services.AddSingleton<IStorageKeyStrategy, MyCustomKeyStrategy>();
 ```
 
-::: warning Key ist unveränderlich
-Der Key wird beim ersten Upload berechnet und in der Datenbank persistiert. Eine spätere Änderung der Strategie betrifft nur neue Uploads — bestehende Dateien behalten ihren alten Key. Der `StorageKey` in den Metadaten ist immer die autoritative Referenz.
+::: warning Key is immutable
+The key is calculated on first upload and persisted in the database. Changing the strategy later only affects new uploads — existing files retain their old key. The `StorageKey` in metadata is always authoritative.
 :::
 
 ---
 
-## Sichtbarkeit (StorageFileVisibility)
+## Visibility (StorageFileVisibility)
 
-Jede Datei hat eine Sichtbarkeitsstufe, die steuert, wer ausser dem Owner und Storage-Admins auf sie zugreifen darf.
+Each file has a visibility level controlling who besides the owner and storage admins can access it.
 
 ```csharp
 public enum StorageFileVisibility
 {
-    Private = 0,         // Nur Owner und Admins
-    RoleRestricted = 1,  // Authentifizierte User mit einer der erlaubten Rollen
-    Public = 2,          // Alle authentifizierten User
-    AppResource = 3,     // Internes App-Asset (Avatar, Logo, …)
+    Private = 0,         // Owner and admins only
+    RoleRestricted = 1,  // Authenticated users with allowed roles
+    Public = 2,          // All authenticated users
+    AppResource = 3,     // Internal app asset (avatar, logo, …)
 }
 ```
 
-| Wert | Wer hat Zugriff | Erscheint in User-Listen | Erscheint in Admin-Listen |
+| Value | Who has access | Appears in user lists | Appears in admin lists |
 |---|---|---|---|
-| `Private` | Owner + Admins | Ja (Owner sieht seine eigenen) | Ja |
-| `RoleRestricted` | Owner + Admins + User mit erlaubter Rolle | Ja | Ja |
-| `Public` | Owner + Admins + alle Auth. User | Ja | Ja |
-| `AppResource` | Alle mit `storage:file:read`-Permission | Nein | Nur wenn "Show internal" aktiviert |
+| `Private` | Owner + admins | Yes (owner sees own) | Yes |
+| `RoleRestricted` | Owner + admins + users with allowed role | Yes | Yes |
+| `Public` | Owner + admins + all auth. users | Yes | Yes |
+| `AppResource` | All with `storage:file:read` permission | No | Only if "Show internal" enabled |
 
-### Sichtbarkeit beim Upload setzen
+### Set visibility on upload
 
 ```csharp
 var fileRef = await storageService.UploadAsync(
@@ -95,7 +95,7 @@ var fileRef = await storageService.UploadAsync(
 );
 ```
 
-### Sichtbarkeit nachträglich ändern
+### Change visibility later
 
 ```csharp
 var updated = await storageService.UpdateVisibilityAsync(
@@ -105,11 +105,11 @@ var updated = await storageService.UpdateVisibilityAsync(
 );
 ```
 
-`allowedRoles` wird für andere Modi als `RoleRestricted` ignoriert und als leere Liste gespeichert.
+`allowedRoles` is ignored for modes other than `RoleRestricted` and saved as an empty list.
 
-### Host-seitige Einschränkung
+### Host-side restriction
 
-Der Host kann einschränken, welche Modi die Upload-UI anbietet — ohne die Enforcement-Logik zu verändern:
+The host can restrict which modes the upload UI offers — without changing enforcement logic:
 
 ```json
 {
@@ -121,20 +121,20 @@ Der Host kann einschränken, welche Modi die Upload-UI anbietet — ohne die Enf
 }
 ```
 
-`AppResource` ist niemals über die Upload-UI auswählbar und taucht nicht in `AllowedVisibilities` auf.
+`AppResource` is never selectable in the upload UI and does not appear in `AllowedVisibilities`.
 
 ---
 
 ## IAvatarProvider
 
-`StorageModule` registriert `StorageAvatarProvider` als `IAvatarProvider` (Interface aus `SDK-Auth.Contracts`). Andere Module (z.B. SDK-Auth) können `IAvatarProvider` injizieren, ohne das Storage-Paket zu kennen.
+`StorageModule` registers `StorageAvatarProvider` as `IAvatarProvider` (interface from `SDK-Auth.Contracts`). Other modules (e.g. SDK-Auth) can inject `IAvatarProvider` without knowing the Storage package.
 
-### Verhalten
+### Behavior
 
-- Jeder User hat maximal einen Avatar: eine Datei mit `FileName == "avatar"` und `ContentType` beginnend mit `"image/"`, `OwnerUserId` = User-Guid.
-- Sichtbarkeit: immer `AppResource` — der Avatar-Download ist über `/storage/files/{fileId}/download` erreichbar, aber er erscheint nicht in normalen Dateilisten.
-- Ein neuer Upload löscht den vorherigen Avatar automatisch (Overwrite-Semantik).
-- `GetAvatarUrlAsync` gibt den relativen Download-Pfad zurück oder `null` wenn kein Avatar existiert.
+- Each user has at most one avatar: a file with `FileName == "avatar"` and `ContentType` starting with `"image/"`, `OwnerUserId` = user GUID.
+- Visibility: always `AppResource` — avatar download is available at `/storage/files/{fileId}/download`, but it doesn't appear in normal file lists.
+- A new upload deletes the previous avatar automatically (overwrite semantics).
+- `GetAvatarUrlAsync` returns the relative download path or `null` if no avatar exists.
 
 ### Interface
 
@@ -154,6 +154,6 @@ public interface IAvatarProvider
 }
 ```
 
-::: tip sizeBytes beim Upload pflichtend
-HTTP-Multipart-Upload-Streams sind nicht seekbar. Daher muss `sizeBytes` explizit übergeben werden (z.B. `IFormFile.Length`), damit die gespeicherte Dateigrösse korrekt ist.
+::: tip sizeBytes mandatory on upload
+HTTP multipart upload streams are not seekable. Therefore, `sizeBytes` must be passed explicitly (e.g. `IFormFile.Length`) so the persisted file size is correct.
 :::
