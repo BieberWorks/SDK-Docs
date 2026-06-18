@@ -44,5 +44,6 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "docs: update ${{ github.event.client_payload.module }} to ${{ github.event.client_payload.version }}"
+            git pull --rebase origin main
             git push origin main
           fi
