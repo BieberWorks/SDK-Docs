@@ -39,6 +39,10 @@ export default defineConfig({
           collapsed: true,
           items: [
             { text: 'Overview', link: '/modules/auth/' },
+            { text: 'Setup', link: '/modules/auth/setup' },
+            { text: 'Auth Flows', link: '/modules/auth/auth-flows' },
+            { text: 'Roles & Permissions', link: '/modules/auth/roles-permissions' },
+            { text: 'UI Components', link: '/modules/auth/ui-components' },
           ]
         },
         {
@@ -46,13 +50,10 @@ export default defineConfig({
           collapsed: true,
           items: [
             { text: 'Overview', link: '/modules/storage/' },
-          ]
-        },
-        {
-          text: 'Email',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/email/' },
+            { text: 'Setup', link: '/modules/storage/setup' },
+            { text: 'Providers', link: '/modules/storage/providers' },
+            { text: 'Key Strategy & Visibility', link: '/modules/storage/key-strategy' },
+            { text: 'UI Components', link: '/modules/storage/ui-components' },
           ]
         },
         {
@@ -60,6 +61,9 @@ export default defineConfig({
           collapsed: true,
           items: [
             { text: 'Overview', link: '/modules/audit/' },
+            { text: 'Setup', link: '/modules/audit/setup' },
+            { text: 'Auto-Auditing', link: '/modules/audit/auto-auditing' },
+            { text: 'IAuditService', link: '/modules/audit/audit-service' },
           ]
         },
         {
@@ -67,6 +71,8 @@ export default defineConfig({
           collapsed: true,
           items: [
             { text: 'Overview', link: '/modules/localization/' },
+            { text: 'Setup', link: '/modules/localization/setup' },
+            { text: 'Usage', link: '/modules/localization/usage' },
           ]
         },
         {
@@ -74,6 +80,17 @@ export default defineConfig({
           collapsed: true,
           items: [
             { text: 'Overview', link: '/modules/settings/' },
+            { text: 'Setup', link: '/modules/settings/setup' },
+            { text: 'Usage', link: '/modules/settings/usage' },
+          ]
+        },
+        {
+          text: 'Email',
+          collapsed: true,
+          items: [
+            { text: 'Overview', link: '/modules/email/' },
+            { text: 'Setup', link: '/modules/email/setup' },
+            { text: 'Usage', link: '/modules/email/usage' },
           ]
         },
         {
@@ -81,6 +98,8 @@ export default defineConfig({
           collapsed: true,
           items: [
             { text: 'Overview', link: '/modules/ui/' },
+            { text: 'Setup', link: '/modules/ui/setup' },
+            { text: 'Components', link: '/modules/ui/components' },
           ]
         },
         {
@@ -88,6 +107,8 @@ export default defineConfig({
           collapsed: true,
           items: [
             { text: 'Overview', link: '/modules/admin/' },
+            { text: 'Setup', link: '/modules/admin/setup' },
+            { text: 'Custom Pages', link: '/modules/admin/custom-pages' },
           ]
         },
         {
@@ -95,6 +116,8 @@ export default defineConfig({
           collapsed: true,
           items: [
             { text: 'Overview', link: '/modules/account/' },
+            { text: 'Setup', link: '/modules/account/setup' },
+            { text: 'Custom Pages', link: '/modules/account/custom-pages' },
           ]
         },
       ]
