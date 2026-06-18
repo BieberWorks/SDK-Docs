@@ -1,20 +1,20 @@
-# SDK-Account — Eigene Account-Seiten
+# SDK-Account — Custom account pages
 
-Andere Module klinken eigene Self-Service-Seiten in den Account-Bereich ein, indem sie `IAccountSection` implementieren und die Seiten mit `IAccountPage` markieren.
+Other modules plug custom self-service pages into the account area by implementing `IAccountSection` and marking pages with `IAccountPage`.
 
 ## IAccountPage
 
-Marker-Interface für routable Blazor-Seiten, die im Account-Bereich liegen.
+Marker interface for routable Blazor pages in the account area.
 
 ```csharp
 public interface IAccountPage;
 ```
 
-Durch dieses Interface können Tools oder Filter alle Account-Seiten der Assembly identifizieren. Es hat keine Pflicht-Member.
+This interface allows tools or filters to identify all account pages in an assembly. It has no required members.
 
 ## IAccountSection
 
-Gruppert mehrere `AccountNavItem`-Links unter einem Drawer-Eintrag.
+Groups multiple `AccountNavItem` links under a drawer entry.
 
 ```csharp
 public interface IAccountSection
@@ -24,25 +24,25 @@ public interface IAccountSection
     int    Order { get; }
     IReadOnlyList<AccountNavItem> NavItems { get; }
 
-    // Optional: Permission-Key (null = immer sichtbar)
+    // Optional: permission key (null = always visible)
     string? RequiredPermission => null;
 
-    // Optional: Sektion bei Runtime ausblenden
+    // Optional: hide section at runtime
     bool IsEnabled(IServiceProvider services) => true;
 }
 ```
 
-| Member | Beschreibung |
+| Member | Description |
 |---|---|
-| `Title` | Anzeigename im Drawer (z. B. `"Meine Dateien"`) |
-| `Icon` | MudBlazor-Icon-Konstante (z. B. `Icons.Material.Filled.Folder`) |
-| `Order` | Sortierung; kleinere Werte erscheinen weiter oben |
-| `NavItems` | Liste der Navigationslinks dieser Sektion |
-| `RequiredPermission` | Optionaler Permission-Key im Format `{modul}:{ressource}:{aktion}`; `null` = immer sichtbar |
-| `IsEnabled` | Optionale Laufzeit-Bedingung; default `true` |
+| `Title` | Display name in the drawer (e.g. `"My Files"`) |
+| `Icon` | MudBlazor icon constant (e.g. `Icons.Material.Filled.Folder`) |
+| `Order` | Sorting; lower values appear higher |
+| `NavItems` | List of navigation links in this section |
+| `RequiredPermission` | Optional permission key in format `{module}:{resource}:{action}`; `null` = always visible |
+| `IsEnabled` | Optional runtime condition; default `true` |
 
-::: info Unterschied zu IAdminSection
-`IAccountSection` besitzt `RequiredPermission` — damit kann eine Sektion für bestimmte User ausgeblendet werden, ohne den gesamten Account-Bereich zu schützen. `IAdminSection` nutzt stattdessen nur `IsEnabled` und schützt den gesamten Body pauschal über `perm:admin:shell:access`.
+::: info Difference from IAdminSection
+`IAccountSection` has `RequiredPermission` — a section can be hidden for certain users without protecting the entire account area. `IAdminSection` only uses `IsEnabled` and protects the entire body globally via `perm:admin:shell:access`.
 :::
 
 ## AccountNavItem
@@ -51,15 +51,15 @@ public interface IAccountSection
 public sealed record AccountNavItem(string Title, string Href, string Icon);
 ```
 
-| Parameter | Beschreibung |
+| Parameter | Description |
 |---|---|
-| `Title` | Link-Label im Drawer |
-| `Href` | Route-URL (z. B. `"/account/files"`) |
-| `Icon` | MudBlazor-Icon-Konstante |
+| `Title` | Link label in the drawer |
+| `Href` | Route URL (e.g. `"/account/files"`) |
+| `Icon` | MudBlazor icon constant |
 
-## Vollständiges Beispiel
+## Complete example
 
-### 1. Sektion implementieren
+### 1. Implement the section
 
 ```csharp
 // MyModule/Account/MyAccountSection.cs
@@ -68,33 +68,33 @@ using MudBlazor;
 
 public sealed class MyAccountSection : IAccountSection
 {
-    public string Title => "Meine Dateien";
+    public string Title => "My Files";
     public string Icon  => Icons.Material.Filled.Folder;
     public int    Order => 100;
 
     public IReadOnlyList<AccountNavItem> NavItems =>
     [
-        new AccountNavItem("Übersicht", "/account/files",        Icons.Material.Filled.FolderOpen),
+        new AccountNavItem("Overview",  "/account/files",        Icons.Material.Filled.FolderOpen),
         new AccountNavItem("Uploads",   "/account/files/upload", Icons.Material.Filled.Upload),
     ];
 
-    // Nur sichtbar, wenn die Permission vorhanden ist
+    // Only visible if permission is present
     public string? RequiredPermission => "storage:files:read";
 }
 ```
 
-### 2. Sektion im DI registrieren
+### 2. Register the section in DI
 
 ```csharp
-// In IModule.RegisterServices oder Program.cs
+// In IModule.RegisterServices or Program.cs
 services.AddSingleton<IAccountSection, MyAccountSection>();
 ```
 
-::: warning Registrierungszeitpunkt
-`IAccountSection`-Implementierungen müssen vor dem ersten Render der `AccountLayout` im DI-Container stehen. Das ist sichergestellt, wenn sie in `IModule.RegisterServices` registriert werden.
+::: warning Registration timing
+`IAccountSection` implementations must be in the DI container before the first render of `AccountLayout`. This is ensured if they are registered in `IModule.RegisterServices`.
 :::
 
-### 3. Account-Seite anlegen
+### 3. Create an account page
 
 ```razor
 @* Pages/Account/MyFilesPage.razor *@
@@ -102,16 +102,16 @@ services.AddSingleton<IAccountSection, MyAccountSection>();
 @layout AccountLayout
 @implements IAccountPage
 
-<h1>Meine Dateien</h1>
+<h1>My Files</h1>
 ```
 
 ::: tip @layout
-Die Direktive `@layout AccountLayout` ist notwendig, damit die Seite innerhalb der Account-Shell gerendert wird. Alternativ kann `AccountShell` als `DefaultLayout` im Router-Scope gesetzt werden.
+The `@layout AccountLayout` directive is necessary for the page to render within the account shell. Alternatively, `AccountShell` can be set as `DefaultLayout` in a router scope.
 :::
 
-### 4. Assembly einbinden
+### 4. Register the assembly
 
-Die Assembly, die die Seite enthält, muss im Host in `AddAdditionalAssemblies` registriert sein:
+The assembly containing the page must be registered in the host's `AddAdditionalAssemblies`:
 
 ```csharp
 // Program.cs
@@ -124,7 +124,7 @@ builder.Services
     );
 ```
 
-Und in `Routes.razor`:
+And in `Routes.razor`:
 
 ```razor
 @code {
@@ -136,12 +136,12 @@ Und in `Routes.razor`:
 }
 ```
 
-## RequiredPermission — Permission-basierte Sichtbarkeit
+## RequiredPermission — permission-based visibility
 
-`AccountLayout` prüft `RequiredPermission` für jede Sektion und rendert sie in `<AuthorizeView Policy="perm:{key}">`, wenn ein Wert gesetzt ist:
+`AccountLayout` checks `RequiredPermission` for each section and renders it in `<AuthorizeView Policy="perm:{key}">` if a value is set:
 
 ```razor
-@* Intern in AccountLayout *@
+@* Internally in AccountLayout *@
 @if (section.RequiredPermission is null)
 {
     <MudNavGroup ...>...</MudNavGroup>
@@ -156,9 +156,9 @@ else
 }
 ```
 
-Der Benutzer sieht die Sektion nur, wenn er die entsprechende Permission trägt. Die Seiten selbst sind durch `@layout AccountLayout` und das Rendering-Verhalten geschützt, sollten aber zusätzlich eigene `[Authorize]`-Attribute tragen.
+The user only sees the section if they have the required permission. The pages themselves are protected by `@layout AccountLayout` and rendering behavior, but should additionally carry their own `[Authorize]` attributes.
 
-## IsEnabled — Feature-Flag-basierte Sichtbarkeit
+## IsEnabled — feature-flag-based visibility
 
 ```csharp
 public bool IsEnabled(IServiceProvider services)
@@ -168,4 +168,4 @@ public bool IsEnabled(IServiceProvider services)
 }
 ```
 
-`AccountLayout` evaluiert `IsEnabled` beim Render (in der `@foreach`-Schleife) und überspringt deaktivierte Sektionen.
+`AccountLayout` evaluates `IsEnabled` during render (in the `@foreach` loop) and skips disabled sections.

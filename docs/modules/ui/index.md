@@ -1,28 +1,28 @@
 # SDK-UI
 
-Das Modul `SDK-UI` stellt die gemeinsame UI-Infrastruktur für alle BieberWorks-Shells bereit: Theming, Dark-Mode, AppBar-Widgets, Cookie-Consent, Viewport-Breakpoints und die responsive Shell-Basis `BwShellLayout`.
+The module `SDK-UI` provides shared UI infrastructure for all BieberWorks shells: theming, dark mode, AppBar widgets, cookie consent, viewport breakpoints, and the responsive shell base `BwShellLayout`.
 
-## Pakete
+## Packages
 
-| Paket | Inhalt |
+| Package | Contents |
 |---|---|
-| `BieberWorks.SDK.UI.Contracts` | Interfaces ohne MudBlazor-Abhängigkeit: `IThemeService`, `ILayoutThemeContext`, `ILayoutThemeProvider`, `LayoutThemeData`, `IAppBarWidget`, `ICookieConsentService`, `IComponentOverrideRegistry`, `BwViewportInfo` |
-| `BieberWorks.SDK.UI.MudBlazor` | Implementierungen und Razor-Komponenten: `BwThemeProvider`, `DarkModeToggle`, `LanguageSwitcher`, `BwAppBar`, `BwShellLayout`, `BwViewport`, `CookieBanner` |
+| `BieberWorks.SDK.UI.Contracts` | Interfaces without MudBlazor dependency: `IThemeService`, `ILayoutThemeContext`, `ILayoutThemeProvider`, `LayoutThemeData`, `IAppBarWidget`, `ICookieConsentService`, `IComponentOverrideRegistry`, `BwViewportInfo` |
+| `BieberWorks.SDK.UI.MudBlazor` | Implementations and Razor components: `BwThemeProvider`, `DarkModeToggle`, `LanguageSwitcher`, `BwAppBar`, `BwShellLayout`, `BwViewport`, `CookieBanner` |
 
-## Wann dieses Modul verwenden?
+## When to use this module?
 
-- Immer, wenn ein Host `AdminLayout`, `AccountLayout` oder eine eigene Shell nutzt — beide bauen auf `BwShellLayout` auf.
-- Für `DarkModeToggle` oder `LanguageSwitcher` in der AppBar.
-- Wenn Fachmodule per `IAppBarWidget` eigene Widgets in die AppBar einklinken sollen.
-- Für layout-abhängiges Theming über `ILayoutThemeContext` / `ILayoutThemeProvider` (z. B. SDK-Theme).
-- Wenn Seiten responsive auf Breakpoints reagieren müssen (`BwViewportInfo` als `[CascadingParameter]`).
+- Always when a host uses `AdminLayout`, `AccountLayout`, or its own shell — both are built on `BwShellLayout`.
+- For `DarkModeToggle` or `LanguageSwitcher` in the AppBar.
+- When domain modules want to plug in custom widgets via `IAppBarWidget`.
+- For layout-dependent theming via `ILayoutThemeContext` / `ILayoutThemeProvider` (e.g. SDK-Theme).
+- When pages need to respond to breakpoints (`BwViewportInfo` as `[CascadingParameter]`).
 
-::: info Paket-Split
-Fachmodule, die nur `IAppBarWidget` implementieren oder `BwViewportInfo` empfangen, brauchen ausschließlich `BieberWorks.SDK.UI.Contracts`. `BieberWorks.SDK.UI.MudBlazor` ist nur für den Host notwendig.
+::: info Package split
+Domain modules that only implement `IAppBarWidget` or receive `BwViewportInfo` need only `BieberWorks.SDK.UI.Contracts`. `BieberWorks.SDK.UI.MudBlazor` is only needed by the host.
 :::
 
-## Versions-Referenz
+## Version reference
 
-Aktuelle stabile Version: **v0.3.0**
+Current stable version: **v0.3.0**
 
-Paket-IDs: `BieberWorks.SDK.UI.Contracts` und `BieberWorks.SDK.UI.MudBlazor`.
+Package IDs: `BieberWorks.SDK.UI.Contracts` and `BieberWorks.SDK.UI.MudBlazor`.

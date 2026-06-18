@@ -1,6 +1,6 @@
 # Setup — SDK-Settings
 
-## NuGet-Pakete installieren
+## NuGet packages
 
 ```xml
 <!-- Host .csproj -->
@@ -8,8 +8,8 @@
 <PackageReference Include="BieberWorks.SDK.Settings.UI.MudBlazor" Version="0.*-*" />
 ```
 
-::: tip Contracts für andere Module
-Module, die `ISettingsService` oder `IFeatureFlagService` injizieren:
+::: tip Contracts for other modules
+Modules that inject `ISettingsService` or `IFeatureFlagService`:
 ```xml
 <PackageReference Include="BieberWorks.SDK.Settings.Contracts" Version="0.*-*" />
 ```
@@ -17,35 +17,35 @@ Module, die `ISettingsService` oder `IFeatureFlagService` injizieren:
 
 ## Program.cs
 
-`SettingsModule` registriert sich als `IModule` und wird von `AddBieberWorksModules` automatisch erfasst. Die Admin-UI muss separat hinzugefügt werden:
+`SettingsModule` registers itself as `IModule` and is automatically captured by `AddBieberWorksModules`. The admin UI must be added separately:
 
 ```csharp
 using BieberWorks.SDK.Settings.Extensions;
 using BieberWorks.SDK.Settings.UI.MudBlazor.Extensions;
 
-// Alle Module laden (Foundation, Auth, Settings, …)
+// Load all modules (Foundation, Auth, Settings, …)
 builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// Settings Admin-UI im Admin-Shell registrieren
+// Register settings admin UI in the admin shell
 builder.Services.AddSettingsUi();
 
-// Settings-Definitionen deklarieren (idempotent in DB geseedet beim Start)
+// Declare setting definitions (idempotently seeded to DB on startup)
 builder.Services.AddSettingDefinition(new AppSettingDefinition(
     Key:          "ui:items-per-page",
     Section:      "ui",
     Type:         AppSettingType.Integer,
     DefaultValue: "25",
-    Description:  "Anzahl der Einträge pro Seite in Tabellen"));
+    Description:  "Number of items per page in tables"));
 
 builder.Services.AddSettingDefinition(new AppSettingDefinition(
     Key:          "feature:new-dashboard",
     Section:      "features",
     Type:         AppSettingType.Boolean,
     DefaultValue: "false",
-    Description:  "Neues Dashboard aktivieren"));
+    Description:  "Enable new dashboard"));
 ```
 
-### Assembly-Registrierung (Blazor Router)
+### Assembly registration (Blazor router)
 
 ```csharp
 // Program.cs
@@ -66,7 +66,7 @@ app.MapRazorComponents<App>()
 
 ## appsettings.json
 
-Das Modul sucht den Connection String in dieser Reihenfolge: `SettingsDb` → `DefaultConnection` → `AuthDb`.
+The module searches for the connection string in this order: `SettingsDb` → `DefaultConnection` → `AuthDb`.
 
 ```json
 {
@@ -78,18 +78,18 @@ Das Modul sucht den Connection String in dieser Reihenfolge: `SettingsDb` → `D
 
 ## Migrations
 
-Das Modul wendet seine Migrations beim Start automatisch an (`IModuleInitializer.InitializeAsync`). Unmittelbar danach werden alle registrierten `AppSettingDefinition`-Instanzen idempotent in die Datenbank geseedet.
+The module automatically applies its migrations on startup (`IModuleInitializer.InitializeAsync`). Immediately after, all registered `AppSettingDefinition` instances are idempotently seeded into the database.
 
-**PostgreSQL-Schema:** `settings`
+**PostgreSQL schema:** `settings`
 
-**Tabellen:**
+**Tables:**
 
-| Tabelle | Zweck |
+| Table | Purpose |
 |---|---|
-| `settings.AppSettingDefinitions` | Bekannte Setting-Keys (Key, Section, Type, DefaultValue, Description) |
-| `settings.AppSettingValues` | Gesetzte Werte (Value, LastModifiedAt, LastModifiedBy) |
-| `settings.__EFMigrationsHistory` | EF-Migrations-Tracking |
+| `settings.AppSettingDefinitions` | Known setting keys (key, section, type, default value, description) |
+| `settings.AppSettingValues` | Set values (value, last modified at, last modified by) |
+| `settings.__EFMigrationsHistory` | EF migrations tracking |
 
-::: warning --no-build vermeiden
-Migrations immer ohne `--no-build` generieren, damit EF die aktuelle DLL liest.
+::: warning Avoid --no-build
+Always generate migrations without `--no-build`, so EF reads the current DLL.
 :::

@@ -1,44 +1,44 @@
 # SDK-Storage
 
-Das Storage-Modul stellt eine vollständige, provider-unabhängige Dateiverwaltung für BieberWorks SDK-Anwendungen bereit. Es umfasst Upload, Download, Metadaten-Verwaltung, Sichtbarkeitskontrolle, automatisches Auditing und eine fertige MudBlazor-UI.
+The Storage module provides complete, provider-independent file management for BieberWorks SDK applications. It includes upload, download, metadata management, visibility control, automatic auditing, and ready-made MudBlazor UI.
 
-## Was das Modul bietet
+## What the module offers
 
-- **Einheitliche High-Level-API** (`IStorageService`) für Upload, Download, Listing, Umbenennen, Sichtbarkeit und Löschen
-- **Austauschbarer physischer Backend** über `IFileStorage` — ohne Änderungen am Domain- oder Service-Code
-- **Vier eingebaute Provider:** FileSystem, DB-Blob, AWS S3, Azure Blob Storage
-- **Konfigurierbare Key-Strategie** (`IStorageKeyStrategy`): Datum, Owner oder Hybrid
-- **Vier Sichtbarkeitsstufen** (Private, RoleRestricted, Public, AppResource)
-- **Automatisches Auditing** — alle Datei-Events implementieren `IAuditableEvent`; kein Audit-Code pro Event nötig
-- **Avatar-Integration** — implementiert `IAvatarProvider` aus `SDK-Auth.Contracts`
-- **Erlaubte Content-Types** verwaltbar über Admin-UI oder Konfiguration
-- **Fertige MudBlazor-Seiten** für Admin und Benutzer
+- **Unified high-level API** (`IStorageService`) for upload, download, listing, rename, visibility, and delete
+- **Exchangeable physical backend** via `IFileStorage` — without changes to domain or service code
+- **Four built-in providers:** FileSystem, DB-Blob, AWS S3, Azure Blob Storage
+- **Configurable key strategy** (`IStorageKeyStrategy`): Date, Owner, or Hybrid
+- **Four visibility levels** (Private, RoleRestricted, Public, AppResource)
+- **Automatic auditing** — all file events implement `IAuditableEvent`; no audit code per event needed
+- **Avatar integration** — implements `IAvatarProvider` from `SDK-Auth.Contracts`
+- **Allowed content types** manageable via admin UI or configuration
+- **Ready-made MudBlazor pages** for admin and users
 
-## Paket-Tabelle
+## Package table
 
-| Paket | Beschreibung | Version |
+| Package | Description | Version |
 |---|---|---|
-| `BieberWorks.SDK.Storage.Contracts` | Interfaces, DTOs, Domain Events, Permissions — wird von anderen Modulen referenziert | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
-| `BieberWorks.SDK.Storage` | Kern-Implementierung: FileSystem-Provider, DB-Blob-Provider, `StorageModule`, Migrations (Schema `storage`) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
-| `BieberWorks.SDK.Storage.Aws` | AWS S3 / S3-kompatibler Provider (`S3FileStorage`) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
-| `BieberWorks.SDK.Storage.Azure` | Azure Blob Storage Provider (`AzureBlobFileStorage`) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
-| `BieberWorks.SDK.Storage.UI.MudBlazor` | Admin-Seiten, Benutzer-Seiten, Shared-Komponenten (MudBlazor RCL) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
+| `BieberWorks.SDK.Storage.Contracts` | Interfaces, DTOs, domain events, permissions — referenced by other modules | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
+| `BieberWorks.SDK.Storage` | Core implementation: FileSystem provider, DB-Blob provider, `StorageModule`, migrations (schema `storage`) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
+| `BieberWorks.SDK.Storage.Aws` | AWS S3 / S3-compatible provider (`S3FileStorage`) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
+| `BieberWorks.SDK.Storage.Azure` | Azure Blob Storage provider (`AzureBlobFileStorage`) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
+| `BieberWorks.SDK.Storage.UI.MudBlazor` | Admin pages, user pages, shared components (MudBlazor RCL) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
 
 ::: tip Contracts-First
-Andere Module referenzieren ausschliesslich `BieberWorks.SDK.Storage.Contracts`. Die Implementierungs-Pakete kennt nur der Host.
+Other modules reference only `BieberWorks.SDK.Storage.Contracts`. Implementation packages are known only to the host.
 :::
 
-## Provider-Vergleich
+## Provider comparison
 
-| Kriterium | FileSystem | DB-Blob | AWS S3 | Azure Blob |
+| Criterion | FileSystem | DB-Blob | AWS S3 | Azure Blob |
 |---|---|---|---|---|
-| **Einsatz** | Entwicklung, Einzel-Server | Avatare, kleine Dateien | Cloud-Scale-Out | Cloud-Scale-Out (Azure) |
-| **Skalierung** | Einzelner Server | Einzelner DB-Server | Horizontal | Horizontal |
-| **Transaktional mit Metadaten** | Nein | Ja | Nein | Nein |
-| **Dateigrösse** | Unbegrenzt (Disk) | Klein empfohlen (RAM-Puffer) | Gross | Gross |
-| **Backup** | Manuell / Volume | Mit DB-Backup | S3-Versionierung | Azure-Redundanz |
-| **S3-kompatibel (MinIO etc.)** | — | — | Ja | — |
+| **Use case** | Development, single server | Avatars, small files | Cloud scale-out | Cloud scale-out (Azure) |
+| **Scaling** | Single server | Single DB server | Horizontal | Horizontal |
+| **Transactional with metadata** | No | Yes | No | No |
+| **File size** | Unlimited (disk) | Small recommended (RAM buffer) | Large | Large |
+| **Backup** | Manual / volume | With DB backup | S3 versioning | Azure redundancy |
+| **S3-compatible (MinIO etc.)** | — | — | Yes | — |
 
-::: warning DB-Blob und grosse Dateien
-`DatabaseFileStorage` liest jede Datei vollständig in den RAM (`MemoryStream`). Für Dateien über wenige MB den FileSystem-, S3- oder Azure-Provider verwenden.
+::: warning DB-Blob and large files
+`DatabaseFileStorage` reads every file fully into RAM (`MemoryStream`). For files over a few MB, use FileSystem, S3, or Azure provider.
 :::

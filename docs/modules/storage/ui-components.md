@@ -1,27 +1,27 @@
-# UI-Komponenten
+# UI Components
 
-Paket: `BieberWorks.SDK.Storage.UI.MudBlazor`
+Package: `BieberWorks.SDK.Storage.UI.MudBlazor`
 
-Das UI-Paket stellt fertige MudBlazor-Seiten für Admin und Benutzer bereit. Es setzt `SDK-Admin` (für `IAdminSection`/`IAdminPage`) und `SDK-Account` (für `IAccountSection`/`IAccountPage`) voraus.
+The UI package provides ready-made MudBlazor pages for admin and users. It requires `SDK-Admin` (for `IAdminSection`/`IAdminPage`) and `SDK-Account` (for `IAccountSection`/`IAccountPage`).
 
-## Einbinden
+## Adding to host
 
-### 1. Service-Registrierung
+### 1. Service registration
 
 ```csharp
 builder.Services.AddStorageUi(opts =>
 {
-    // Optional: Link auf User-Detailseite in der Owner-Spalte der Admin-Ansicht
-    opts.UserLinkTemplate = "/admin/users/{0}";  // {0} = User-Guid
+    // Optional: link to user detail page in admin owner column
+    opts.UserLinkTemplate = "/admin/users/{0}";  // {0} = user GUID
 
-    // Optional: Permission, die der aktuelle User benötigt, damit der Link gerendert wird
+    // Optional: permission required by current user for link to render
     opts.UserLinkPermission = "auth:users:manage";
 });
 ```
 
-Ohne `configure`-Parameter werden `UserLinkTemplate` und `UserLinkPermission` auf `null` gesetzt — Owner-IDs werden dann als Klartext angezeigt.
+Without the `configure` parameter, `UserLinkTemplate` and `UserLinkPermission` default to `null` — owner IDs are shown as plain text.
 
-### 2. Razor-Assembly in Program.cs
+### 2. Razor assembly in Program.cs
 
 ```csharp
 app.MapRazorComponents<App>()
@@ -45,110 +45,110 @@ app.MapRazorComponents<App>()
 </Router>
 ```
 
-::: warning Beide Einträge sind Pflicht
-Fehlt der Assembly-Eintrag in `MapRazorComponents`, werden die Seiten nicht gefunden. Fehlt der Eintrag im `Router`, zeigt Blazor "Not found" beim direkten Navigieren zur URL.
+::: warning Both entries are mandatory
+Missing the assembly entry in `MapRazorComponents` means pages won't be found. Missing the router entry causes Blazor to show "Not found" on direct navigation to the URL.
 :::
 
 ---
 
-## Admin-Seiten
+## Admin pages
 
-### Alle Dateien — `/admin/files`
-
-**Permission:** `storage:file:admin`
-
-Die zentrale Datei-Verwaltungsseite für Administratoren. Zeigt alle Dateien aller Benutzer.
-
-Funktionen:
-- Tabellen-Ansicht mit Name, Grösse, Content-Type, Sichtbarkeit, Owner, Upload-Datum
-- Quicksearch (Name / Content-Type, debounced 300 ms)
-- Sichtbarkeitsfilter für den Upload
-- Datei-Upload mit Sichtbarkeits-Auswahl (konfigurierbar via `StorageSharingOptions`)
-- Rollen-Feld erscheint bei `RoleRestricted`-Sichtbarkeit (kommagetrennte Rollennamen)
-- Toggle "Show internal" — zeigt `AppResource`-Dateien (Avatare, Logos)
-- Download und Löschen (mit Bestätigungsdialog) pro Zeile
-- Klick auf eine Zeile navigiert zu `/admin/files/{fileId}`
-- Owner-Spalte mit optionalem Link (via `StorageUiOptions.UserLinkTemplate`)
-- Erlaubte Content-Types werden aus `IStorageSettingsService` geladen; `accept`-Attribut und Hint-Text werden automatisch gesetzt
-- Max. Upload-Grösse: 50 MB
-
-### Datei-Detail — `/admin/files/{fileId}`
+### All files — `/admin/files`
 
 **Permission:** `storage:file:admin`
 
-Detailansicht einer einzelnen Datei mit Metadaten, Sichtbarkeits-Änderung und Löschen.
+Central file management page for administrators. Shows all files from all users.
 
-### Storage-Einstellungen — `/admin/storage/settings`
+Features:
+- Table view with name, size, content-type, visibility, owner, upload date
+- Quicksearch (name / content-type, debounced 300 ms)
+- Visibility filter for uploads
+- File upload with visibility selection (configurable via `StorageSharingOptions`)
+- Role field appears for `RoleRestricted` visibility (comma-separated role names)
+- "Show internal" toggle — reveals `AppResource` files (avatars, logos)
+- Download and delete per row (with confirmation dialog)
+- Click row to navigate to `/admin/files/{fileId}`
+- Owner column with optional link (via `StorageUiOptions.UserLinkTemplate`)
+- Allowed content types loaded from `IStorageSettingsService`; `accept` attribute and hint text auto-set
+- Max upload size: 50 MB
+
+### File detail — `/admin/files/{fileId}`
+
+**Permission:** `storage:file:admin`
+
+Detail view of a single file with metadata, visibility change, and delete.
+
+### Storage settings — `/admin/storage/settings`
 
 **Permission:** `storage:settings:manage`
 
-Verwaltung der modul-weiten Einstellungen.
+Manage module-wide settings.
 
-Funktionen:
-- Anzeige der aktuell erlaubten Content-Types als entfernbare Chips
-- Manuelles Hinzufügen via Textfeld (Enter oder Button)
-- Quick-Presets: `image/*`, `application/pdf`, `text/*`, Word, Excel, PowerPoint, ZIP, JSON
-- Speichern persistiert die Liste in `storage.storage_settings` via `IStorageSettingsService`
+Features:
+- Display currently allowed content types as removable chips
+- Manual add via text field (enter or button)
+- Quick presets: `image/*`, `application/pdf`, `text/*`, Word, Excel, PowerPoint, ZIP, JSON
+- Save persists the list to `storage.storage_settings` via `IStorageSettingsService`
 
-::: info Leere Liste = alles erlaubt
-Wenn die Allowed-Types-Liste leer ist, sind alle Content-Types zugelassen. Das ist der Ausgangszustand nach der ersten Migration.
+::: info Empty list = all allowed
+If the allowed types list is empty, all content types are accepted. This is the state after first migration.
 :::
 
 ---
 
-## Account-Seiten (Benutzer)
+## Account pages (users)
 
-### Meine Dateien — `/account/files`
+### My files — `/account/files`
 
 **Permission:** `storage:file:read`
 
-Datei-Verwaltung für den angemeldeten Benutzer. Zeigt ausschliesslich Dateien des aktuellen Users.
+File management for the logged-in user. Shows only that user's files.
 
-Funktionen:
-- Tabellen-Ansicht mit Name, Grösse, Content-Type, Sichtbarkeit, Upload-Datum
+Features:
+- Table view with name, size, content-type, visibility, upload date
 - Quicksearch
-- Datei-Upload mit Sichtbarkeits-Auswahl
-- Rollen-Feld bei `RoleRestricted`
-- Download und Löschen pro Zeile
-- Klick auf Zeile navigiert zu `/account/files/{fileId}`
-- Max. Upload-Grösse: 50 MB
+- File upload with visibility selection
+- Role field for `RoleRestricted`
+- Download and delete per row
+- Click row to navigate to `/account/files/{fileId}`
+- Max upload size: 50 MB
 
-### Meine Datei-Detail — `/account/files/{fileId}`
+### My file detail — `/account/files/{fileId}`
 
 **Permission:** `storage:file:read`
 
-Detailansicht der eigenen Datei mit Metadaten, Umbenennen, Sichtbarkeits-Änderung und Löschen.
+Detail view of own file with metadata, rename, visibility change, and delete.
 
-### Geteilte Dateien — `/account/shared-files`
+### Shared files — `/account/shared-files`
 
-Dateien, die mit dem aktuellen User geteilt wurden (Public oder RoleRestricted mit passender Rolle).
+Files shared with the current user (public or role-restricted with matching role).
 
-### Geteilte Datei-Detail — `/account/shared-files/{fileId}`
+### Shared file detail — `/account/shared-files/{fileId}`
 
-Detailansicht einer geteilten Datei (nur lesend).
+Detail view of a shared file (read-only).
 
 ---
 
-## Shared-Komponenten
+## Shared components
 
 ### FileDetailView
 
-Wiederverwendbare Detailansicht für eine einzelne Datei. Wird von den Admin- und Account-Detail-Seiten genutzt.
+Reusable detail view for a single file. Used by admin and account detail pages.
 
 ---
 
-## Permissions-Übersicht
+## Permissions overview
 
-| Permission | Schlüssel | Zweck |
+| Permission | Key | Purpose |
 |---|---|---|
-| `StoragePermissions.FileRead` | `storage:file:read` | Eigene Dateien anzeigen / herunterladen |
-| `StoragePermissions.FileWrite` | `storage:file:write` | Eigene Dateien hochladen |
-| `StoragePermissions.FileDelete` | `storage:file:delete` | Eigene Dateien löschen |
-| `StoragePermissions.FileAdmin` | `storage:file:admin` | Alle Dateien verwalten (Admin) |
-| `StoragePermissions.FileSettingsManage` | `storage:settings:manage` | Modul-Einstellungen verwalten |
+| `StoragePermissions.FileRead` | `storage:file:read` | View / download own files |
+| `StoragePermissions.FileWrite` | `storage:file:write` | Upload own files |
+| `StoragePermissions.FileDelete` | `storage:file:delete` | Delete own files |
+| `StoragePermissions.FileAdmin` | `storage:file:admin` | Manage all files (admin) |
+| `StoragePermissions.FileSettingsManage` | `storage:settings:manage` | Manage module settings |
 
-Die Permissions werden über `StoragePermissionContributor` (implementiert `IPermissionContributor`) automatisch im Auth-Permissions-Katalog registriert. Rollen können diesen Permissions in der Admin-UI von SDK-Auth zugewiesen werden.
+Permissions are automatically registered in the Auth permissions catalog via `StoragePermissionContributor` (implements `IPermissionContributor`). Roles can be assigned these permissions in the SDK-Auth admin UI.
 
-::: tip Policy-Präfix
-Alle `[Authorize(Policy = "...")]`-Attribute in den Razor-Seiten verwenden das Präfix `perm:` (z.B. `perm:storage:file:admin`). Das entspricht der Konvention des SDK-Auth-Moduls.
+::: tip Policy prefix
+All `[Authorize(Policy = "...")]` attributes in Razor pages use the prefix `perm:` (e.g. `perm:storage:file:admin`). This follows the SDK-Auth module convention.
 :::

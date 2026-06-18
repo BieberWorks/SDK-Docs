@@ -1,8 +1,8 @@
-# Verwendung — SDK-Settings
+# Usage — SDK-Settings
 
 ## ISettingsService
 
-`ISettingsService` ist als Singleton registriert. `GetValue` und `IsEnabled` sind synchron — kein `await` nötig.
+`ISettingsService` is registered as a singleton. `GetValue` and `IsEnabled` are synchronous — no `await` needed.
 
 ```csharp
 using BieberWorks.SDK.Settings.Contracts;
@@ -27,11 +27,11 @@ string? value = settings.GetValue("my:key");
 string value  = settings.GetValue("my:key", defaultValue: "fallback")!;
 ```
 
-Reihenfolge der Wert-Auflösung: gesetzter DB-Wert → `DefaultValue` der Definition → übergebener `defaultValue`-Parameter.
+Value resolution order: set DB value → `DefaultValue` of definition → passed `defaultValue` parameter.
 
 ### IsEnabled
 
-Wertet den Wert als Boolean aus. Truthy-Werte: `true`, `1`, `yes` (Groß-/Kleinschreibung irrelevant).
+Evaluates the value as a boolean. Truthy values: `true`, `1`, `yes` (case-insensitive).
 
 ```csharp
 bool active = settings.IsEnabled("feature:my-feature");
@@ -39,29 +39,29 @@ bool active = settings.IsEnabled("feature:my-feature");
 
 ### GetSectionAsync / GetAllAsync
 
-Liefert alle Settings einer Section bzw. alle Settings als `IReadOnlyList<AppSettingDto>`. Ergebnis wird gecacht.
+Returns all settings of a section or all settings as `IReadOnlyList<AppSettingDto>`. Result is cached.
 
 ```csharp
 IReadOnlyList<AppSettingDto> uiSettings = await settings.GetSectionAsync("ui");
 IReadOnlyList<AppSettingDto> all        = await settings.GetAllAsync();
 ```
 
-`AppSettingDto` enthält:
+`AppSettingDto` contains:
 
-| Property | Typ | Bedeutung |
+| Property | Type | Meaning |
 |---|---|---|
-| `Key` | `string` | Setting-Key |
-| `Value` | `string?` | Aktuell gesetzter Wert (null = nicht gesetzt) |
-| `DefaultValue` | `string?` | Standardwert aus der Definition |
-| `Section` | `string` | Gruppierung |
-| `Description` | `string?` | Beschreibungstext |
+| `Key` | `string` | Setting key |
+| `Value` | `string?` | Currently set value (null = not set) |
+| `DefaultValue` | `string?` | Default from definition |
+| `Section` | `string` | Grouping |
+| `Description` | `string?` | Description text |
 | `Type` | `AppSettingType` | String / Boolean / Integer / Json |
-| `LastModifiedAt` | `DateTimeOffset?` | Letzter Änderungszeitpunkt |
-| `LastModifiedBy` | `string?` | Benutzername des letzten Änderers |
+| `LastModifiedAt` | `DateTimeOffset?` | Last modification time |
+| `LastModifiedBy` | `string?` | Username of last modifier |
 
 ## IFeatureFlagService
 
-`IFeatureFlagService` ist eine schlanke Facade. Der übergebene `featureKey` wird intern als `feature:<featureKey>` in den Settings nachgeschlagen.
+`IFeatureFlagService` is a thin facade. The passed `featureKey` is internally looked up as `feature:<featureKey>` in settings.
 
 ```csharp
 using BieberWorks.SDK.Settings.Contracts;
@@ -69,12 +69,12 @@ using BieberWorks.SDK.Settings.Contracts;
 public class MyFeature(IFeatureFlagService features)
 {
     public bool ShowNewDashboard => features.IsEnabled("new-dashboard");
-    // liest intern: settings.IsEnabled("feature:new-dashboard")
+    // reads internally: settings.IsEnabled("feature:new-dashboard")
 }
 ```
 
-::: tip Feature-Flag-Konvention
-Definiere Feature-Flags mit dem Key-Prefix `feature:` und Section `features`:
+::: tip Feature flag convention
+Define feature flags with key prefix `feature:` and section `features`:
 ```csharp
 new AppSettingDefinition("feature:new-dashboard", "features", AppSettingType.Boolean, "false")
 ```
@@ -82,7 +82,7 @@ new AppSettingDefinition("feature:new-dashboard", "features", AppSettingType.Boo
 
 ## ISettingsAdminService
 
-Für programmatische Schreiboperationen (z. B. in Integrationstests oder Seedern):
+For programmatic write operations (e.g. in integration tests or seeders):
 
 ```csharp
 using BieberWorks.SDK.Settings.Contracts;
@@ -91,54 +91,54 @@ public class Seeder(ISettingsAdminService admin)
 {
     public async Task SeedAsync()
     {
-        // Wert setzen
+        // Set value
         await admin.SetValueAsync("ui:items-per-page", "50", modifiedBy: "seed");
 
-        // Wert auf Standardwert zurücksetzen
+        // Reset to default
         await admin.ResetToDefaultAsync("ui:items-per-page");
 
-        // Setting vollständig löschen
+        // Delete setting completely
         await admin.DeleteAsync("obsolete:key");
     }
 }
 ```
 
-Nach jedem Schreibvorgang wird der Cache automatisch invalidiert.
+The cache is automatically invalidated after each write operation.
 
-## Cache-Verhalten
+## Cache behavior
 
-`CachedSettingsStore` hält Settings in zwei Cache-Entries:
+`CachedSettingsStore` maintains settings in two cache entries:
 
-| Cache-Key | Inhalt | Invalidierung |
+| Cache key | Contents | Invalidation |
 |---|---|---|
-| `bw-settings:_all_dict` | Alle Settings als Dictionary (Hot Path für `GetValue`) | bei jeder Änderung |
-| `bw-settings:_all` | Alle Settings als Liste | bei jeder Änderung |
-| `bw-settings:<section>` | Settings einer Section | bei Änderung in dieser Section |
+| `bw-settings:_all_dict` | All settings as dictionary (hot path for `GetValue`) | on every change |
+| `bw-settings:_all` | All settings as list | on every change |
+| `bw-settings:<section>` | Settings of one section | on change in that section |
 
-Ablaufzeiten: Absolute 30 Minuten, Sliding 5 Minuten.
+Expiration times: absolute 30 minutes, sliding 5 minutes.
 
-## Admin-UI
+## Admin UI
 
-Das Modul registriert zwei Admin-Seiten im Admin-Shell:
+The module registers two admin pages in the admin shell:
 
-| Seite | Pfad | Inhalt |
+| Page | Path | Contents |
 |---|---|---|
-| App Settings | `/admin/settings` | CRUD für alle registrierten Settings |
-| Feature Flags | `/admin/settings/features` | Gefilterte Ansicht der Section `features` als Toggle-Liste |
+| App Settings | `/admin/settings` | CRUD for all registered settings |
+| Feature Flags | `/admin/settings/features` | Filtered view of section `features` as toggle list |
 
 ::: info Permission
-- Lesen: `settings:settings:read` (`SettingsPermissions.SettingsRead`)
-- Schreiben: `settings:settings:manage` (`SettingsPermissions.SettingsManage`)
+- Read: `settings:settings:read` (`SettingsPermissions.SettingsRead`)
+- Write: `settings:settings:manage` (`SettingsPermissions.SettingsManage`)
 :::
 
 ## Auto-Auditing
 
-Wenn SDK-Audit installiert ist, werden Änderungen automatisch protokolliert. Es ist kein zusätzlicher Code nötig — `SettingChangedEvent` und `SettingResetEvent` implementieren `IAuditableEvent`.
+If SDK-Audit is installed, changes are automatically logged. No additional code needed — `SettingChangedEvent` and `SettingResetEvent` implement `IAuditableEvent`.
 
 ```
-Admin ändert Setting
+Admin changes setting
   → ISettingsAdminService.SetValueAsync
-      → SettingChangedEvent wird via IDomainEventPublisher publiziert
-          → AuditableEventHandler<SettingChangedEvent> (SDK-Audit, Open-Generic)
-              → IAuditService.LogAsync (Audit-DB)
+      → SettingChangedEvent is published via IDomainEventPublisher
+          → AuditableEventHandler<SettingChangedEvent> (SDK-Audit, open-generic)
+              → IAuditService.LogAsync (audit DB)
 ```

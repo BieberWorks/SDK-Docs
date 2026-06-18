@@ -1,145 +1,136 @@
-# SDK-Admin — Eigene Admin-Seiten
+# Custom Admin Pages
 
-Andere Module klinken eigene Seiten in den Admin-Bereich ein, indem sie `IAdminSection` implementieren und die Seiten mit `IAdminPage` markieren.
+## Implement IAdminSection
 
-## IAdminPage
-
-Marker-Interface für routable Blazor-Seiten, die im Admin-Bereich liegen.
+Each domain module offers one or more admin pages through `IAdminSection`:
 
 ```csharp
-// BieberWorks.SDK.Admin
-public interface IAdminPage { }
-```
-
-Durch dieses Interface können Tools oder Filter alle Admin-Seiten der Assembly identifizieren. Es hat keine Pflicht-Member.
-
-## IAdminSection
-
-Gruppert mehrere `AdminNavItem`-Links unter einem Drawer-Eintrag.
-
-```csharp
-public interface IAdminSection
-{
-    string Title { get; }
-    string Icon  { get; }
-    int    Order { get; }
-    IReadOnlyList<AdminNavItem> NavItems { get; }
-
-    // Optional: Sektion bei Runtime ausblenden
-    bool IsEnabled(IServiceProvider services) => true;
-}
-```
-
-| Member | Beschreibung |
-|---|---|
-| `Title` | Anzeigename im Drawer (z. B. `"Einstellungen"`) |
-| `Icon` | MudBlazor-Icon-Konstante (z. B. `Icons.Material.Filled.Settings`) |
-| `Order` | Sortierung; kleinere Werte erscheinen weiter oben |
-| `NavItems` | Liste der Navigationslinks dieser Sektion |
-| `IsEnabled` | Optionale Laufzeit-Bedingung; default `true` |
-
-## AdminNavItem
-
-```csharp
-public sealed record AdminNavItem(string Title, string Href, string Icon);
-```
-
-| Parameter | Beschreibung |
-|---|---|
-| `Title` | Link-Label im Drawer |
-| `Href` | Route-URL (z. B. `"/admin/settings"`) |
-| `Icon` | MudBlazor-Icon-Konstante |
-
-## Vollständiges Beispiel
-
-### 1. Sektion implementieren
-
-```csharp
-// MyModule/Admin/MyAdminSection.cs
 using BieberWorks.SDK.Admin.Contracts;
-using MudBlazor;
 
-public sealed class MyAdminSection : IAdminSection
+namespace MyModule;
+
+public class MyAdminSection : IAdminSection
 {
-    public string Title => "Mein Modul";
-    public string Icon  => Icons.Material.Filled.Extension;
-    public int    Order => 300;
-
-    public IReadOnlyList<AdminNavItem> NavItems =>
-    [
-        new AdminNavItem("Übersicht",     "/admin/mymodule",          Icons.Material.Filled.Dashboard),
-        new AdminNavItem("Konfiguration", "/admin/mymodule/settings", Icons.Material.Filled.Tune),
-    ];
+    public string Title => "My Module";
+    
+    public string Icon => Icons.Material.Filled.Settings;
+    
+    public int Order => 100;
+    
+    public IReadOnlyList<AdminNavItem> NavItems => new[]
+    {
+        new AdminNavItem(
+            Title: "Overview",
+            Href: "/admin/mymodule",
+            Icon: Icons.Material.Filled.Dashboard
+        ),
+        new AdminNavItem(
+            Title: "Settings",
+            Href: "/admin/mymodule/settings",
+            Icon: Icons.Material.Filled.Tune
+        )
+    };
+    
+    public bool IsEnabled(IServiceProvider services)
+    {
+        // Optional: check feature flag or permission
+        return true;
+    }
 }
 ```
 
-### 2. Sektion im DI registrieren
+### AdminNavItem
+
+A record with three properties:
+
+- **`Title`** — Link label
+- **`Href`** — Route (e.g., `/admin/dashboard`, `/admin/users`)
+- **`Icon`** — MudBlazor icon
 
 ```csharp
-// In IModule.RegisterServices oder Program.cs
-services.AddSingleton<IAdminSection, MyAdminSection>();
+new AdminNavItem("Users", "/admin/users", Icons.Material.Filled.Person)
 ```
 
-::: warning Registrierungszeitpunkt
-`IAdminSection`-Implementierungen müssen vor dem ersten Render der `AdminLayout` im DI-Container stehen. Das ist sichergestellt, wenn sie in `IModule.RegisterServices` (das vor dem App-Build ausgeführt wird) registriert werden.
-:::
+## DI Registration
 
-### 3. Admin-Seite anlegen
+In the module's `ServiceCollectionExtensions`:
+
+```csharp
+public static IServiceCollection AddMyModule(this IServiceCollection services, IConfiguration config)
+{
+    // ... other services
+    services.AddSingleton<IAdminSection, MyAdminSection>();
+    return services;
+}
+```
+
+The host calls `AddMyModule()` — the admin shell automatically recognizes all registered `IAdminSection` instances.
+
+## Create Admin Page
+
+Each route in `NavItems.Href` needs a corresponding `.razor` page:
 
 ```razor
-@* Pages/Admin/MyOverviewPage.razor *@
-@page "/admin/mymodule"
-@layout AdminLayout
+@* /Admin/MyModule.razor *@
+
+@using BieberWorks.SDK.Admin
 @implements IAdminPage
+@layout AdminLayout
 
-<h1>Mein Modul — Übersicht</h1>
+@page "/admin/mymodule"
+@page "/admin/mymodule/settings"
+
+@attribute [Authorize(Policy = "perm:admin:shell:access")]
+
+<PageTitle>My Module</PageTitle>
+
+<MudContainer>
+    <MudText Typo="Typo.h4" Class="mb-4">Module Settings</MudText>
+    
+    <!-- Page content -->
+    <MudCard>
+        <MudCardContent>
+            <MudText>Users can make settings here.</MudText>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
 ```
 
-::: tip @layout
-Die Direktive `@layout AdminLayout` ist notwendig, damit die Seite innerhalb der Admin-Shell gerendert wird. Alternativ kann `AdminShell` als `DefaultLayout` im Router-Scope gesetzt werden.
-:::
+### Required Attributes
 
-### 4. Assembly einbinden
+- **`@layout AdminLayout`** — uses admin layout (drawer + app bar)
+- **`@implements IAdminPage`** — marker interface, not currently functional, but clarifies intent
+- **`@page`** — must match routes from `NavItems.Href`
+- **`@attribute [Authorize(...)]`** — optional, but **recommended** for permission protection
 
-Die Assembly, die die Seite enthält, muss im Host in `AddAdditionalAssemblies` registriert sein:
+## Feature-Flag-Controlled Sections
 
-```csharp
-// Program.cs
-builder.Services
-    .AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Admin.UI.MudBlazor.AdminModule).Assembly,
-        typeof(MyModule.Admin.MyOverviewPage).Assembly
-    );
-```
-
-Und in `Routes.razor`:
-
-```razor
-@code {
-    private static readonly Assembly[] _moduleAssemblies =
-    [
-        typeof(BieberWorks.SDK.Admin.UI.MudBlazor.AdminModule).Assembly,
-        typeof(MyModule.Admin.MyOverviewPage).Assembly,
-    ];
-}
-```
-
-## IsEnabled — Bedingte Sektionen
-
-`IsEnabled` erhält den `IServiceProvider`, um Feature-Flags oder andere Runtime-Bedingungen abzufragen:
+Via `IsEnabled`:
 
 ```csharp
 public bool IsEnabled(IServiceProvider services)
 {
-    var flags = services.GetService<IFeatureFlagService>();
-    return flags?.IsEnabled("MyModule") ?? true;
+    var settingsService = services.GetService<ISettingsService>();
+    if (settingsService is null) return true;
+    
+    var enabled = settingsService.GetValue("features:audit-enabled");
+    return enabled != "false";
 }
 ```
 
-`AdminLayout` evaluiert `IsEnabled` in `OnInitialized` und filtert deaktivierte Sektionen heraus.
+The module is shown only if the feature is active.
 
-## Drag-and-Drop Reihenfolge
+## Structure in Host
 
-`AdminLayout` erlaubt Benutzern mit der Permission `admin:shell:access` das Umsortieren der Sektionen per Drag-and-Drop (Edit-Mode-Button im Drawer-Header). Die Reihenfolge wird in SDK-Settings unter dem Key `admin.nav.section-order` als JSON-Array von Typnamen persistiert — sofern SDK-Settings im Host installiert ist. Ohne SDK-Settings wird die Reihenfolge nur für die aktuelle Session gehalten.
+```
+Host/
+├── Pages/
+│   └── Admin/
+│       ├── MyModule.razor           ← Page for "/admin/mymodule"
+│       ├── Settings.razor           ← Page for "/admin/mymodule/settings"
+│       └── ...
+├── Program.cs                       ← Call AddMyModule()
+└── ...
+```
+
+Razor pages can reside in the host or in a separate RCL (Razor Class Library, e.g., `MyModule.UI.MudBlazor.dll`).

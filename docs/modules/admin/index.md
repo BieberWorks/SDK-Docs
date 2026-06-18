@@ -1,31 +1,53 @@
 # SDK-Admin
 
-Das Modul `SDK-Admin` stellt eine vollständige Admin-Shell für BieberWorks-Hosts bereit. Andere Module klinken sich über `IAdminSection` in den Navigations-Drawer ein — ohne dass der Host Änderungen vornehmen muss.
+The admin shell module for the BieberWorks SDK. Provides central navigation and extensible admin UI for all domain modules.
 
-## Pakete
+## Packages
 
-| Paket | Inhalt |
-|---|---|
-| `BieberWorks.SDK.Admin.Contracts` | `IAdminPage`, `IAdminSection`, `AdminNavItem`, `AdminPermissions` |
-| `BieberWorks.SDK.Admin.UI.MudBlazor` | `AdminLayout`, `AdminShell`, `AdminModule` (`IModule` + `IEndpointModule`), `AddBieberWorksAdmin()` |
+- **`BieberWorks.SDK.Admin.Contracts`** — `IAdminSection`, `IAdminPage`, `AdminNavItem`. Dependency-free, implemented by other modules.
+- **`BieberWorks.SDK.Admin.UI.MudBlazor`** — AdminLayout, AdminShell, Navigation engine. Base UI for the admin shell.
 
-## AdminShell-Konzept
+## Version History
 
-`AdminLayout` ist ein MudBlazor-`LayoutComponentBase`, der `BwShellLayout` (aus SDK-UI) als responsive Basis nutzt. Er:
+**v0.3.0** — current version
 
-- rendert alle registrierten `IAdminSection`-Implementierungen als `MudNavGroup` im Drawer,
-- erlaubt per Drag-and-Drop-Edit-Mode das Umsortieren der Sektionen (Reihenfolge wird via SDK-Settings persistiert, sofern das Modul vorhanden ist),
-- schützt den gesamten Body-Bereich durch die Policy `perm:admin:shell:access` (`AdminPermissions.ShellAccess`),
-- rendert alle registrierten `IAppBarWidget`-Instanzen (aus SDK-UI) in der AppBar.
+## Features
 
-`AdminShell` ist ein leichter Wrapper, der `AdminLayout` als `ChildContent` einschließt — nützlich als `DefaultLayout` in einem Blazor-Router-Scope.
+### IAdminSection — Extension Point
 
-::: info Sektionen werden von Fachmodulen registriert
-`AddBieberWorksAdmin()` registriert kein eigenes `IAdminSection`. Andere Module (z. B. SDK-Settings, SDK-Storage) registrieren ihre Sektionen über `services.AddSingleton<IAdminSection, MySection>()` in ihrer eigenen `IModule.RegisterServices`-Implementierung.
-:::
+Each domain module implements `IAdminSection` and registers it via DI to offer one or more pages in the admin navigation. Properties:
 
-## Versions-Referenz
+- **`Title`** — Display name in drawer (e.g., "Audit Logs")
+- **`Icon`** — MudBlazor icon (e.g., `Icons.Material.Filled.History`)
+- **`Order`** — Sort position (ascending by seconds)
+- **`NavItems`** — List of navigation links
+- **`IsEnabled(IServiceProvider)`** — Runtime condition (feature flags, permissions)
 
-Aktuelle stabile Version: **v0.3.0**
+### Navigation with Drag-and-Drop
 
-Paket-IDs: `BieberWorks.SDK.Admin.Contracts` und `BieberWorks.SDK.Admin.UI.MudBlazor`.
+In **Edit Mode** (only for users with `admin:shell:access` permission):
+
+- Reorder sections via drag-and-drop
+- Create, rename, and delete custom folders
+- Move sections into folders
+- All groups collapsed by default
+
+### Persistence via SDK-Settings
+
+Navigation is stored in SDK-Settings under key `admin.nav.section-order`. Format: JSON v2 with sections and folders. The admin shell functions without SDK-Settings (order is not persisted).
+
+### Permission Protection
+
+The admin shell is protected by `admin:shell:access` permission. Only authorized users see the admin area.
+
+## Setup
+
+See [setup.md](./setup.md)
+
+## Custom Pages
+
+See [custom-pages.md](./custom-pages.md)
+
+## Navigation Features
+
+See [navigation.md](./navigation.md)

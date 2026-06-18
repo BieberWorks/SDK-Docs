@@ -1,65 +1,65 @@
 # SDK-Settings
 
-Das Modul **BieberWorks.SDK.Settings** bietet datenbankgestützte Anwendungseinstellungen mit `IMemoryCache`-Schicht. Settings werden einmal definiert (`AppSettingDefinition`), beim Modulstart idempotent in die Datenbank geseeded und danach per `ISettingsService` synchron auf dem Hot Path gelesen.
+The module **BieberWorks.SDK.Settings** provides database-backed application settings with `IMemoryCache` layer. Settings are defined once (`AppSettingDefinition`), seeded idempotently into the database on module startup, and then read synchronously via `ISettingsService` on the hot path.
 
-## Pakete
+## Packages
 
-| NuGet-Paket | Inhalt | Referenzieren |
+| NuGet package | Contents | Reference |
 |---|---|---|
-| `BieberWorks.SDK.Settings.Contracts` | `ISettingsService`, `IFeatureFlagService`, `ISettingsAdminService`, `AppSettingDefinition`, `AppSettingDto`, `AppSettingType`, Events, Permissions | andere Module |
-| `BieberWorks.SDK.Settings` | `SettingsModule`, `CachedSettingsStore`, `SettingsAdminService`, `FeatureFlagService`, `SettingsDbContext` (Schema `settings`) | Host |
-| `BieberWorks.SDK.Settings.UI` | `AppSettingsPageBase`, `FeatureFlagsPageBase` (MudBlazor-unabhängige Basisklassen) | Host mit UI |
-| `BieberWorks.SDK.Settings.UI.MudBlazor` | MudBlazor-Rendering, `AddSettingsUi()` | Host mit MudBlazor |
+| `BieberWorks.SDK.Settings.Contracts` | `ISettingsService`, `IFeatureFlagService`, `ISettingsAdminService`, `AppSettingDefinition`, `AppSettingDto`, `AppSettingType`, events, permissions | other modules |
+| `BieberWorks.SDK.Settings` | `SettingsModule`, `CachedSettingsStore`, `SettingsAdminService`, `FeatureFlagService`, `SettingsDbContext` (schema `settings`) | host |
+| `BieberWorks.SDK.Settings.UI` | `AppSettingsPageBase`, `FeatureFlagsPageBase` (MudBlazor-independent base classes) | host with UI |
+| `BieberWorks.SDK.Settings.UI.MudBlazor` | MudBlazor rendering, `AddSettingsUi()` | host with MudBlazor |
 
-**Aktuelle Version:** `v0.0.1`
+**Current version:** `v0.0.1`
 
-## Wann Settings statt appsettings.json?
+## When to use settings vs. appsettings.json?
 
-| Kriterium | `appsettings.json` | SDK-Settings |
+| Criterion | `appsettings.json` | SDK-Settings |
 |---|---|---|
-| Wert zur Laufzeit veranderbar | Nein | Ja |
-| Kein Deployment nötig | Nein | Ja |
-| Passwörter / Secrets | Ja (User Secrets / Vault) | Nein |
-| Infrastruktur-Konfiguration (Ports, DB-URLs) | Ja | Nein |
-| App-Verhalten, Feature-Flags, Texte | Nein | Ja |
+| Value changeable at runtime | No | Yes |
+| No deployment required | No | Yes |
+| Passwords / secrets | Yes (User Secrets / Vault) | No |
+| Infrastructure config (ports, DB URLs) | Yes | No |
+| App behavior, feature flags, texts | No | Yes |
 
-::: warning Keine Secrets in SDK-Settings speichern
-SDK-Settings ist für veränderliche App-Konfiguration gedacht, nicht für Credentials oder Verbindungsstrings. Secrets gehören in Environment Variables oder einen Secret Manager.
+::: warning No secrets in SDK-Settings
+SDK-Settings is for changeable app configuration, not credentials or connection strings. Secrets belong in environment variables or a secret manager.
 :::
 
-## Datenmodell
+## Data model
 
-Jede Setting hat eine **Definition** (Key, Section, Typ, Beschreibung, Standardwert) und optional einen **Value** (gesetzter Wert, LastModifiedAt, LastModifiedBy).
+Each setting has a **definition** (key, section, type, description, default value) and optionally a **value** (set value, LastModifiedAt, LastModifiedBy).
 
-`GetValue` gibt `Value.Value ?? Definition.DefaultValue ?? übergebe defaultValue` zurück.
+`GetValue` returns `Value.Value ?? Definition.DefaultValue ?? passed defaultValue`.
 
 ## AppSettingType
 
-| Wert | Bedeutung | UI-Darstellung |
+| Value | Meaning | UI display |
 |---|---|---|
-| `String` (0) | Freitext | Textfeld |
+| `String` (0) | Free text | Text field |
 | `Boolean` (1) | true/false | Toggle |
-| `Integer` (2) | Ganzzahl | Zahlenfeld |
-| `Json` (3) | JSON-Blob | Mehrzeiliger Editor |
+| `Integer` (2) | Whole number | Number field |
+| `Json` (3) | JSON blob | Multi-line editor |
 
-## Feature-Flags
+## Feature flags
 
-`IFeatureFlagService` ist eine schlanke Facade über `ISettingsService`. Keys folgen der Konvention `feature:<featureKey>`. Truthy-Werte: `true`, `1`, `yes` (case-insensitive).
+`IFeatureFlagService` is a thin facade over `ISettingsService`. Keys follow the convention `feature:<featureKey>`. Truthy values: `true`, `1`, `yes` (case-insensitive).
 
 ## Auto-Auditing
 
-Beide Domain-Events des Moduls implementieren `IAuditableEvent`:
+Both domain events of the module implement `IAuditableEvent`:
 
 | Event | Trigger | AuditAction |
 |---|---|---|
-| `SettingChangedEvent` | Wert gesetzt | `settings:value:changed` |
-| `SettingResetEvent` | Wert zurückgesetzt | `settings:value:reset` |
+| `SettingChangedEvent` | Value set | `settings:value:changed` |
+| `SettingResetEvent` | Value reset | `settings:value:reset` |
 
-SDK-Audit erfasst diese Events automatisch über den Open-Generic-Handler — kein zusätzlicher Code nötig.
+SDK-Audit captures these events automatically via the open-generic handler — no additional code needed.
 
 ## Permissions
 
-| Konstante | Wert | Bedeutung |
+| Constant | Value | Meaning |
 |---|---|---|
-| `SettingsPermissions.SettingsRead` | `settings:settings:read` | Admin-UI lesen |
-| `SettingsPermissions.SettingsManage` | `settings:settings:manage` | Werte ändern / zurücksetzen |
+| `SettingsPermissions.SettingsRead` | `settings:settings:read` | Read admin UI |
+| `SettingsPermissions.SettingsManage` | `settings:settings:manage` | Change / reset values |
