@@ -1,59 +1,59 @@
-# Setup & Konfiguration
+# Setup & Configuration
 
-## NuGet-Installation
+## NuGet installation
 
-### Minimales Setup (FileSystem-Provider)
+### Minimal setup (FileSystem provider)
 
 ```bash
 dotnet add package BieberWorks.SDK.Storage.Contracts
 dotnet add package BieberWorks.SDK.Storage
 ```
 
-### Mit UI (MudBlazor)
+### With UI (MudBlazor)
 
 ```bash
 dotnet add package BieberWorks.SDK.Storage.UI.MudBlazor
 ```
 
-### Mit AWS S3
+### With AWS S3
 
 ```bash
 dotnet add package BieberWorks.SDK.Storage.Aws
 ```
 
-### Mit Azure Blob Storage
+### With Azure Blob Storage
 
 ```bash
 dotnet add package BieberWorks.SDK.Storage.Azure
 ```
 
-::: info Paketquelle
-Alle Pakete liegen in GitHub Packages der Organisation `BieberWorks`. Eine `nuget.config` mit dem `bieberworks`-Feed und einem gültigen `PACKAGES_TOKEN` ist Voraussetzung.
+::: info Package source
+All packages are in GitHub Packages of the `BieberWorks` organization. A `nuget.config` with the `bieberworks` feed and a valid `PACKAGES_TOKEN` is required.
 :::
 
 ## Program.cs
 
-### Schritt 1: Modul registrieren
+### Step 1: Register the module
 
-`StorageModule` implementiert `IModule` und `IEndpointModule`. Die Registrierung erfolgt über `AddBieberWorksModules`:
+`StorageModule` implements `IModule` and `IEndpointModule`. Registration via `AddBieberWorksModules`:
 
 ```csharp
 builder.Services.AddBieberWorksModules(builder.Configuration);
 ```
 
-`StorageModule.RegisterServices` wird dabei automatisch aufgerufen und registriert:
+`StorageModule.RegisterServices` is called automatically and registers:
 
-- `IDbContextFactory<StorageDbContext>` (Npgsql, Schema `storage`)
-- `IFileStorage` (Standard: `FileSystemFileStorage`)
-- `IStorageKeyStrategy` (Standard: `DateStorageKeyStrategy`)
+- `IDbContextFactory<StorageDbContext>` (Npgsql, schema `storage`)
+- `IFileStorage` (default: `FileSystemFileStorage`)
+- `IStorageKeyStrategy` (default: `DateStorageKeyStrategy`)
 - `IStorageService`
 - `IStorageSettingsService`
 - `IAvatarProvider` (`StorageAvatarProvider`)
 - `IPermissionContributor` (`StoragePermissionContributor`)
 
-### Schritt 2: Provider wählen (optional)
+### Step 2: Choose provider (optional)
 
-Der FileSystem-Provider ist der Standard und muss nicht explizit gesetzt werden. Um einen anderen Provider zu aktivieren, wird **nach** `AddBieberWorksModules` aufgerufen:
+FileSystem provider is default and needs no explicit setup. To activate a different provider, call **after** `AddBieberWorksModules`:
 
 ```csharp
 // AWS S3
@@ -62,35 +62,35 @@ builder.Services.AddS3Storage(builder.Configuration);
 // Azure Blob Storage
 builder.Services.AddAzureBlobStorage(builder.Configuration);
 
-// DB-Blob (kein weiterer Parameter nötig)
+// DB-Blob (no further parameter needed)
 builder.Services.AddDatabaseStorage();
 ```
 
-::: tip Letzter Aufruf gewinnt
-Alle Provider-Registrierungen ersetzen `IFileStorage`. Nur der zuletzt registrierte Provider ist aktiv.
+::: tip Last call wins
+All provider registrations replace `IFileStorage`. Only the last registered provider is active.
 :::
 
-### Schritt 3: UI registrieren (optional)
+### Step 3: Register UI (optional)
 
 ```csharp
 builder.Services.AddStorageUi(opts =>
 {
-    // Optionaler Link auf User-Detailseite im Admin (Owner-Spalte)
+    // Optional: link to user detail page in admin (owner column)
     opts.UserLinkTemplate = "/admin/users/{0}";
 
-    // Optionale Permission, die der User haben muss, damit der Link gerendert wird
+    // Optional: permission user must have for link to render
     opts.UserLinkPermission = "auth:users:manage";
 });
 ```
 
-### Schritt 4: Endpoints und Migrations
+### Step 4: Map endpoints and migrations
 
 ```csharp
 app.MapBieberWorksModules();
-await app.InitializeBieberWorksModulesAsync(); // führt StorageDbContext.MigrateAsync aus
+await app.InitializeBieberWorksModulesAsync(); // runs StorageDbContext.MigrateAsync
 ```
 
-### Schritt 5: Razor-Assemblies registrieren (wenn UI verwendet)
+### Step 5: Register Razor assemblies (if using UI)
 
 ```csharp
 app.MapRazorComponents<App>()
@@ -100,7 +100,7 @@ app.MapRazorComponents<App>()
     );
 ```
 
-Und in `Routes.razor`:
+And in `Routes.razor`:
 
 ```razor
 <Router AppAssembly="typeof(App).Assembly"
@@ -109,7 +109,7 @@ Und in `Routes.razor`:
 
 ## appsettings.json
 
-### Datenbankverbindung
+### Database connection
 
 ```json
 {
@@ -119,11 +119,11 @@ Und in `Routes.razor`:
 }
 ```
 
-::: tip Fallback-Logik
-`StorageModule` sucht Verbindungsstrings in dieser Reihenfolge: `StorageDb` → `DefaultConnection` → `AuthDb`. Ein dedizierter `StorageDb`-String ist empfohlen, aber nicht zwingend.
+::: tip Fallback logic
+`StorageModule` searches connection strings in this order: `StorageDb` → `DefaultConnection` → `AuthDb`. A dedicated `StorageDb` string is recommended, but not required.
 :::
 
-### FileSystem-Provider
+### FileSystem provider
 
 ```json
 {
@@ -135,9 +135,9 @@ Und in `Routes.razor`:
 }
 ```
 
-`RootPath` kann absolut oder relativ zum Application Content Root angegeben werden. Standard: `App_Data/storage`.
+`RootPath` can be absolute or relative to the application content root. Default: `App_Data/storage`.
 
-### Key-Strategie
+### Key strategy
 
 ```json
 {
@@ -147,9 +147,9 @@ Und in `Routes.razor`:
 }
 ```
 
-Mögliche Werte: `Date` (Standard), `Owner`, `Hybrid`. Siehe [Key-Strategie](./key-strategy.md).
+Possible values: `Date` (default), `Owner`, `Hybrid`. See [Key strategy](./key-strategy.md).
 
-### Erlaubte Sichtbarkeitsmodi (Upload-UI)
+### Allowed visibility modes (upload UI)
 
 ```json
 {
@@ -161,7 +161,7 @@ Mögliche Werte: `Date` (Standard), `Owner`, `Hybrid`. Siehe [Key-Strategie](./k
 }
 ```
 
-Schränkt ein, welche Sichtbarkeitsmodi in der Upload-UI angeboten werden. Standard: alle drei Modi (`Private`, `RoleRestricted`, `Public`). `AppResource` ist nie in der UI auswählbar.
+Restricts which visibility modes are offered in the upload UI. Default: all three modes (`Private`, `RoleRestricted`, `Public`). `AppResource` is never selectable in the UI.
 
 ### AWS S3
 
@@ -181,7 +181,7 @@ Schränkt ein, welche Sichtbarkeitsmodi in der Upload-UI angeboten werden. Stand
 }
 ```
 
-`AccessKeyId` und `SecretAccessKey` können leer gelassen werden — dann greift die Standard-AWS-Credential-Chain (IAM Role, Environment Variables, etc.).
+`AccessKeyId` and `SecretAccessKey` can be left empty — then the standard AWS credential chain applies (IAM role, environment variables, etc.).
 
 ### Azure Blob Storage
 
@@ -196,18 +196,18 @@ Schränkt ein, welche Sichtbarkeitsmodi in der Upload-UI angeboten werden. Stand
 }
 ```
 
-Alternativ zu `ConnectionString` kann `ServiceUri` für Managed Identity / Token Credential verwendet werden.
+Alternatively, `ServiceUri` for managed identity / token credential.
 
-## Migrations-Hinweis
+## Migrations note
 
-`StorageModule` implementiert `IModuleInitializer`. Beim Aufruf von `InitializeBieberWorksModulesAsync()` wird `StorageDbContext.Database.MigrateAsync()` ausgeführt. Das legt automatisch das Schema `storage` und alle Tabellen an:
+`StorageModule` implements `IModuleInitializer`. When `InitializeBieberWorksModulesAsync()` is called, `StorageDbContext.Database.MigrateAsync()` is executed. This automatically creates schema `storage` and all tables:
 
-| Tabelle | Zweck |
+| Table | Purpose |
 |---|---|
-| `storage.storage_files` | Datei-Metadaten (Name, Grösse, Content-Type, Owner, Sichtbarkeit) |
-| `storage.file_blobs` | Blob-Bytes (nur bei DB-Blob-Provider befüllt) |
-| `storage.storage_settings` | Modul-weite Einstellungen (erlaubte Content-Types) |
+| `storage.storage_files` | File metadata (name, size, content-type, owner, visibility) |
+| `storage.file_blobs` | Blob bytes (only populated by DB-Blob provider) |
+| `storage.storage_settings` | Module-wide settings (allowed content types) |
 
-::: warning EF-Migrations und `--no-build`
-`dotnet ef` niemals mit `--no-build` aufrufen — veraltete DLLs erzeugen fehlerhafte Migrations-Dateien.
+::: warning EF migrations and `--no-build`
+Never call `dotnet ef` with `--no-build` — stale DLLs produce faulty migrations.
 :::
