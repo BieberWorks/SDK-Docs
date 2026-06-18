@@ -44,8 +44,11 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "docs: update ${{ github.event.client_payload.module }} to ${{ github.event.client_payload.version }}"
-            git pull --rebase origin main
-            git push origin main
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin main && git push origin main && break
+              echo "Push attempt $i failed, retrying in 5s..."
+              sleep 5
+            done
           fi
 
       - name: Trigger deploy
