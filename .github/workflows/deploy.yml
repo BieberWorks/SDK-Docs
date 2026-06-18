@@ -12,12 +12,15 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Debounce — wait for further updates
+        run: sleep 300
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
