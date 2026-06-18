@@ -41,3 +41,16 @@ jobs:
     steps:
       - uses: actions/deploy-pages@v4
         id: deployment
+
+      - name: Clean up cancelled deploy runs
+        env:
+          GH_TOKEN: ${{ secrets.ORG_REPO_TOKEN }}
+        run: |
+          gh run list --repo BieberWorks/SDK-Docs \
+            --workflow deploy.yml \
+            --status cancelled \
+            --limit 100 \
+            --json databaseId \
+            --jq '.[].databaseId' \
+          | xargs -I{} gh run delete {} --repo BieberWorks/SDK-Docs
+          echo "Cancelled deploy runs cleaned up"
