@@ -1,41 +1,41 @@
-# Authentifizierungs-Flows
+# Authentication Flows
 
-## Dual-Scheme Konzept
+## Dual-Scheme Concept
 
-Das Auth-Modul registriert drei Authentication-Schemes und wählt automatisch das passende aus:
+The Auth module registers three authentication schemes and automatically selects the appropriate one:
 
 ```
-Eingehende Anfrage
+Incoming request
        |
        v
   "Smart" (PolicyScheme)
        |
-       +-- Authorization-Header "Bearer …" vorhanden?
+       +-- Authorization header "Bearer …" present?
        |         |
        |         v
-       |    JwtBearerDefaults  --> JWT-Validierung
+       |    JwtBearerDefaults  --> JWT validation
        |
-       +-- sonst
+       +-- otherwise
                  |
                  v
-           CookieAuthenticationDefaults --> Cookie-Validierung
+           CookieAuthenticationDefaults --> Cookie validation
 ```
 
-Der `Smart`-Scheme ist der `DefaultScheme` und `DefaultChallengeScheme`. API-Clients senden den Bearer-Header, Blazor-Server-Clients nutzen das Cookie automatisch.
+The `Smart` scheme is the `DefaultScheme` and `DefaultChallengeScheme`. API clients send the Bearer header, Blazor Server clients use the cookie automatically.
 
-## Login-Flow (Cookie / Blazor Server)
+## Login Flow (Cookie / Blazor Server)
 
-Blazor Server läuft über SignalR — innerhalb eines aktiven Circuits können keine HTTP-Cookies gesetzt werden. Das Modul löst dies mit dem **Ticket-Store-Pattern**:
+Blazor Server runs over SignalR — inside an active circuit, HTTP cookies cannot be set. The module solves this with the **Ticket Store Pattern**:
 
-1. Der Benutzer sendet Formular an `LoginBase.HandleLoginAsync()`.
-2. `InProcAuthClient.LoginAsync()` dispatcht den `LoginCommand` über `IAppMessageDispatcher`.
-3. `LoginCommandHandler` prüft Credentials, erstellt ein `ClaimsPrincipal` und speichert es im `CookieSignInTicketStore` (In-Memory, TTL 30 Sekunden). Der Store gibt eine `Guid` (Ticket-ID) zurück.
-4. Der Handler liefert das Ticket als `TempAccessToken` in der `LoginResponse`.
-5. `LoginBase` navigiert mit `forceLoad: true` zu `/api/auth/finalize-login?ticket={id}&returnUrl={url}`.
-6. Dieser HTTP-Endpoint (außerhalb des SignalR-Circuits) ruft `HttpContext.SignInAsync()` auf, setzt das Cookie und leitet auf `returnUrl` weiter.
+1. The user submits a form to `LoginBase.HandleLoginAsync()`.
+2. `InProcAuthClient.LoginAsync()` dispatches the `LoginCommand` via `IAppMessageDispatcher`.
+3. `LoginCommandHandler` checks credentials, creates a `ClaimsPrincipal`, and stores it in `CookieSignInTicketStore` (in-memory, TTL 30 seconds). The store returns a `Guid` (ticket ID).
+4. The handler returns the ticket as `TempAccessToken` in the `LoginResponse`.
+5. `LoginBase` navigates with `forceLoad: true` to `/api/auth/finalize-login?ticket={id}&returnUrl={url}`.
+6. This HTTP endpoint (outside the SignalR circuit) calls `HttpContext.SignInAsync()`, sets the cookie, and redirects to `returnUrl`.
 
 ```
-Blazor Circuit          HTTP-Endpunkt
+Blazor Circuit          HTTP Endpoint
      |                       |
      | LoginCommand           |
      |---dispatch-----------> |
@@ -48,13 +48,13 @@ Blazor Circuit          HTTP-Endpunkt
      |              Redirect to returnUrl
 ```
 
-::: info Warum forceLoad?
-Innerhalb eines laufenden SignalR-Circuits kann `HttpContext.SignInAsync()` das `Set-Cookie`-Header nicht mehr schreiben — der Response ist bereits committed. Der `forceLoad`-Redirect erzeugt einen neuen HTTP-Request außerhalb des Circuits.
+::: info Why forceLoad?
+Inside a running SignalR circuit, `HttpContext.SignInAsync()` can no longer write the `Set-Cookie` header — the response is already committed. The `forceLoad` redirect creates a new HTTP request outside the circuit.
 :::
 
-## Login-Flow (JWT / API-Client)
+## Login Flow (JWT / API Client)
 
-Für REST-Clients (z. B. WASM, MAUI, externe Apps) liefert derselbe `POST /api/auth/login`-Endpoint ein Token-Paar:
+For REST clients (e.g., WASM, MAUI, external apps), the same `POST /api/auth/login` endpoint returns a token pair:
 
 ```http
 POST /api/auth/login
@@ -62,11 +62,11 @@ Content-Type: application/json
 
 {
   "email": "user@example.com",
-  "password": "Geheim#123"
+  "password": "Secret#123"
 }
 ```
 
-Erfolgsantwort (`LoginResponseDto`):
+Success response (`LoginResponseDto`):
 
 ```json
 {
@@ -81,23 +81,23 @@ Erfolgsantwort (`LoginResponseDto`):
 }
 ```
 
-Die Claims im JWT sind: `sub` (UserId), `email`, `jti`, und alle Rollen als `role`-Claims.
+The claims in the JWT are: `sub` (UserId), `email`, `jti`, and all roles as `role` claims.
 
-## Token-Refresh
+## Token Refresh
 
 ```http
 POST /api/auth/refresh
 Content-Type: application/json
 
 {
-  "accessToken": "eyJ…(abgelaufen)",
+  "accessToken": "eyJ…(expired)",
   "refreshToken": "base64…"
 }
 ```
 
-Der `RefreshTokenCommandHandler` extrahiert die Claims aus dem abgelaufenen Access-Token (Lifetime-Validierung bewusst deaktiviert), prüft den Refresh-Token in der Datenbank (nicht revoziert, nicht abgelaufen), revoziert den alten und stellt ein neues Token-Paar aus.
+The `RefreshTokenCommandHandler` extracts claims from the expired access token (lifetime validation intentionally disabled), checks the refresh token in the database (not revoked, not expired), revokes the old one, and issues a new token pair.
 
-## Registrierung
+## Registration
 
 ```http
 POST /api/auth/register
@@ -107,21 +107,21 @@ Content-Type: application/json
   "firstName": "Max",
   "lastName": "Mustermann",
   "email": "max@example.com",
-  "password": "Geheim#123"
+  "password": "Secret#123"
 }
 ```
 
-Nach erfolgreicher Registrierung wird der `UserRegisteredEvent` veröffentlicht. Wenn ein `IAuthEmailSender` registriert ist, versendet `EmailConfirmationRequestedEventHandler` eine Bestätigungs-E-Mail. Der Benutzer kann sich erst vollständig einloggen, wenn die E-Mail bestätigt wurde (sofern Email-Bestätigung erzwungen wird).
+After successful registration, the `UserRegisteredEvent` is published. If an `IAuthEmailSender` is registered, `EmailConfirmationRequestedEventHandler` sends a confirmation email. The user can only fully log in after email confirmation (if email confirmation is enforced).
 
-## E-Mail-Bestätigung
+## Email Confirmation
 
-Der Bestätigungslink enthält `userId` und `token`:
+The confirmation link contains `userId` and `token`:
 
 ```http
 GET /api/auth/confirm-email?userId={id}&token={token}
 ```
 
-Alternativ kann die Bestätigung erneut angefordert werden:
+Alternatively, confirmation can be requested again:
 
 ```http
 POST /api/auth/resend-confirmation
@@ -130,9 +130,9 @@ Content-Type: application/json
 { "userId": "…" }
 ```
 
-## Passwort-Flows
+## Password Flows
 
-### Passwort vergessen
+### Forgot password
 
 ```http
 POST /api/auth/forgot-password
@@ -141,9 +141,9 @@ Content-Type: application/json
 { "email": "user@example.com" }
 ```
 
-Antwortet immer mit `200 OK` (keine Preisgabe, ob die E-Mail-Adresse existiert). Der `PasswordResetRequestedEventHandler` versendet einen Reset-Link per `IAuthEmailSender`.
+Always responds with `200 OK` (no disclosure whether the email address exists). The `PasswordResetRequestedEventHandler` sends a reset link via `IAuthEmailSender`.
 
-### Passwort zurücksetzen
+### Reset password
 
 ```http
 POST /api/auth/reset-password
@@ -151,12 +151,12 @@ Content-Type: application/json
 
 {
   "email": "user@example.com",
-  "token": "…(aus E-Mail)",
-  "newPassword": "NeuesGeheim#456"
+  "token": "…(from email)",
+  "newPassword": "NewSecret#456"
 }
 ```
 
-### Passwort ändern (eingeloggter Benutzer)
+### Change password (logged-in user)
 
 ```http
 POST /api/auth/change-password
@@ -164,14 +164,14 @@ Authorization: Bearer eyJ…
 Content-Type: application/json
 
 {
-  "currentPassword": "Geheim#123",
-  "newPassword": "NeuesGeheim#456"
+  "currentPassword": "Secret#123",
+  "newPassword": "NewSecret#456"
 }
 ```
 
-## Zwei-Faktor-Authentifizierung
+## Two-Factor Authentication
 
-### 2FA aktivieren
+### Enable 2FA
 
 ```http
 POST /api/auth/2fa/enable
@@ -181,9 +181,9 @@ Content-Type: application/json
 { "userId": "…" }
 ```
 
-### Login mit 2FA
+### Login with 2FA
 
-Nach einem Login-Versuch, wenn `requires2FA: true` zurückkommt:
+After a login attempt, when `requires2FA: true` is returned:
 
 ```http
 POST /api/auth/2fa/verify
@@ -197,7 +197,7 @@ Content-Type: application/json
 
 ## IAuthEmailSender
 
-Das Modul verwendet `IAuthEmailSender` (aus `Auth.Contracts`) für alle E-Mail-Benachrichtigungen:
+The module uses `IAuthEmailSender` (from `Auth.Contracts`) for all email notifications:
 
 ```csharp
 public interface IAuthEmailSender
@@ -207,10 +207,10 @@ public interface IAuthEmailSender
 }
 ```
 
-Ist kein konkreter `IAuthEmailSender` im DI-Container registriert, fällt das Modul auf `LoggingAuthEmailSender` zurück — dieser schreibt die Links nur ins Log (geeignet für die Entwicklung).
+If no concrete `IAuthEmailSender` is registered in the DI container, the module falls back to `LoggingAuthEmailSender` — this only writes the links to the log (suitable for development).
 
-Ist `SDK-Email` installiert und ein `IEmailSender` registriert, verwendet `AuthEmailSenderAdapter` automatisch die Email-Templates aus den eingebetteten Ressourcen des Auth-Moduls.
+If `SDK-Email` is installed and an `IEmailSender` is registered, `AuthEmailSenderAdapter` automatically uses the email templates from the Auth module's embedded resources.
 
-::: tip Eigene E-Mail-Implementierung
-Registriere einfach eine eigene `IAuthEmailSender`-Implementierung **vor** `AddBieberWorksModules`. Das Modul prüft mit `TryAdd`-Semantik und überschreibt bereits registrierte Implementierungen nicht.
+::: tip Custom email implementation
+Simply register your own `IAuthEmailSender` implementation **before** `AddBieberWorksModules`. The module uses `TryAdd` semantics and does not override already registered implementations.
 :::
