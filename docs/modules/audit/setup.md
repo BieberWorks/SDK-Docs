@@ -1,15 +1,15 @@
-# Setup & Konfiguration
+# Setup & Configuration
 
-## NuGet-Pakete installieren
+## NuGet packages
 
-Für ein reines Backend-Projekt (ohne Admin-UI):
+For a pure backend project (no admin UI):
 
 ```bash
 dotnet add package BieberWorks.SDK.Audit.Contracts
 dotnet add package BieberWorks.SDK.Audit
 ```
 
-Mit Admin-UI (MudBlazor):
+With admin UI (MudBlazor):
 
 ```bash
 dotnet add package BieberWorks.SDK.Audit.Contracts
@@ -18,53 +18,53 @@ dotnet add package BieberWorks.SDK.Audit.UI
 dotnet add package BieberWorks.SDK.Audit.UI.MudBlazor
 ```
 
-::: info Pakete kommen aus GitHub Packages
-Die Pakete werden aus der `BieberWorks`-GitHub-Org bezogen. Eine entsprechende `nuget.config` mit dem `PACKAGES_TOKEN` ist Voraussetzung.
+::: info Packages from GitHub Packages
+The packages are obtained from the `BieberWorks` GitHub organization. A corresponding `nuget.config` with the `PACKAGES_TOKEN` is required.
 :::
 
 ## Program.cs
 
-Das Modul registriert sich selbst über `AddBieberWorksModules`. Kein manueller `services.Add...`-Aufruf nötig — `AuditModule.RegisterServices` erledigt das automatisch:
+The module registers itself via `AddBieberWorksModules`. No manual `services.Add...` call necessary — `AuditModule.RegisterServices` handles that automatically:
 
 ```csharp
 builder.Services.AddBieberWorksModules(builder.Configuration);
 ```
 
-Für die Admin-UI zusätzlich `AddAuditUi()` aufrufen:
+For the admin UI, additionally call `AddAuditUi()`:
 
 ```csharp
 builder.Services.AddAuditUi();
 ```
 
-Optional kann `AddAuditUi` mit einem Konfigurationsdelegate aufgerufen werden, um Verlinkungen in der Tabelle zu aktivieren:
+Optionally, `AddAuditUi` can be called with a configuration delegate to enable links in the table:
 
 ```csharp
 builder.Services.AddAuditUi(options =>
 {
-    // Benutzer-IDs in der Tabelle als Links rendern
+    // Render user IDs in the table as links
     options.UserLinkTemplate = "/admin/users/{0}";
 
-    // Resource-IDs je Ressourcentyp verlinken
+    // Link resource IDs by resource type
     options.ResourceLinkTemplates["Role"] = "/admin/users/roles/{0}";
     options.ResourceLinkTemplates["User"] = "/admin/users/{0}";
 });
 ```
 
-Anschließend Endpoints mappen:
+Then map endpoints:
 
 ```csharp
 app.MapBieberWorksModules();
 ```
 
-Und Migrations beim Start anwenden:
+And apply migrations on startup:
 
 ```csharp
 await app.InitializeBieberWorksModulesAsync();
 ```
 
-## Verbindungsstring
+## Connection string
 
-Das Modul sucht in dieser Reihenfolge nach einer Connection String:
+The module searches for a connection string in this order:
 
 1. `ConnectionStrings:AuditDb`
 2. `ConnectionStrings:DefaultConnection`
@@ -78,24 +78,24 @@ Das Modul sucht in dieser Reihenfolge nach einer Connection String:
 }
 ```
 
-::: tip Gemeinsame Datenbank, getrenntes Schema
-Es kann dieselbe PostgreSQL-Datenbank wie andere Module verwendet werden. SDK-Audit legt alle Tabellen im Schema `audit` ab und kollidiert nicht mit anderen Modulen.
+::: tip Shared database, separate schema
+The same PostgreSQL database as other modules can be used. SDK-Audit puts all tables in the `audit` schema and does not collide with other modules.
 :::
 
-## PostgreSQL-Schema `audit`
+## PostgreSQL schema `audit`
 
-`AuditModule` implementiert `IModuleInitializer` und führt beim Start automatisch `db.Database.MigrateAsync()` aus. Manueller `dotnet ef database update` ist für Produktionsumgebungen optional, aber nicht erforderlich, wenn `InitializeBieberWorksModulesAsync()` aufgerufen wird.
+`AuditModule` implements `IModuleInitializer` and automatically runs `db.Database.MigrateAsync()` on startup. Manual `dotnet ef database update` is optional for production environments, but not required if `InitializeBieberWorksModulesAsync()` is called.
 
-Die EF-Migrations-History-Tabelle wird ebenfalls im Schema `audit` abgelegt:
+The EF migrations history table is also placed in the `audit` schema:
 
 ```
 audit.__EFMigrationsHistory
 audit.AuditItems
 ```
 
-## Blazor-Router (nur bei Admin-UI)
+## Blazor Router (admin UI only)
 
-Damit der Blazor-Router die Seiten aus dem UI-Paket findet, müssen die Assemblies in `Program.cs` und in `Routes.razor` eingetragen werden:
+For the Blazor router to find pages from the UI package, assemblies must be registered in `Program.cs` and `Routes.razor`:
 
 ```csharp
 // Program.cs
