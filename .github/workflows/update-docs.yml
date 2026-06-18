@@ -47,3 +47,9 @@ jobs:
             git pull --rebase origin main
             git push origin main
           fi
+
+      - name: Trigger deploy
+        env:
+          GH_TOKEN: ${{ secrets.ORG_REPO_TOKEN }}
+        run: |
+          gh workflow run deploy.yml --repo BieberWorks/SDK-Docs
