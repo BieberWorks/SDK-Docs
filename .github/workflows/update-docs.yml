@@ -1,0 +1,66 @@
+name: Update module documentation
+
+on:
+  repository_dispatch:
+    types: [docs-update]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SDK-Docs
+        uses: actions/checkout@v4
+
+      - name: Checkout module repo
+        uses: actions/checkout@v4
+        with:
+          repository: BieberWorks/${{ github.event.client_payload.repo }}
+          token: ${{ secrets.PACKAGES_TOKEN }}
+          path: _module-source
+
+      - name: Copy docs
+        run: |
+          MODULE="${{ github.event.client_payload.module }}"
+          TARGET="docs/modules/${MODULE,,}"
+          if [ -d "_module-source/docs" ]; then
+            mkdir -p "$TARGET"
+            cp -r _module-source/docs/. "$TARGET/"
+            echo "Copied docs for $MODULE"
+          else
+            echo "No docs/ folder found in module repo — skipping copy"
+          fi
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: docs/update-${{ github.event.client_payload.module }}-${{ github.event.client_payload.version }}
+          commit-message: "docs: update ${{ github.event.client_payload.module }} to ${{ github.event.client_payload.version }}"
+          title: "docs: update ${{ github.event.client_payload.module }} to ${{ github.event.client_payload.version }}"
+          body: |
+            Automated documentation update.
+
+            **Module:** ${{ github.event.client_payload.module }}
+            **Version:** ${{ github.event.client_payload.version }}
+            **Source repo:** BieberWorks/${{ github.event.client_payload.repo }}
+
+            This PR was created automatically after a release. Auto-merge is enabled.
+          labels: automated,documentation
+
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh pr list --repo BieberWorks/SDK-Docs \
+            --head "docs/update-${{ github.event.client_payload.module }}-${{ github.event.client_payload.version }}" \
+            --json number --jq '.[0].number')
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr merge "$PR_NUMBER" --auto --squash --repo BieberWorks/SDK-Docs
+            echo "Auto-merge enabled for PR #$PR_NUMBER"
+          else
+            echo "No PR found (no changes to merge)"
+          fi
