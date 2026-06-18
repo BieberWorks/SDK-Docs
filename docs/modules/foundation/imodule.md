@@ -1,6 +1,6 @@
-# IModule & Modul-System
+# IModule & Module System
 
-Das Modul-System ermöglicht es, Fach-Logik in eigenständige, selbst-registrierende Einheiten zu kapseln. Ein Modul ist eine Klasse, die `IModule` implementiert und ihre eigenen Services in den DI-Container einträgt.
+The module system enables domain logic to be encapsulated in self-contained, self-registering units. A module is a class that implements `IModule` and registers its own services in the DI container.
 
 ## IModule
 
@@ -17,7 +17,7 @@ public interface IModule
 }
 ```
 
-`RegisterServices` wird vom Discovery-Mechanismus **genau einmal** aufgerufen. Mehrfache Aufrufe sind durch eine interne `ModuleRegistry` idempotent abgesichert.
+`RegisterServices` is called by the discovery mechanism **exactly once**. Multiple calls are protected by an internal `ModuleRegistry` to ensure idempotency.
 
 ## IModuleInitializer
 
@@ -30,7 +30,7 @@ public interface IModuleInitializer
 }
 ```
 
-Optionales Ergänzungs-Interface zu `IModule`. Implementierungen können hier EF Core-Migrationen ausführen oder Seed-Daten eintragen. `InitializeAsync` wird von `InitializeBieberWorksModulesAsync` in einem eigenen DI-Scope aufgerufen, sodass scoped Services (z.B. `DbContext`) verfügbar sind.
+Optional supplementary interface to `IModule`. Implementations can run EF Core migrations or seed data here. `InitializeAsync` is called by `InitializeBieberWorksModulesAsync` in its own DI scope, ensuring scoped services (e.g., `DbContext`) are available.
 
 ## IEndpointModule
 
@@ -43,9 +43,9 @@ public interface IEndpointModule
 }
 ```
 
-Optionales Interface für Module, die Minimal-API-Routen registrieren. Controller-basierte Module brauchen es nicht — deren Controller werden über den MVC `ApplicationPart`-Mechanismus automatisch gefunden.
+Optional interface for modules that register Minimal API routes. Controller-based modules do not need it — their controllers are discovered automatically via the MVC `ApplicationPart` mechanism.
 
-## Vollständiges Modul-Beispiel
+## Complete Module Example
 
 ```csharp
 using BieberWorks.SDK.Core.Modularity;
@@ -92,34 +92,34 @@ public sealed class OrderModule : IModule, IModuleInitializer, IEndpointModule
 }
 ```
 
-## Program.cs — Host-Setup
+## Program.cs — Host Setup
 
-### Nur Minimal-API / Controller
+### Minimal API / Controllers Only
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-// Entdeckt und registriert alle IModule-Implementierungen im Dependency-Graph
+// Discovers and registers all IModule implementations in the dependency graph
 builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// Messaging-Infrastruktur (Dispatcher + DomainEventPublisher)
+// Messaging infrastructure (Dispatcher + DomainEventPublisher)
 builder.Services.AddBieberWorksMessaging();
 
 var app = builder.Build();
 
-// EF-Migrationen aller IModuleInitializer-Module ausführen
+// Run EF migrations for all IModuleInitializer modules
 await app.InitializeBieberWorksModulesAsync();
 
-// Minimal-API-Routen aller IEndpointModule registrieren
+// Register Minimal API routes for all IEndpointModule implementations
 app.MapBieberWorksModules();
 
 await app.RunAsync();
 ```
 
-### Mit Controller-Support
+### With Controller Support
 
 ```csharp
-// AddBieberWorksWeb kombiniert AddBieberWorksModules + AddControllers + ApplicationParts
+// AddBieberWorksWeb combines AddBieberWorksModules + AddControllers + ApplicationParts
 builder.Services.AddBieberWorksWeb(builder.Configuration);
 builder.Services.AddBieberWorksMessaging();
 
@@ -130,31 +130,91 @@ app.MapBieberWorksModules();
 await app.RunAsync();
 ```
 
-## Extension-Methoden im Überblick
+## Extension Methods Overview
 
-### Service-Registration
+### Service Registration
 
-| Methode | Paket | Beschreibung |
+| Method | Package | Description |
 |---|---|---|
-| `services.AddBieberWorksModules(config)` | `Core` | Entdeckt alle `IModule` via `DependencyContext` und ruft `RegisterServices` auf |
-| `services.AddBieberWorksModules(config, assemblies[])` | `Core` | Wie oben, aber mit explizit angegebenen Assemblies (testfreundlich) |
-| `services.AddModule<TModule>(config)` | `Core` | Registriert ein einzelnes Modul explizit |
-| `services.AddBieberWorksMessaging()` | `Core` | Registriert `IAppMessageDispatcher` + `IDomainEventPublisher` als Scoped |
-| `services.AddBieberWorksWeb(config)` | `Core.Web` | Kombination aus `AddBieberWorksModules` + `AddControllers` + `ApplicationParts` |
-| `mvcBuilder.AddBieberWorksModuleControllers(services)` | `Core.Web` | Fügt Modul-Assemblies als MVC `ApplicationPart` hinzu |
+| `services.AddBieberWorksModules(config)` | `Core` | Discovers all `IModule` via `DependencyContext` and calls `RegisterServices` |
+| `services.AddBieberWorksModules(config, assemblies[])` | `Core` | Like above, but with explicitly specified assemblies (test-friendly) |
+| `services.AddModule<TModule>(config)` | `Core` | Registers a single module explicitly |
+| `services.AddBieberWorksMessaging()` | `Core` | Registers `IAppMessageDispatcher` + `IDomainEventPublisher` as Scoped |
+| `services.AddBieberWorksWeb(config)` | `Core.Web` | Combination of `AddBieberWorksModules` + `AddControllers` + `ApplicationParts` |
+| `mvcBuilder.AddBieberWorksModuleControllers(services)` | `Core.Web` | Adds module assemblies as MVC `ApplicationPart` |
 
 ### Pipeline
 
-| Methode | Paket | Beschreibung |
+| Method | Package | Description |
 |---|---|---|
-| `host.InitializeBieberWorksModulesAsync(ct?)` | `Core` | Ruft `InitializeAsync` aller `IModuleInitializer`-Module in einem Scope auf |
-| `endpoints.MapBieberWorksModules()` | `Core.Web` | Ruft `MapEndpoints` aller `IEndpointModule`-Module auf |
+| `host.InitializeBieberWorksModulesAsync(ct?)` | `Core` | Calls `InitializeAsync` for all `IModuleInitializer` modules in a scope |
+| `endpoints.MapBieberWorksModules()` | `Core.Web` | Calls `MapEndpoints` for all `IEndpointModule` modules |
 
-::: info Discovery-Mechanismus
-`AddBieberWorksModules` nutzt `DependencyContext.Default`, um nur die tatsächlich referenzierten Assemblies zu scannen. System.*, Microsoft.* und Serilog.* werden übersprungen. Falls `DependencyContext` nicht verfügbar ist (single-file publish), fällt die Methode auf `AppDomain.CurrentDomain.GetAssemblies()` zurück.
+::: info Discovery Mechanism
+`AddBieberWorksModules` uses `DependencyContext.Default` to scan only actually referenced assemblies. System.*, Microsoft.*, and Serilog.* are skipped. If `DependencyContext` is unavailable (single-file publish), the method falls back to `AppDomain.CurrentDomain.GetAssemblies()`.
 :::
 
-::: warning Parameterloser Konstruktor erforderlich
-Jede `IModule`-Implementierung muss einen öffentlichen parameterlosen Konstruktor haben. Abhängigkeiten werden über `RegisterServices` in den DI-Container eingetragen, nicht per Konstruktor-Injektion ins Modul selbst.
+::: warning Parameterless Constructor Required
+Every `IModule` implementation must have a public parameterless constructor. Dependencies are registered in the DI container via `RegisterServices`, not through constructor injection into the module itself.
 :::
 
+## DI Registration of Handlers and Processors
+
+Every Command/Query handler and Domain Event processor must be explicitly registered in `RegisterServices`. The discovery mechanism does not scan handlers automatically — only the module class itself is found via assembly scan.
+
+### Command and Query Handlers
+
+```csharp
+// IAppMessageRequestHandler<TCommand, TResult>
+services.AddScoped<
+    IAppMessageRequestHandler<PlaceOrderCommand, Result<Guid>>,
+    PlaceOrderCommandHandler>();
+
+services.AddScoped<
+    IAppMessageRequestHandler<GetOrderQuery, Result<OrderDto>>,
+    GetOrderQueryHandler>();
+```
+
+### Domain Event Processors
+
+```csharp
+// IDomainEventProcessor<TEvent>
+services.AddScoped<
+    IDomainEventProcessor<OrderPlacedEvent>,
+    SendOrderConfirmationProcessor>();
+```
+
+### Open-Generic Processor (for all events of a base type)
+
+When a processor should apply to all events of an interface type (e.g., auto-auditing):
+
+```csharp
+// Registers the handler for EVERY TEvent that implements IDomainEvent
+services.AddScoped(
+    typeof(IDomainEventProcessor<>),
+    typeof(MyGenericProcessor<>));
+```
+
+::: tip Convention
+Group handler registrations in private helper methods within the module class:
+
+```csharp
+public IServiceCollection RegisterServices(IServiceCollection services, IConfiguration config)
+{
+    RegisterRepositories(services, config);
+    RegisterCommandHandlers(services);
+    RegisterEventProcessors(services);
+    return services;
+}
+
+private static void RegisterCommandHandlers(IServiceCollection services)
+{
+    services.AddScoped<IAppMessageRequestHandler<PlaceOrderCommand, Result<Guid>>, PlaceOrderCommandHandler>();
+}
+
+private static void RegisterEventProcessors(IServiceCollection services)
+{
+    services.AddScoped<IDomainEventProcessor<OrderPlacedEvent>, SendOrderConfirmationProcessor>();
+}
+```
+:::
