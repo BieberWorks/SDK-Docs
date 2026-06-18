@@ -1,55 +1,5 @@
 # Verwendung — SDK-Localization
 
-## resx-Dateien anlegen
-
-Jedes Modul, das lokalisierbare Texte bereitstellt, legt Resource-Dateien als Embedded Resources an:
-
-```
-src/MyModule.Contracts/Resources/
-    MyModuleResources.resx        ← Neutral-/Englisch-Fallback
-    MyModuleResources.de.resx     ← Deutsche Übersetzungen
-    MyModuleResources.fr.resx     ← Weitere Sprachen
-```
-
-Die Datei wird in der `.csproj` als Embedded Resource eingebunden:
-
-```xml
-<ItemGroup>
-  <EmbeddedResource Include="Resources\*.resx" />
-</ItemGroup>
-```
-
-Jede `.resx`-Datei enthält Key-Value-Paare:
-
-```xml
-<!-- MyModuleResources.resx -->
-<data name="Login_Label_Password" xml:space="preserve">
-  <value>Password</value>
-</data>
-<data name="Login_Error_InvalidCredentials" xml:space="preserve">
-  <value>Invalid email or password.</value>
-</data>
-```
-
-## Key-Discovery
-
-SDK-Localization scannt beim Start alle geladenen Assemblies und extrahiert Resource-Keys. Der Translation-Editor zeigt daraufhin alle Keys mit ihrem Default-Wert (aus der Neutral-`.resx`) und ermöglicht das Anlegen von DB-Overrides pro Culture.
-
-**Automatisch gescannte Assemblies:** alle, deren Name mit `BieberWorks.SDK.` beginnt.
-
-**Eigene Prefixes** müssen in `LocalizationScanOptions` eingetragen werden:
-
-```csharp
-// Program.cs
-builder.Services.Configure<LocalizationScanOptions>(options =>
-{
-    options.AdditionalAssemblyPrefixes.Add("MyApp.");
-    options.SetDisplayName("MyModule", "Mein Modul");
-});
-```
-
-Damit erscheinen Keys aus `MyApp.MyModule.Resources.MyModuleResources` im Translation-Editor unter der Gruppe „Mein Modul".
-
 ## IStringLocalizer verwenden
 
 Nach der Registrierung ist `IStringLocalizer<T>` in jeder Komponente und jedem Service nutzbar. Die DB-Override-Schicht ist transparent eingehängt — der Aufruf bleibt identisch zur Standard-.NET-Lokalisierung:
