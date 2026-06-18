@@ -1,14 +1,14 @@
 # Setup — SDK-Email
 
-## NuGet-Pakete installieren
+## NuGet packages
 
 ```xml
 <!-- Host .csproj -->
 <PackageReference Include="BieberWorks.SDK.Email" Version="0.*-*" />
 ```
 
-::: tip Contracts für andere Module
-Module, die `IEmailSender` injizieren (z. B. Auth für Passwort-Reset):
+::: tip Contracts for other modules
+Modules that inject `IEmailSender` (e.g. Auth for password reset):
 ```xml
 <PackageReference Include="BieberWorks.SDK.Email.Contracts" Version="0.*-*" />
 ```
@@ -16,18 +16,18 @@ Module, die `IEmailSender` injizieren (z. B. Auth für Passwort-Reset):
 
 ## Program.cs
 
-`EmailModule` registriert sich als `IModule` und wird von `AddBieberWorksModules` automatisch erfasst. Kein zusätzlicher Aufruf nötig:
+`EmailModule` registers itself as `IModule` and is automatically captured by `AddBieberWorksModules`. No additional call necessary:
 
 ```csharp
-// Alle Module laden — EmailModule wird automatisch eingeschlossen
+// Load all modules — EmailModule is automatically included
 builder.Services.AddBieberWorksModules(builder.Configuration);
 ```
 
-Das Modul liest beim Start `Email:UseSmtp` aus der Konfiguration:
-- `UseSmtp: true` → `SmtpEmailSender` wird als `IEmailSender` registriert
-- `UseSmtp: false` (Standard) → `LoggingEmailSender` wird registriert (kein echter Versand)
+The module reads `Email:UseSmtp` from the configuration on startup:
+- `UseSmtp: true` → `SmtpEmailSender` is registered as `IEmailSender`
+- `UseSmtp: false` (default) → `LoggingEmailSender` is registered (no actual send)
 
-## SMTP-Konfiguration in appsettings.json
+## SMTP configuration in appsettings.json
 
 ```json
 {
@@ -43,35 +43,35 @@ Das Modul liest beim Start `Email:UseSmtp` aus der Konfiguration:
 }
 ```
 
-| Property | Standard | Bedeutung |
+| Property | Default | Meaning |
 |---|---|---|
-| `UseSmtp` | `false` | `true` = echter SMTP-Versand; `false` = nur Logging |
-| `Host` | `""` | SMTP-Server-Hostname |
-| `Port` | `587` | SMTP-Port (STARTTLS) |
-| `Username` | `""` | SMTP-Benutzername |
-| `Password` | `""` | SMTP-Passwort |
-| `From` | `""` | Absender-Adresse |
-| `TemplatePath` | `null` | Optionaler Dateisystem-Pfad für Template-Overrides |
+| `UseSmtp` | `false` | `true` = real SMTP send; `false` = logging only |
+| `Host` | `""` | SMTP server hostname |
+| `Port` | `587` | SMTP port (STARTTLS) |
+| `Username` | `""` | SMTP username |
+| `Password` | `""` | SMTP password |
+| `From` | `""` | Sender address |
+| `TemplatePath` | `null` | Optional filesystem path for template overrides |
 
-::: warning Password nicht im Repository
-Das SMTP-Passwort gehört in User Secrets (Entwicklung) oder eine Environment Variable / einen Secret Manager (Produktion). Niemals in `appsettings.json` einchecken.
+::: warning Password not in repository
+The SMTP password belongs in User Secrets (development) or environment variable / secret manager (production). Never check into `appsettings.json`.
 
 ```bash
-dotnet user-secrets set "Email:Password" "dein-passwort"
+dotnet user-secrets set "Email:Password" "your-password"
 ```
 :::
 
-### Entwicklung ohne SMTP
+### Development without SMTP
 
-Für lokale Entwicklung `UseSmtp: false` lassen. Der `LoggingEmailSender` schreibt alle ausgehenden E-Mails als `Information`-Log:
+For local development, leave `UseSmtp: false`. The `LoggingEmailSender` writes all outgoing emails as `Information` log:
 
 ```
-[LoggingEmailSender] Would send email to user@example.com with subject 'Passwort zurücksetzen'.
+[LoggingEmailSender] Would send email to user@example.com with subject 'Reset password'.
 ```
 
-## Template-Verzeichnis konfigurieren
+## Configure template directory
 
-Wenn Template-Overrides per Dateisystem bereitgestellt werden sollen:
+If template overrides are to be provided via filesystem:
 
 ```json
 {
@@ -81,4 +81,4 @@ Wenn Template-Overrides per Dateisystem bereitgestellt werden sollen:
 }
 ```
 
-Lege HTML-Dateien im angegebenen Verzeichnis ab (z. B. `PasswordResetEmail.html`). Der `FileSystemEmailTemplateProvider` (Order 100) hat Vorrang vor eingebetteten Ressourcen (Order 1000), aber geringere Priorität als eigene Custom-Provider (Order 0).
+Place HTML files in the specified directory (e.g. `PasswordResetEmail.html`). The `FileSystemEmailTemplateProvider` (order 100) takes precedence over embedded resources (order 1000), but has lower priority than custom providers (order 0).

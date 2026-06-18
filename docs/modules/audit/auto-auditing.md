@@ -1,65 +1,65 @@
 # Auto-Auditing
 
-## Wie es funktioniert
+## How it works
 
-SDK-Audit nutzt den Messaging-Mechanismus von SDK-Foundation, um Domain-Events automatisch abzufangen:
+SDK-Audit uses the messaging mechanism from SDK-Foundation to automatically intercept domain events:
 
-1. Ein Fachmodul publiziert ein Domain-Event (z.B. über `IDomainEventPublisher.PublishAsync` oder als Rückgabe eines Command-Handlers mit `Result.Success(..., domainEvents: [...])`).
-2. Die Foundation-Infrastruktur (`DomainEventPublisher`) löst alle registrierten `IDomainEventProcessor<TEvent>` auf.
-3. Wenn das Event `IAuditableEvent` implementiert, greift der Open-Generic-Handler `AuditableEventHandler<TEvent>`.
-4. Der Handler ruft `IAuditService.LogAsync` auf und persistiert den Eintrag im Schema `audit`.
+1. A domain module publishes a domain event (e.g., via `IDomainEventPublisher.PublishAsync` or as a return value from a command handler with `Result.Success(..., domainEvents: [...])`).
+2. The Foundation infrastructure (`DomainEventPublisher`) resolves all registered `IDomainEventProcessor<TEvent>`.
+3. If the event implements `IAuditableEvent`, the open-generic handler `AuditableEventHandler<TEvent>` kicks in.
+4. The handler calls `IAuditService.LogAsync` and persists the entry in the `audit` schema.
 
 ```
-Domain-Event (implementiert IAuditableEvent)
+Domain event (implements IAuditableEvent)
         │
         ▼
 DomainEventPublisher (Foundation)
         │
         ▼
-AuditableEventHandler<TEvent>   ← Open-Generic, automatisch aufgelöst
+AuditableEventHandler<TEvent>   ← Open-generic, automatically resolved
         │
         ▼
 IAuditService.LogAsync
         │
         ▼
-AuditDbContext → PostgreSQL Schema "audit"
+AuditDbContext → PostgreSQL schema "audit"
 ```
 
-::: info Kein Audit-Code im Fachmodul
-Das auslösende Modul (z.B. SDK-Auth) muss keinerlei Audit-Logik enthalten. Es genügt, dass das Domain-Event `IAuditableEvent` implementiert. SDK-Audit kennt das Event nicht zur Compile-Zeit — MS.DI löst den Handler per Reflection zur Laufzeit auf.
+::: info No audit code in the domain module
+The triggering module (e.g. SDK-Auth) needs no audit logic. It is sufficient for the domain event to implement `IAuditableEvent`. SDK-Audit does not know the event at compile time — MS.DI resolves the handler via reflection at runtime.
 :::
 
 ## IAuditableEvent
 
-`IAuditableEvent` lebt in `BieberWorks.SDK.SharedKernel` und erbt von `IDomainEvent`:
+`IAuditableEvent` lives in `BieberWorks.SDK.SharedKernel` and inherits from `IDomainEvent`:
 
 ```csharp
 public interface IAuditableEvent : IDomainEvent
 {
-    /// <summary>Verb, der die geprüfte Aktion beschreibt, z.B. "auth:user:registered".</summary>
+    /// <summary>Verb describing the audited action, e.g. "auth:user:registered".</summary>
     string AuditAction { get; }
 
-    /// <summary>Typ der betroffenen Ressource, z.B. "User".</summary>
+    /// <summary>Type of the affected resource, e.g. "User".</summary>
     string AuditResource { get; }
 
-    /// <summary>ID der betroffenen Ressource-Instanz; null wenn nicht anwendbar.</summary>
+    /// <summary>ID of the affected resource instance; null if not applicable.</summary>
     string? AuditResourceId { get; }
 
-    /// <summary>Identität des Akteurs; null bei systemgenerierten Events.</summary>
+    /// <summary>Identity of the actor; null for system-generated events.</summary>
     string? AuditUserId { get; }
 
-    /// <summary>Optionaler Freitext oder JSON mit zusätzlichem Kontext.</summary>
+    /// <summary>Optional free text or JSON with additional context.</summary>
     string? AuditDetails { get; }
 }
 ```
 
-## Ein Domain-Event auditfähig machen
+## Making a domain event auditable
 
-Es reicht aus, `IAuditableEvent` zu implementieren. Das Event benötigt keine Referenz auf `BieberWorks.SDK.Audit` oder `BieberWorks.SDK.Audit.Contracts` — nur auf `BieberWorks.SDK.SharedKernel`.
+Simply implement `IAuditableEvent`. The event needs no reference to `BieberWorks.SDK.Audit` or `BieberWorks.SDK.Audit.Contracts` — only to `BieberWorks.SDK.SharedKernel`.
 
-### Vollständiges Beispiel
+### Complete example
 
-Angenommen, ein Modul `SDK-Forum` möchte das Erstellen eines Beitrags im Audit-Log festhalten:
+Suppose a module `SDK-Forum` wants to record post creation in the audit log:
 
 ```csharp
 using BieberWorks.SDK.SharedKernel;
@@ -67,15 +67,15 @@ using BieberWorks.SDK.SharedKernel;
 namespace BieberWorks.SDK.Forum.Contracts.Events;
 
 /// <summary>
-/// Wird ausgelöst, wenn ein neuer Beitrag erstellt wurde.
-/// Implementiert IAuditableEvent, damit SDK-Audit den Vorgang automatisch protokolliert.
+/// Fired when a new post is created.
+/// Implements IAuditableEvent so SDK-Audit automatically logs the action.
 /// </summary>
 public sealed record PostCreatedEvent(
     Guid PostId,
     string Title,
     string AuthorId) : IAuditableEvent
 {
-    // IAuditableEvent-Properties
+    // IAuditableEvent properties
     public string  AuditAction     => "forum:post:created";
     public string  AuditResource   => "Post";
     public string? AuditResourceId => PostId.ToString();
@@ -84,28 +84,28 @@ public sealed record PostCreatedEvent(
 }
 ```
 
-Sobald dieses Event über den `IDomainEventPublisher` veröffentlicht wird, schreibt SDK-Audit automatisch folgenden Eintrag:
+Once this event is published via the `IDomainEventPublisher`, SDK-Audit automatically writes the following entry:
 
-| Feld | Wert (Beispiel) |
+| Field | Value (example) |
 |---|---|
 | `UserId` | `"user-123"` |
 | `Action` | `"forum:post:created"` |
 | `Resource` | `"Post"` |
 | `ResourceId` | `"post-456"` |
-| `Details` | `"Title: Mein erster Beitrag"` |
-| `Timestamp` | UTC-Zeitstempel zum Zeitpunkt des Handlers |
+| `Details` | `"Title: My first post"` |
+| `Timestamp` | UTC timestamp at handler execution time |
 
-::: tip Konvention für AuditAction
-Empfohlenes Format: `<modul>:<ressource>:<verb>`, z.B. `auth:user:registered`, `forum:post:deleted`. Das ermöglicht gezielte Filterung in der Admin-UI.
+::: tip Convention for AuditAction
+Recommended format: `<module>:<resource>:<verb>`, e.g. `auth:user:registered`, `forum:post:deleted`. This enables targeted filtering in the admin UI.
 :::
 
-## Was wird automatisch geloggt
+## What is automatically logged
 
-Jedes Domain-Event, das `IAuditableEvent` implementiert und über den Foundation-`DomainEventPublisher` publiziert wird, landet automatisch im Audit-Log. Dazu zählen:
+Every domain event implementing `IAuditableEvent` and published via Foundation's `DomainEventPublisher` lands automatically in the audit log. This includes:
 
-- Events, die ein Command-Handler als Teil seines `Result.Success(...)` zurückgibt (Foundation-Dispatcher extrahiert sie).
-- Events, die direkt über `IDomainEventPublisher.PublishAsync(domainEvent)` oder `PublishManyAsync(events)` veröffentlicht werden.
+- Events returned by a command handler as part of its `Result.Success(...)` (Foundation dispatcher extracts them).
+- Events published directly via `IDomainEventPublisher.PublishAsync(domainEvent)` or `PublishManyAsync(events)`.
 
-::: warning Direkte Service-Calls
-Services, die direkt von der UI aufgerufen werden (ohne den `IAppMessageDispatcher`), müssen `IDomainEventPublisher` selbst injizieren und `PublishAsync` aufrufen. Ohne diesen Aufruf erreicht das Event den `AuditableEventHandler` nicht.
+::: warning Direct service calls
+Services called directly from the UI (without the `IAppMessageDispatcher`) must inject `IDomainEventPublisher` themselves and call `PublishAsync`. Without this call, the event never reaches `AuditableEventHandler`.
 :::
