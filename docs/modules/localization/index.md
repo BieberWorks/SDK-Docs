@@ -1,59 +1,59 @@
 # SDK-Localization
 
-Das Modul **BieberWorks.SDK.Localization** erweitert die Foundation-Lokalisierung um eine datenbankgestützte Override-Schicht: Texte, die per `.resx`-Datei in Modulen ausgeliefert werden, können zur Laufzeit über die Admin-UI pro Sprache überschrieben werden — ohne Deployment.
+The module **BieberWorks.SDK.Localization** extends Foundation's localization with a database-backed override layer: texts delivered via `.resx` files in modules can be overridden at runtime per language via the admin UI — without deployment.
 
-## Pakete
+## Packages
 
-| NuGet-Paket | Inhalt | Referenzieren |
+| NuGet Package | Content | Reference |
 |---|---|---|
-| `BieberWorks.SDK.Localization.Contracts` | `ITranslationAdminService`, `TranslationKeyView`, `LocalizationScanOptions`, `ModuleInfo`, Permissions | andere Module (nur Contracts) |
-| `BieberWorks.SDK.Localization` | `LocalizationModule`, `CachedTranslationStore`, `TranslationAdminService`, `LocalizationDbContext` (Schema `localization`) | Host |
-| `BieberWorks.SDK.Localization.UI` | `TranslationEditorPageBase` (MudBlazor-unabhängige Basisklassen) | Host mit UI |
-| `BieberWorks.SDK.Localization.UI.MudBlazor` | MudBlazor-Rendering, `AddLocalizationUi()` | Host mit MudBlazor |
+| `BieberWorks.SDK.Localization.Contracts` | `ITranslationAdminService`, `TranslationKeyView`, `LocalizationScanOptions`, `ModuleInfo`, Permissions | other modules (contracts only) |
+| `BieberWorks.SDK.Localization` | `LocalizationModule`, `CachedTranslationStore`, `TranslationAdminService`, `LocalizationDbContext` (schema `localization`) | Host |
+| `BieberWorks.SDK.Localization.UI` | `TranslationEditorPageBase` (MudBlazor-independent base classes) | Host with UI |
+| `BieberWorks.SDK.Localization.UI.MudBlazor` | MudBlazor rendering, `AddLocalizationUi()` | Host with MudBlazor |
 
-**Aktuelle Version:** `v0.0.2`
+**Current Version:** `v0.0.2`
 
-## Schichtmodell
+## Layering Model
 
 ```
 IStringLocalizer<T>
         │
         ▼
 LayeredStringLocalizer  (Foundation)
-   ├── ITranslationStore.TryGet(module, key, culture)   ← DB-Override  (Singleton, IMemoryCache)
-   │        └── CachedTranslationStore  (dieses Modul)
-   │                 └── LocalizationDbContext → PostgreSQL Schema "localization"
-   └── .resx-Fallback  (satellite assemblies)
+   ├── ITranslationStore.TryGet(module, key, culture)   ← DB override  (Singleton, IMemoryCache)
+   │        └── CachedTranslationStore  (this module)
+   │                 └── LocalizationDbContext → PostgreSQL schema "localization"
+   └── .resx fallback  (satellite assemblies)
 ```
 
-Die Schichtreihenfolge ist fest: DB-Override hat Vorrang vor `.resx`. Existiert kein Override, greift `.resx`. Existiert auch kein `.resx`-Eintrag, gibt der Localizer den Key selbst zurück.
+The layering order is fixed: DB override takes precedence over `.resx`. If no override exists, `.resx` is used. If no `.resx` entry exists either, the localizer returns the key itself.
 
-## Key-Discovery via Assembly-Scan
+## Key Discovery via Assembly Scan
 
-`TranslationAdminService` scannt beim ersten Aufruf alle geladenen Assemblies nach embedded `.resources`-Streams, deren Name mit `BieberWorks.SDK.` beginnt. Das Präfix ist konfigurierbar über `LocalizationScanOptions.AdditionalAssemblyPrefixes`, wenn eigene Assemblies einbezogen werden sollen.
+`TranslationAdminService` scans all loaded assemblies on first call for embedded `.resources` streams whose name starts with `BieberWorks.SDK.`. The prefix is configurable via `LocalizationScanOptions.AdditionalAssemblyPrefixes` if own assemblies should be included.
 
-Aus dem Resource-Basisnamen wird der Modulname abgeleitet, z. B.:
-- `BieberWorks.SDK.Auth.Resources` → Modul **Auth**
-- `BieberWorks.SDK.Localization.UI.Resources` → Modul **Localization**
+The module name is derived from the resource base name, e.g.:
+- `BieberWorks.SDK.Auth.Resources` → Module **Auth**
+- `BieberWorks.SDK.Localization.UI.Resources` → Module **Localization**
 
-::: info Keine Fachmodul-Anpassung nötig
-Ein Modul muss nur seine `.resx`-Dateien mitliefern. SDK-Localization entdeckt sie automatisch — kein separater Registrierungsaufruf im Fachmodul.
+::: info No Domain Module Changes Required
+A module only needs to deliver its `.resx` files. SDK-Localization discovers them automatically — no separate registration call in the domain module.
 :::
 
-## Cache-Verhalten
+## Cache Behavior
 
-`CachedTranslationStore` hält Overrides pro `(module, culture)`-Paar im `IMemoryCache`:
+`CachedTranslationStore` holds overrides per `(module, culture)` pair in `IMemoryCache`:
 
-| Parameter | Wert |
+| Parameter | Value |
 |---|---|
-| Absolute Expiry | 30 Minuten |
-| Sliding Expiry | 5 Minuten |
-| Invalidierung | sofort nach jedem `SetOverrideAsync` / `ClearOverrideAsync` |
+| Absolute Expiry | 30 minutes |
+| Sliding Expiry | 5 minutes |
+| Invalidation | immediately after every `SetOverrideAsync` / `ClearOverrideAsync` |
 
-Der Lookup erfolgt synchron auf dem Hot Path (jeder Label-Render). Bei Culture-Fallback wird zuerst `de-DE` gesucht, dann `de`.
+The lookup happens synchronously on the hot path (every label render). With culture fallback, `de-DE` is searched first, then `de`.
 
 ## Permissions
 
-| Konstante | Wert | Bedeutung |
+| Constant | Value | Meaning |
 |---|---|---|
-| `LocalizationPermissions.TranslationsManage` | `localization:translations:manage` | Overrides anzeigen und bearbeiten |
+| `LocalizationPermissions.TranslationsManage` | `localization:translations:manage` | Display and edit overrides |

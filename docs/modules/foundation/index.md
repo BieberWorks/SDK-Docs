@@ -1,47 +1,47 @@
 # Foundation
 
-Foundation ist das Fundament aller BieberWorks SDK-Module. Es stellt die abhängigkeitsfreien Basistypen (SharedKernel), das Modul-System mit DI-Integration (Core) sowie die ASP.NET Core-Anbindung (Core.Web) bereit. Kein Fachmodul enthält Framework-Abhängigkeiten, die nicht in diese drei Pakete gehören. Alle anderen Module hängen von Foundation ab — niemals umgekehrt.
+Foundation is the cornerstone of all BieberWorks SDK modules. It provides dependency-free base types (SharedKernel), the module system with DI integration (Core), and ASP.NET Core binding (Core.Web). No domain module contains framework dependencies that do not belong in these three packages. All other modules depend on Foundation — never the reverse.
 
-## Pakete
+## Packages
 
-| Paket | Beschreibung | Version |
+| Package | Description | Version |
 |---|---|---|
-| `BieberWorks.SDK.SharedKernel` | Abhängigkeitsfreie Basistypen: `IDomainEvent`, `IAuditableEvent`, `Result`/`Result<T>`, `DomainError` | ![v0.3.0](https://img.shields.io/badge/version-0.3.0-blue) |
-| `BieberWorks.SDK.Core` | Modul-System (`IModule`, Discovery, DI-Registrierung) + Messaging (`IAppMessageDispatcher`, `IDomainEventPublisher`, `IDomainEventProcessor<T>`) | ![v0.3.0](https://img.shields.io/badge/version-0.3.0-blue) |
-| `BieberWorks.SDK.Core.Web` | ASP.NET Core-Integration: `IEndpointModule`, `AddBieberWorksModules`, `MapBieberWorksModules`, `InitializeBieberWorksModulesAsync`, geschichtete Lokalisierung | ![v0.3.0](https://img.shields.io/badge/version-0.3.0-blue) |
+| `BieberWorks.SDK.SharedKernel` | Dependency-free base types: `IDomainEvent`, `IAuditableEvent`, `Result`/`Result<T>`, `DomainError` | ![v0.3.0](https://img.shields.io/badge/version-0.3.0-blue) |
+| `BieberWorks.SDK.Core` | Module system (`IModule`, Discovery, DI registration) + Messaging (`IAppMessageDispatcher`, `IDomainEventPublisher`, `IDomainEventProcessor<T>`) | ![v0.3.0](https://img.shields.io/badge/version-0.3.0-blue) |
+| `BieberWorks.SDK.Core.Web` | ASP.NET Core integration: `IEndpointModule`, `AddBieberWorksModules`, `MapBieberWorksModules`, `InitializeBieberWorksModulesAsync`, layered localization | ![v0.3.0](https://img.shields.io/badge/version-0.3.0-blue) |
 
-## Abhängigkeitsgraph
+## Dependency Graph
 
 ```
 BieberWorks.SDK.Core.Web
   └── BieberWorks.SDK.Core
-        └── BieberWorks.SDK.SharedKernel   (keine externen Abhängigkeiten)
+        └── BieberWorks.SDK.SharedKernel   (no external dependencies)
 ```
 
-Fachmodule (Auth, Audit, Storage, …) referenzieren je nach Bedarf:
+Domain modules (Auth, Audit, Storage, …) reference as needed:
 
-- `BieberWorks.SDK.SharedKernel` — für `IDomainEvent`, `IAuditableEvent`, `Result`, `DomainError`
-- `BieberWorks.SDK.Core` — für `IModule`, Messaging-Interfaces
-- `BieberWorks.SDK.Core.Web` — wenn das Modul HTTP-Endpoints oder die Lokalisierungs-Schicht braucht
+- `BieberWorks.SDK.SharedKernel` — for `IDomainEvent`, `IAuditableEvent`, `Result`, `DomainError`
+- `BieberWorks.SDK.Core` — for `IModule`, Messaging interfaces
+- `BieberWorks.SDK.Core.Web` — if the module needs HTTP endpoints or the localization layer
 
-## Wann welches Paket installieren
+## Which Package to Install
 
 ```
-Brauche ich nur Result / DomainError / IDomainEvent?
-  └─ Ja  →  BieberWorks.SDK.SharedKernel
+Do I only need Result / DomainError / IDomainEvent?
+  └─ Yes  →  BieberWorks.SDK.SharedKernel
 
-Implementiere ich ein Modul (IModule) oder nutze ich den Dispatcher?
-  └─ Ja  →  BieberWorks.SDK.Core         (zieht SharedKernel automatisch mit)
+Am I implementing a module (IModule) or using the dispatcher?
+  └─ Yes  →  BieberWorks.SDK.Core         (pulls SharedKernel automatically)
 
-Registriere ich Minimal-API-Endpoints oder Controller?
-  └─ Ja  →  BieberWorks.SDK.Core.Web     (zieht Core + SharedKernel mit)
+Am I registering Minimal API endpoints or controllers?
+  └─ Yes  →  BieberWorks.SDK.Core.Web     (pulls Core + SharedKernel)
 
-Baue ich den Host (Program.cs / WebApplication)?
-  └─ Ja  →  BieberWorks.SDK.Core.Web     (enthält AddBieberWorksModules,
+Am I building the host (Program.cs / WebApplication)?
+  └─ Yes  →  BieberWorks.SDK.Core.Web     (contains AddBieberWorksModules,
                                            MapBieberWorksModules,
                                            InitializeBieberWorksModulesAsync)
 ```
 
-::: tip NuGet-Referenz-Bereich
-Interne Modul-Referenzen auf Foundation floaten mit `0.*-*`, damit RC-Pakete automatisch aufgelöst werden.
+::: tip NuGet Reference Range
+Internal module references to Foundation float with `0.*-*`, so RC packages are resolved automatically.
 :::

@@ -36,6 +36,34 @@ export default defineConfig({
           ]
         },
         {
+          text: 'Account',
+          collapsed: true,
+          items: [
+            { text: 'Overview', link: '/modules/account/' },
+            { text: 'Setup', link: '/modules/account/setup' },
+            { text: 'Custom Pages', link: '/modules/account/custom-pages' },
+          ]
+        },
+        {
+          text: 'Admin',
+          collapsed: true,
+          items: [
+            { text: 'Overview', link: '/modules/admin/' },
+            { text: 'Setup', link: '/modules/admin/setup' },
+            { text: 'Custom Pages', link: '/modules/admin/custom-pages' },
+          ]
+        },
+        {
+          text: 'Audit',
+          collapsed: true,
+          items: [
+            { text: 'Overview', link: '/modules/audit/' },
+            { text: 'Setup', link: '/modules/audit/setup' },
+            { text: 'Auto-Auditing', link: '/modules/audit/auto-auditing' },
+            { text: 'IAuditService', link: '/modules/audit/audit-service' },
+          ]
+        },
+        {
           text: 'Auth',
           collapsed: true,
           items: [
@@ -47,24 +75,12 @@ export default defineConfig({
           ]
         },
         {
-          text: 'Storage',
+          text: 'Email',
           collapsed: true,
           items: [
-            { text: 'Overview', link: '/modules/storage/' },
-            { text: 'Setup', link: '/modules/storage/setup' },
-            { text: 'Providers', link: '/modules/storage/providers' },
-            { text: 'Key Strategy & Visibility', link: '/modules/storage/key-strategy' },
-            { text: 'UI Components', link: '/modules/storage/ui-components' },
-          ]
-        },
-        {
-          text: 'Audit',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/audit/' },
-            { text: 'Setup', link: '/modules/audit/setup' },
-            { text: 'Auto-Auditing', link: '/modules/audit/auto-auditing' },
-            { text: 'IAuditService', link: '/modules/audit/audit-service' },
+            { text: 'Overview', link: '/modules/email/' },
+            { text: 'Setup', link: '/modules/email/setup' },
+            { text: 'Usage', link: '/modules/email/usage' },
           ]
         },
         {
@@ -86,12 +102,14 @@ export default defineConfig({
           ]
         },
         {
-          text: 'Email',
+          text: 'Storage',
           collapsed: true,
           items: [
-            { text: 'Overview', link: '/modules/email/' },
-            { text: 'Setup', link: '/modules/email/setup' },
-            { text: 'Usage', link: '/modules/email/usage' },
+            { text: 'Overview', link: '/modules/storage/' },
+            { text: 'Setup', link: '/modules/storage/setup' },
+            { text: 'Providers', link: '/modules/storage/providers' },
+            { text: 'Key Strategy & Visibility', link: '/modules/storage/key-strategy' },
+            { text: 'UI Components', link: '/modules/storage/ui-components' },
           ]
         },
         {
@@ -101,24 +119,6 @@ export default defineConfig({
             { text: 'Overview', link: '/modules/ui/' },
             { text: 'Setup', link: '/modules/ui/setup' },
             { text: 'Components', link: '/modules/ui/components' },
-          ]
-        },
-        {
-          text: 'Admin',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/admin/' },
-            { text: 'Setup', link: '/modules/admin/setup' },
-            { text: 'Custom Pages', link: '/modules/admin/custom-pages' },
-          ]
-        },
-        {
-          text: 'Account',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/account/' },
-            { text: 'Setup', link: '/modules/account/setup' },
-            { text: 'Custom Pages', link: '/modules/account/custom-pages' },
           ]
         },
       ]

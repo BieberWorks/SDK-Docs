@@ -1,11 +1,11 @@
 # Messaging
 
-Das Messaging-System entkoppelt Fach-Logik von ihren Aufrufern. Ein Aufrufer schickt ein Command oder eine Query an den `IAppMessageDispatcher`. Dieser leitet die Nachricht an den registrierten Handler weiter. Der Handler gibt ein `Result` zurück, das optional Domain-Events enthält. Der Dispatcher veröffentlicht diese Events automatisch über den `IDomainEventPublisher`, der alle `IDomainEventProcessor<T>`-Implementierungen aufruft.
+The messaging system decouples business logic from its callers. A caller sends a command or query to the `IAppMessageDispatcher`. The dispatcher forwards the message to the registered handler. The handler returns a `Result` that optionally contains domain events. The dispatcher publishes these events automatically via the `IDomainEventPublisher`, which calls all `IDomainEventProcessor<T>` implementations.
 
-## Konzept
+## Concept
 
 ```
-Aufrufer
+Caller
   │
   │  dispatcher.SendAsync(command)
   ▼
@@ -21,14 +21,14 @@ IDomainEventPublisher
   │
   │  processor.HandleAsync(event)
   ▼
-IDomainEventProcessor<TEvent>   (z.B. AuditableEventHandler, EmailNotificationProcessor, …)
+IDomainEventProcessor<TEvent>   (e.g., AuditableEventHandler, EmailNotificationProcessor, …)
 ```
 
 ## Interfaces
 
 ### IAppMessageRequest&lt;TResponse&gt;
 
-Basis-Marker für alle Nachrichten:
+Base marker for all messages:
 
 ```csharp
 public interface IAppMessageRequest<TResponse> { }
@@ -36,7 +36,7 @@ public interface IAppMessageRequest<TResponse> { }
 
 ### IAppMessageCommand / IAppMessageCommand&lt;TResponse&gt;
 
-Commands verändern Zustand und geben `Result` oder `Result<T>` zurück:
+Commands change state and return `Result` or `Result<T>`:
 
 ```csharp
 public interface IAppMessageCommand
@@ -48,7 +48,7 @@ public interface IAppMessageCommand<TResponse>
 
 ### IAppMessageQuery&lt;TResponse&gt;
 
-Queries lesen Daten und geben `Result<T>` zurück:
+Queries read data and return `Result<T>`:
 
 ```csharp
 public interface IAppMessageQuery<TResponse>
@@ -57,7 +57,7 @@ public interface IAppMessageQuery<TResponse>
 
 ### IAppMessageRequestHandler&lt;TCommand, TResponse&gt;
 
-Der Handler für eine Nachricht:
+The handler for a message:
 
 ```csharp
 public interface IAppMessageRequestHandler<TCommand, TResponse>
@@ -69,7 +69,7 @@ public interface IAppMessageRequestHandler<TCommand, TResponse>
 
 ### IAppMessageDispatcher
 
-Der Einstiegspunkt für Aufrufer:
+The entry point for callers:
 
 ```csharp
 public interface IAppMessageDispatcher
@@ -82,7 +82,7 @@ public interface IAppMessageDispatcher
 
 ### IDomainEventPublisher
 
-Veröffentlicht Events an alle registrierten Processor-Handler:
+Publishes events to all registered processor handlers:
 
 ```csharp
 public interface IDomainEventPublisher
@@ -92,13 +92,13 @@ public interface IDomainEventPublisher
 }
 ```
 
-::: info Wann IDomainEventPublisher direkt nutzen?
-Direkte Services, die **nicht** über den Dispatcher aufgerufen werden (z.B. `RoleManagementService`, `UserManagementService`), müssen `IDomainEventPublisher` selbst injizieren und `PublishAsync` manuell aufrufen. Der Dispatcher übernimmt die Veröffentlichung nur für Handler, die er selbst aufruft.
+::: info When to Use IDomainEventPublisher Directly?
+Direct services that are **not** called via the dispatcher (e.g., `RoleManagementService`, `UserManagementService`) must inject `IDomainEventPublisher` themselves and call `PublishAsync` manually. The dispatcher only publishes events for handlers it calls itself.
 :::
 
 ### IDomainEventProcessor&lt;TEvent&gt;
 
-Ein Processor reagiert auf einen bestimmten Event-Typ:
+A processor reacts to a specific event type:
 
 ```csharp
 public interface IDomainEventProcessor<in TEvent>
@@ -108,18 +108,18 @@ public interface IDomainEventProcessor<in TEvent>
 }
 ```
 
-## Messaging registrieren
+## Registering Messaging
 
 ```csharp
 // In Program.cs
 builder.Services.AddBieberWorksMessaging();
 ```
 
-Das registriert `IDomainEventPublisher` und `IAppMessageDispatcher` als **Scoped**, damit sie in Request-Scopes korrekt funktionieren und Scoped-Services (z.B. `DbContext`) ohne Captive-Dependency-Fehler auflösen können.
+This registers `IDomainEventPublisher` and `IAppMessageDispatcher` as **Scoped**, so they work correctly in request scopes and can resolve scoped services (e.g., `DbContext`) without captive dependency errors.
 
-## End-to-End-Beispiel
+## End-to-End Example
 
-### 1. Command definieren
+### 1. Define the Command
 
 ```csharp
 using BieberWorks.SDK.Core.Messaging;
@@ -129,7 +129,7 @@ public record RegisterUserCommand(string Email, string Password)
     : IAppMessageCommand<Guid>;
 ```
 
-### 2. Domain-Event definieren
+### 2. Define the Domain Event
 
 ```csharp
 using BieberWorks.SDK.SharedKernel;
@@ -145,7 +145,7 @@ public record UserRegistered(Guid UserId, string Email)
 }
 ```
 
-### 3. Handler implementieren
+### 3. Implement the Handler
 
 ```csharp
 using BieberWorks.SDK.Core.Messaging;
@@ -159,7 +159,7 @@ public sealed class RegisterUserCommandHandler(IUserRepository users)
         CancellationToken ct)
     {
         if (await users.ExistsByEmailAsync(command.Email, ct))
-            return DomainError.Conflict("User.EmailTaken", "E-Mail bereits vergeben.");
+            return DomainError.Conflict("User.EmailTaken", "Email already taken.");
 
         var user = User.Create(command.Email, command.Password);
         await users.AddAsync(user, ct);
@@ -171,7 +171,7 @@ public sealed class RegisterUserCommandHandler(IUserRepository users)
 }
 ```
 
-### 4. Handler in der Module.cs registrieren
+### 4. Register the Handler in Module.cs
 
 ```csharp
 services.AddScoped<
@@ -179,7 +179,7 @@ services.AddScoped<
     RegisterUserCommandHandler>();
 ```
 
-### 5. Processor implementieren (optional)
+### 5. Implement a Processor (optional)
 
 ```csharp
 using BieberWorks.SDK.Core.Messaging;
@@ -194,16 +194,16 @@ public sealed class WelcomeEmailProcessor(IEmailService email)
 }
 ```
 
-Registrierung in `Module.cs`:
+Register in `Module.cs`:
 
 ```csharp
 services.AddScoped<IDomainEventProcessor<UserRegistered>, WelcomeEmailProcessor>();
 ```
 
-### 6. Aufrufen
+### 6. Call It
 
 ```csharp
-// In einem Minimal-API-Endpoint oder einer Blazor-Komponente
+// In a Minimal API endpoint or Blazor component
 var result = await dispatcher.SendAsync(
     new RegisterUserCommand(email, password), ct);
 
@@ -213,14 +213,14 @@ if (!result.Success)
 return Results.Ok(result.Value);
 ```
 
-::: tip Open-Generic-Handler für Auto-Auditing
-SDK-Audit registriert `AuditableEventHandler<TEvent>` als Open-Generic:
+::: tip Open-Generic Handler for Auto-Auditing
+SDK-Audit registers `AuditableEventHandler<TEvent>` as open-generic:
 ```csharp
 services.AddScoped(typeof(IDomainEventProcessor<>), typeof(AuditableEventHandler<>));
 ```
-Jeder Event, der `IAuditableEvent` implementiert, wird damit automatisch geloggt — ohne Registrierung im Fachmodul.
+Every event implementing `IAuditableEvent` is logged automatically — without registration in the domain module.
 :::
 
-::: warning Handler nicht gefunden
-Wenn kein `IAppMessageRequestHandler<TCommand, TResponse>` im DI-Container registriert ist, wirft `InternalDispatcher` eine `InvalidOperationException`. Sicherstellen, dass Handler in `RegisterServices` des zugehörigen Moduls eingetragen sind.
+::: warning Handler Not Found
+If no `IAppMessageRequestHandler<TCommand, TResponse>` is registered in the DI container, `InternalDispatcher` throws `InvalidOperationException`. Ensure the handler is registered in `RegisterServices` of the associated module.
 :::

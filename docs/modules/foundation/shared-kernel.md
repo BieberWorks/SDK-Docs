@@ -1,6 +1,6 @@
 # SharedKernel
 
-Das Paket `BieberWorks.SDK.SharedKernel` hat keine externen NuGet-Abhängigkeiten. Es enthält ausschließlich Interfaces, Records und Enums, auf die alle anderen Pakete aufbauen.
+The package `BieberWorks.SDK.SharedKernel` has no external NuGet dependencies. It contains only interfaces, records, and enums that all other packages build upon.
 
 ## IDomainEvent
 
@@ -10,9 +10,9 @@ namespace BieberWorks.SDK.SharedKernel;
 public interface IDomainEvent { }
 ```
 
-`IDomainEvent` ist ein reines Marker-Interface. Ein Domain-Event signalisiert, dass im System etwas Bedeutsames passiert ist. Implementierungen werden als Records modelliert und über `IDomainEventPublisher` veröffentlicht.
+`IDomainEvent` is a pure marker interface. A domain event signals that something significant has happened in the system. Implementations are modeled as records and published via `IDomainEventPublisher`.
 
-**Wann implementieren:** Immer, wenn ein Modul Seiteneffekte in anderen Modulen anstoßen soll, ohne eine direkte Abhängigkeit einzuführen.
+**When to implement:** Always, when a module should trigger side effects in other modules without introducing a direct dependency.
 
 ```csharp
 public record UserRegistered(Guid UserId, string Email) : IDomainEvent;
@@ -23,18 +23,18 @@ public record UserRegistered(Guid UserId, string Email) : IDomainEvent;
 ```csharp
 public interface IAuditableEvent : IDomainEvent
 {
-    string  AuditAction     { get; }   // z.B. "auth:user:registered"
-    string  AuditResource   { get; }   // z.B. "User"
-    string? AuditResourceId { get; }   // ID der betroffenen Ressource; null wenn nicht anwendbar
-    string? AuditUserId     { get; }   // Akteur; null bei System-Events
-    string? AuditDetails    { get; }   // Freitext oder JSON mit Zusatzkontext
+    string  AuditAction     { get; }   // e.g., "auth:user:registered"
+    string  AuditResource   { get; }   // e.g., "User"
+    string? AuditResourceId { get; }   // ID of the affected resource; null if not applicable
+    string? AuditUserId     { get; }   // Actor; null for system events
+    string? AuditDetails    { get; }   // Free text or JSON with additional context
 }
 ```
 
-`IAuditableEvent` erweitert `IDomainEvent` und aktiviert das automatische Audit-Logging. SDK-Audit registriert einen Open-Generic-Handler `AuditableEventHandler<TEvent>`, der jeden Event, der dieses Interface implementiert, ohne weiteren Code im Fachmodul in den Audit-Log schreibt.
+`IAuditableEvent` extends `IDomainEvent` and activates automatic audit logging. SDK-Audit registers an open-generic handler `AuditableEventHandler<TEvent>` that writes any event implementing this interface to the audit log without additional code in the domain module.
 
-::: tip Auto-Auditing ohne Abhängigkeit
-Ein Fachmodul muss SDK-Audit **nicht** referenzieren. Solange der Event `IAuditableEvent` implementiert und SDK-Audit im Host registriert ist, wird der Audit-Eintrag automatisch erzeugt.
+::: tip Auto-Auditing Without Dependency
+A domain module does **not** need to reference SDK-Audit. As long as the event implements `IAuditableEvent` and SDK-Audit is registered in the host, the audit entry is created automatically.
 :::
 
 ```csharp
@@ -44,7 +44,7 @@ public record UserRegistered(Guid UserId, string Email)
     public string  AuditAction     => "auth:user:registered";
     public string  AuditResource   => "User";
     public string? AuditResourceId => UserId.ToString();
-    public string? AuditUserId     => null;   // System-initiiert
+    public string? AuditUserId     => null;   // System-initiated
     public string? AuditDetails    => $"Email: {Email}";
 }
 ```
@@ -65,33 +65,33 @@ public record Result<TValue>(
     : Result(Success, Errors, DomainEvents);
 ```
 
-### Factory-Methoden (C# 14 Extension-Members)
+### Factory Methods (C# 14 Extension Members)
 
-Die statischen Factory-Methoden sind als C# 14 Extension-Methoden auf `Result` definiert:
+The static factory methods are defined as C# 14 extension members on `Result`:
 
-| Methode | Rückgabe | Beschreibung |
+| Method | Returns | Description |
 |---|---|---|
-| `Result.Success(domainEvents?)` | `Result` | Erfolg ohne Wert |
-| `Result.Success<T>(value, domainEvents?)` | `Result<T>` | Erfolg mit Wert |
-| `Result.Failure(error)` | `Result` | Fehler ohne Wert |
-| `Result.Failure<T>(error)` | `Result<T>` | Fehler mit Typ-Parameter |
+| `Result.Success(domainEvents?)` | `Result` | Success without value |
+| `Result.Success<T>(value, domainEvents?)` | `Result<T>` | Success with value |
+| `Result.Failure(error)` | `Result` | Error without value |
+| `Result.Failure<T>(error)` | `Result<T>` | Error with type parameter |
 
-### Implizite Konvertierungen
+### Implicit Conversions
 
 ```csharp
-// DomainError → Result (Fehlerfall)
+// DomainError → Result (error case)
 Result result = DomainError.NotFound("User.NotFound");
 
-// TValue → Result<T> (Erfolgsfall, null wird zu NullValue-Fehler)
+// TValue → Result<T> (success case, null becomes NullValue error)
 Result<User> result = user;
 
-// DomainError → Result<T> (Fehlerfall)
+// DomainError → Result<T> (error case)
 Result<User> result = DomainError.Unauthorized("User.Unauthorized");
 ```
 
 ### DomainEvents in Result
 
-Handler geben Domain-Events direkt im Result zurück. `InternalDispatcher` liest die `DomainEvents`-Property nach dem Handler-Aufruf und veröffentlicht sie automatisch.
+Handlers return domain events directly in the result. `InternalDispatcher` reads the `DomainEvents` property after the handler call and publishes them automatically.
 
 ```csharp
 return Result.Success(domainEvents: [new UserRegistered(user.Id, user.Email)]);
@@ -100,16 +100,16 @@ return Result.Success(domainEvents: [new UserRegistered(user.Id, user.Email)]);
 ### Bind / BindAsync
 
 ```csharp
-// Synchron
+// Synchronous
 Result<string> nameResult = userResult.Bind(u => Result.Success(u.Name));
 
-// Asynchron (Task-basiert)
+// Asynchronous (Task-based)
 Result<Profile> profileResult = await userResultTask
     .BindAsync(u => LoadProfileAsync(u.Id));
 ```
 
-::: warning Bind schlägt bei null fehl
-`Result<T>.Bind` gibt `DomainError.Unexpected` zurück wenn `result.Success == false`. Der Wert wird nicht ausgewertet.
+::: warning Bind Fails on Null
+`Result<T>.Bind` returns `DomainError.Unexpected` if `result.Success == false`. The value is not evaluated.
 :::
 
 ## DomainError
@@ -121,20 +121,20 @@ public record DomainError(
     string? Message = null);
 ```
 
-### Vordefinierte statische Instanzen
+### Predefined Static Instances
 
-| Member | Type | Code | Beschreibung |
+| Member | Type | Code | Description |
 |---|---|---|---|
-| `DomainError.None` | — | `""` | Kein Fehler (Erfolgsfall) |
-| `DomainError.NullValue` | `Failure` | `"General.Null"` | Null-Wert unzulässig |
-| `DomainError.Unexpected` | `Unexpected` | `"General.Unexpected"` | Unerwarteter Fehler |
-| `DomainError.Canceled` | `Unexpected` | `"General.Canceled"` | Operation abgebrochen |
+| `DomainError.None` | — | `""` | No error (success case) |
+| `DomainError.NullValue` | `Failure` | `"General.Null"` | Null value not allowed |
+| `DomainError.Unexpected` | `Unexpected` | `"General.Unexpected"` | Unexpected error |
+| `DomainError.Canceled` | `Unexpected` | `"General.Canceled"` | Operation canceled |
 
-### Factory-Methoden
+### Factory Methods
 
 ```csharp
-DomainError.NotFound("User.NotFound", "Der Benutzer wurde nicht gefunden.")
-DomainError.Validation("User.EmailInvalid", "Ungültige E-Mail-Adresse.")
+DomainError.NotFound("User.NotFound", "The user was not found.")
+DomainError.Validation("User.EmailInvalid", "Invalid email address.")
 DomainError.Failure("User.SaveFailed")
 DomainError.Conflict("User.EmailTaken")
 DomainError.Forbidden("User.NoPermission")
@@ -160,11 +160,11 @@ public enum DomainErrorType
 }
 ```
 
-Der `Type` wird von der Präsentationsschicht genutzt, um den HTTP-Statuscode abzuleiten (z.B. `NotFound` → 404, `Validation` → 422).
+The `Type` is used by the presentation layer to derive the HTTP status code (e.g., `NotFound` → 404, `Validation` → 422).
 
 ### IDomainError
 
-`IDomainError` ist das Interface hinter `DomainError` und kann für Abstraktionen verwendet werden:
+`IDomainError` is the interface behind `DomainError` and can be used for abstractions:
 
 ```csharp
 public interface IDomainError
