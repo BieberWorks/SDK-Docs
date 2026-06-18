@@ -20,6 +20,7 @@ export default defineConfig({
           text: 'Guide',
           items: [
             { text: 'Getting Started', link: '/guide/getting-started' },
+            { text: 'Module Integration', link: '/guide/module-integration' },
           ]
         }
       ],
