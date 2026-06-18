@@ -1,8 +1,58 @@
-# Verwendung — SDK-Localization
+# Usage — SDK-Localization
 
-## IStringLocalizer verwenden
+## Create resx Files
 
-Nach der Registrierung ist `IStringLocalizer<T>` in jeder Komponente und jedem Service nutzbar. Die DB-Override-Schicht ist transparent eingehängt — der Aufruf bleibt identisch zur Standard-.NET-Lokalisierung:
+Each module that provides localizable text creates resource files as Embedded Resources:
+
+```
+src/MyModule.Contracts/Resources/
+    MyModuleResources.resx        ← Neutral/English fallback
+    MyModuleResources.de.resx     ← German translations
+    MyModuleResources.fr.resx     ← Additional languages
+```
+
+The file is included in the `.csproj` as an Embedded Resource:
+
+```xml
+<ItemGroup>
+  <EmbeddedResource Include="Resources\*.resx" />
+</ItemGroup>
+```
+
+Each `.resx` file contains key-value pairs:
+
+```xml
+<!-- MyModuleResources.resx -->
+<data name="Login_Label_Password" xml:space="preserve">
+  <value>Password</value>
+</data>
+<data name="Login_Error_InvalidCredentials" xml:space="preserve">
+  <value>Invalid email or password.</value>
+</data>
+```
+
+## Key Discovery
+
+SDK-Localization scans all loaded assemblies on startup and extracts resource keys. The translation editor then displays all keys with their default value (from the neutral `.resx`) and allows creating database overrides per culture.
+
+**Automatically scanned assemblies:** all whose name starts with `BieberWorks.SDK.`
+
+**Custom prefixes** must be registered in `LocalizationScanOptions`:
+
+```csharp
+// Program.cs
+builder.Services.Configure<LocalizationScanOptions>(options =>
+{
+    options.AdditionalAssemblyPrefixes.Add("MyApp.");
+    options.SetDisplayName("MyModule", "My Module");
+});
+```
+
+Keys from `MyApp.MyModule.Resources.MyModuleResources` then appear in the translation editor under the group "My Module".
+
+## Use IStringLocalizer
+
+After registration, `IStringLocalizer<T>` is available in every component and service. The database override layer is transparently integrated — the call remains identical to standard .NET localization:
 
 ```csharp
 using Microsoft.Extensions.Localization;
@@ -11,27 +61,27 @@ public class MyComponent : ComponentBase
 {
     [Inject] IStringLocalizer<MyResources> Loc { get; set; } = default!;
 
-    // Zugriff auf einen lokalisierenden String
+    // Access a localized string
     string label = Loc["Login_Label_Password"];
 }
 ```
 
-Existiert ein DB-Override für den aktuellen Kultur-Kontext, wird dieser zurückgegeben. Andernfalls greift der `.resx`-Wert.
+If a database override exists for the current culture context, it is returned. Otherwise, the `.resx` value is used.
 
-## Sprache wechseln (Browser-Language-Switch)
+## Switch Language (Browser Language Switch)
 
-Der Culture-Switch erfolgt über den Foundation-Endpunkt `/bw/set-culture`. Dieser setzt ein Culture-Cookie und leitet zur Ausgangsseite zurück:
+The culture switch occurs via the Foundation endpoint `/bw/set-culture`. It sets a culture cookie and redirects to the referrer:
 
 ```html
 <a href="/bw/set-culture?culture=de&redirectUri=/">Deutsch</a>
 <a href="/bw/set-culture?culture=en&redirectUri=/">English</a>
 ```
 
-Die verfügbaren Sprachen werden über `ILanguageService.AvailableCultures` bereitgestellt (in Foundation konfiguriert).
+Available languages are provided by `ILanguageService.AvailableCultures` (configured in Foundation).
 
-## DB-Override programmatisch setzen
+## Set Database Override Programmatically
 
-`ITranslationAdminService` steht für direkte programmatische Änderungen zur Verfügung:
+`ITranslationAdminService` is available for direct programmatic changes:
 
 ```csharp
 using BieberWorks.SDK.Localization.Contracts;
@@ -49,9 +99,9 @@ public class MyMigrationService(ITranslationAdminService adminService)
 }
 ```
 
-Der Cache wird nach jedem `SetOverrideAsync`-Aufruf automatisch invalidiert.
+The cache is automatically invalidated after each `SetOverrideAsync` call.
 
-## DB-Override löschen
+## Delete Database Override
 
 ```csharp
 await adminService.ClearOverrideAsync(
@@ -60,11 +110,11 @@ await adminService.ClearOverrideAsync(
     culture: "de");
 ```
 
-Nach dem Löschen fällt der Localizer auf den `.resx`-Standardwert zurück.
+After deletion, the localizer falls back to the `.resx` default value.
 
-## Alle Keys eines Moduls abrufen
+## Get All Keys of a Module
 
-`GetKeysAsync` liefert für jedes bekannte Key den `.resx`-Standardwert sowie alle vorhandenen DB-Overrides pro Culture:
+`GetKeysAsync` returns for each known key the `.resx` default value and all existing database overrides per culture:
 
 ```csharp
 IReadOnlyList<TranslationKeyView> keys = await adminService.GetKeysAsync("Auth");
@@ -73,41 +123,41 @@ foreach (var key in keys)
 {
     Console.WriteLine($"{key.Key} (Default: {key.DefaultValue})");
     foreach (var (culture, ov) in key.Overrides)
-        Console.WriteLine($"  [{culture}] {ov ?? "(kein Override)"}");
+        Console.WriteLine($"  [{culture}] {ov ?? "(no override)"}");
 }
 ```
 
-`TranslationKeyView` ist ein `record` mit den Properties:
+`TranslationKeyView` is a `record` with properties:
 
-| Property | Typ | Bedeutung |
+| Property | Type | Meaning |
 |---|---|---|
-| `Key` | `string` | Resource-Key, z. B. `Login_Label_Password` |
-| `DefaultValue` | `string` | Neutraler/englischer `.resx`-Wert |
-| `Overrides` | `IReadOnlyDictionary<string, string?>` | DB-Overrides per BCP-47-Culture; `null` = kein Override |
+| `Key` | `string` | Resource key, e.g., `Login_Label_Password` |
+| `DefaultValue` | `string` | Neutral/English `.resx` value |
+| `Overrides` | `IReadOnlyDictionary<string, string?>` | Database overrides per BCP-47 culture; `null` = no override |
 
-## Admin-UI
+## Admin UI
 
-Die Admin-UI ist unter dem Admin-Shell-Pfad erreichbar (normalerweise `/admin`). SDK-Localization registriert sich automatisch als Admin-Section mit dem Namen **Translations**.
+The admin UI is accessible under the admin shell path (typically `/admin`). SDK-Localization automatically registers itself as an admin section named **Translations**.
 
-Der Translation-Editor zeigt:
-1. Eine Modul-Auswahlliste (alle per Assembly-Scan entdeckten Module)
-2. Pro Modul eine Tabelle aller Keys mit Standardwert und editierbaren Override-Feldern je Culture
-3. Speichern- und Zurücksetzen-Aktionen pro Key/Culture-Kombination
+The translation editor shows:
+1. A module selection list (all modules discovered via assembly scan)
+2. Per module, a table of all keys with default value and editable override fields per culture
+3. Save and reset actions per key/culture combination
 
 ::: info Permission
-Der Zugang zur Admin-Section erfordert die Permission `localization:translations:manage` (`LocalizationPermissions.TranslationsManage`).
+Access to the admin section requires the permission `localization:translations:manage` (`LocalizationPermissions.TranslationsManage`).
 :::
 
-## Eigene Assembly-Prefixes hinzufügen
+## Add Custom Assembly Prefixes
 
-Sollen eigene Texte (z. B. `MyApp.Core.Resources`) ebenfalls im Translation-Editor erscheinen:
+To include custom texts (e.g., `MyApp.Core.Resources`) in the translation editor:
 
 ```csharp
 builder.Services.Configure<LocalizationScanOptions>(options =>
 {
     options.AdditionalAssemblyPrefixes.Add("MyApp.");
-    options.SetDisplayName("MyApp", "Meine Anwendung");
+    options.SetDisplayName("MyApp", "My Application");
 });
 ```
 
-Der Assembly-Scan sucht dann zusätzlich nach Embedded Resources, deren Basisname mit `MyApp.` beginnt.
+The assembly scan then additionally looks for embedded resources whose base name starts with `MyApp.`.
