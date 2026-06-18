@@ -1,35 +1,31 @@
-# SDK-Docs
+# BieberWorks SDK — Documentation
 
-Teil des **BieberWorks SDK** - privates, modulares .NET-Fundament.
-Veroeffentlicht als NuGet-Paket(e) in den **GitHub Packages** der Organisation `BieberWorks` (token-geschuetzt).
+Official documentation for the **BieberWorks SDK**, a modular .NET NuGet ecosystem.
 
-## Installation
+## Live Site
 
-In `nuget.config` die private Quelle ergaenzen:
+**[https://bieberworks.github.io/SDK-Docs/](https://bieberworks.github.io/SDK-Docs/)**
 
-```xml
-<add key="bieberworks" value="https://nuget.pkg.github.com/BieberWorks/index.json" />
-```
+## Modules
 
-Authentifizierung via PAT mit `read:packages` (NICHT committen):
+| Module | Description |
+|--------|-------------|
+| [Foundation](docs/modules/foundation/) | Core abstractions — IModule, Messaging, SharedKernel |
+| [Auth](docs/modules/auth/) | Cookie + JWT authentication with roles and permissions |
+| [Storage](docs/modules/storage/) | File and blob storage with FileSystem, Azure, AWS providers |
+| [Audit](docs/modules/audit/) | Automatic auditing via IAuditableEvent |
+| [Localization](docs/modules/localization/) | DB-backed i18n with memory cache and admin UI |
+| [Settings](docs/modules/settings/) | DB-backed app settings and feature flags |
+| [Email](docs/modules/email/) | SMTP email with template support |
+| [UI](docs/modules/ui/) | Shared MudBlazor UI components and theming |
+| [Admin](docs/modules/admin/) | Extensible admin shell |
+| [Account](docs/modules/account/) | Extensible account shell |
 
-```powershell
-dotnet nuget add source "https://nuget.pkg.github.com/BieberWorks/index.json" `
-  --name bieberworks --username p-bieber --password <PAT> --store-password-in-clear-text
-```
+## Contributing
 
-Dann: `dotnet add package <Paketname>`
+Documentation is automatically updated via CI when modules are released.  
+To report an issue or suggest an improvement, open an issue in this repository.
 
-## Branch-Flow
+## License
 
-`main` <- `staging` <- `dev`  (Default-Branch: `dev`)
-Feature-Branch -> PR gegen `dev` -> `staging` -> `main` (Release).
-
-## Versionierung & Release
-
-Push auf `main` taggt automatisch (SemVer) und veroeffentlicht die Pakete.
-`staging` erzeugt `-rc` Pre-Releases.
-
-## Lizenz
-
-Proprietaer - siehe [LICENSE](./LICENSE).
+Proprietary — All rights reserved. © BieberWorks
