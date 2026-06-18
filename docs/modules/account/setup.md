@@ -1,6 +1,6 @@
 # SDK-Account — Setup
 
-## NuGet-Pakete
+## NuGet packages
 
 ```xml
 <PackageReference Include="BieberWorks.SDK.Account.Contracts"    Version="0.*-*" />
@@ -8,15 +8,15 @@
 ```
 
 ::: tip Contracts only
-Fachmodule, die nur `IAccountSection` implementieren, brauchen ausschließlich `BieberWorks.SDK.Account.Contracts`. `BieberWorks.SDK.Account.UI.MudBlazor` wird nur vom Host referenziert.
+Domain modules that only implement `IAccountSection` need only `BieberWorks.SDK.Account.Contracts`. `BieberWorks.SDK.Account.UI.MudBlazor` is referenced only by the host.
 :::
 
-## Voraussetzungen
+## Prerequisites
 
-SDK-Account setzt SDK-UI voraus. Stelle sicher, dass `AddBieberWorksUi()` vor `AddBieberWorksAccount()` aufgerufen wird.
+SDK-Account requires SDK-UI. Ensure `AddBieberWorksUi()` is called before `AddBieberWorksAccount()`.
 
 ```xml
-<!-- Auch im Host -->
+<!-- Also in the host -->
 <PackageReference Include="BieberWorks.SDK.UI.MudBlazor" Version="0.*-*" />
 ```
 
@@ -26,11 +26,11 @@ SDK-Account setzt SDK-UI voraus. Stelle sicher, dass `AddBieberWorksUi()` vor `A
 using BieberWorks.SDK.Account.UI.MudBlazor.Extensions;
 using BieberWorks.SDK.UI.MudBlazor.Extensions;
 
-// Reihenfolge wichtig: UI zuerst
+// Order matters: UI first
 builder.Services.AddBieberWorksUi();
 builder.Services.AddBieberWorksAccount();
 
-// Razor Components: Assembly der Account-UI einbinden
+// Razor components: register account UI assembly
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -40,13 +40,13 @@ builder.Services
     );
 ```
 
-`AddBieberWorksAccount()` registriert:
+`AddBieberWorksAccount()` registers:
 
-| Service | Lifetime | Beschreibung |
+| Service | Lifetime | Description |
 |---|---|---|
-| MudBlazor Services | — | via `AddMudServices()` |
+| MudBlazor services | — | via `AddMudServices()` |
 
-Die `IAccountSection`-Sammlung wird nicht durch `AddBieberWorksAccount()` befüllt — das übernehmen die einzelnen Fachmodule, die ihre Sektionen via `services.AddSingleton<IAccountSection, MySection>()` eintragen.
+The `IAccountSection` collection is not populated by `AddBieberWorksAccount()` — domain modules do that by registering their sections via `services.AddSingleton<IAccountSection, MySection>()`.
 
 ## Routes.razor
 
@@ -67,16 +67,16 @@ Die `IAccountSection`-Sammlung wird nicht durch `AddBieberWorksAccount()` befül
     [
         typeof(BieberWorks.SDK.Account.UI.MudBlazor.AccountModule).Assembly,
         typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly,
-        // weitere Module...
+        // other modules...
     ];
 }
 ```
 
 ::: warning BwThemeProvider
-`BwThemeProvider` muss in `Routes.razor` stehen, nicht innerhalb von `AccountLayout`. Siehe [SDK-UI Setup](../ui/setup.md).
+`BwThemeProvider` must be in `Routes.razor`, not inside `AccountLayout`. See [SDK-UI Setup](../ui/setup.md).
 :::
 
-## IModule-basierter Ansatz (alternativ)
+## IModule-based approach (alternative)
 
 ```csharp
 // Program.cs
@@ -86,4 +86,4 @@ app.MapBieberWorksModules();
 await app.InitializeBieberWorksModulesAsync();
 ```
 
-`AccountModule` implementiert `IModule` und `IEndpointModule` (ohne eigene Endpoints) und ruft intern `AddBieberWorksAccount()` auf.
+`AccountModule` implements `IModule` and `IEndpointModule` (without own endpoints) and calls `AddBieberWorksAccount()` internally.
