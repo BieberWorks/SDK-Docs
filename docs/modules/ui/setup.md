@@ -1,14 +1,14 @@
 # SDK-UI — Setup
 
-## NuGet-Pakete
+## NuGet packages
 
 ```xml
 <PackageReference Include="BieberWorks.SDK.UI.Contracts" Version="0.*-*" />
 <PackageReference Include="BieberWorks.SDK.UI.MudBlazor"  Version="0.*-*" />
 ```
 
-::: tip Fachmodule
-Fachmodule, die nur `IAppBarWidget` implementieren, brauchen ausschließlich `BieberWorks.SDK.UI.Contracts`.
+::: tip Domain modules
+Domain modules that only implement `IAppBarWidget` need only `BieberWorks.SDK.UI.Contracts`.
 :::
 
 ## Program.cs
@@ -16,22 +16,22 @@ Fachmodule, die nur `IAppBarWidget` implementieren, brauchen ausschließlich `Bi
 ```csharp
 using BieberWorks.SDK.UI.MudBlazor.Extensions;
 
-// Services registrieren
+// Register services
 builder.Services.AddBieberWorksUi();
 ```
 
-`AddBieberWorksUi()` registriert:
+`AddBieberWorksUi()` registers:
 
-| Service | Lifetime | Beschreibung |
+| Service | Lifetime | Description |
 |---|---|---|
-| `IThemeService` → `ThemeService` | Scoped | Dark-Mode-Zustand und Toggle |
-| `ICookieConsentService` → `CookieConsentService` | Scoped | Cookie-Consent-Verwaltung |
-| `ILayoutThemeProvider` → `DefaultLayoutThemeProvider` | Scoped | Liefert `LayoutThemeData` je Layout-Key; wird via `TryAddScoped` registriert — kann durch SDK-Theme überschrieben werden |
-| `ILayoutThemeContext` → `LayoutThemeContext` | Scoped | Trägt den aktuellen Layout-Key und feuert `OnChanged` bei Wechsel |
+| `IThemeService` → `ThemeService` | Scoped | Dark mode state and toggle |
+| `ICookieConsentService` → `CookieConsentService` | Scoped | Cookie consent management |
+| `ILayoutThemeProvider` → `DefaultLayoutThemeProvider` | Scoped | Provides `LayoutThemeData` per layout key; registered via `TryAddScoped` — can be overridden by SDK-Theme |
+| `ILayoutThemeContext` → `LayoutThemeContext` | Scoped | Holds current layout key and fires `OnChanged` on switch |
 
 ## Routes.razor
 
-`BwThemeProvider` muss **genau einmal** im Komponentenbaum existieren, am besten in `Routes.razor`:
+`BwThemeProvider` must exist **exactly once** in the component tree, best in `Routes.razor`:
 
 ```razor
 @* Routes.razor *@
@@ -46,13 +46,13 @@ builder.Services.AddBieberWorksUi();
 </BwThemeProvider>
 ```
 
-::: warning Einmaligkeitsregel
-`BwThemeProvider` darf nicht in einzelnen Layouts platziert werden — er würde dann bei jedem Layout-Wechsel neu instanziiert und den Theme-Zustand zurücksetzen. Einzig korrekter Ort: `Routes.razor` (oder eine äquivalente Root-Komponente oberhalb des Routers).
+::: warning Uniqueness rule
+`BwThemeProvider` must not be placed in individual layouts — it would be re-instantiated on every layout change and reset theme state. Only correct location: `Routes.razor` (or equivalent root component above the router).
 :::
 
 ### AdditionalAssemblies
 
-Damit der Blazor-Router Seiten aus `BieberWorks.SDK.UI.MudBlazor` findet (z. B. künftige UI-Seiten), muss die Assembly registriert sein:
+For the Blazor router to find pages from `BieberWorks.SDK.UI.MudBlazor` (e.g. future UI pages), the assembly must be registered:
 
 ```csharp
 // Program.cs
@@ -61,18 +61,18 @@ builder.Services
     .AddInteractiveServerComponents()
     .AddAdditionalAssemblies(
         typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly
-        // weitere Modul-Assemblies...
+        // other module assemblies...
     );
 ```
 
-Und im Router:
+And in the router:
 
 ```razor
 @code {
     private static readonly Assembly[] _moduleAssemblies =
     [
         typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly,
-        // weitere...
+        // others...
     ];
 }
 ```
