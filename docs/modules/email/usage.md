@@ -1,8 +1,8 @@
-# Verwendung — SDK-Email
+# Usage — SDK-Email
 
-## IEmailSender — E-Mail senden
+## IEmailSender — Send email
 
-`IEmailSender` ist als Scoped-Service registriert. `SendAsync` erwartet ein `EmailMessage`-Record:
+`IEmailSender` is registered as a scoped service. `SendAsync` expects an `EmailMessage` record:
 
 ```csharp
 using BieberWorks.SDK.Email.Contracts;
@@ -13,36 +13,36 @@ public class NotificationService(IEmailSender emailSender)
     {
         var message = new EmailMessage(
             To:       to,
-            Subject:  "Willkommen bei MyApp",
-            HtmlBody: "<h1>Herzlich willkommen!</h1><p>Dein Konto wurde erstellt.</p>");
+            Subject:  "Welcome to MyApp",
+            HtmlBody: "<h1>Welcome!</h1><p>Your account has been created.</p>");
 
         await emailSender.SendAsync(message, ct);
     }
 }
 ```
 
-`EmailMessage` ist ein `record` mit folgenden Properties:
+`EmailMessage` is a `record` with the following properties:
 
-| Property | Typ | Pflicht | Bedeutung |
+| Property | Type | Required | Meaning |
 |---|---|---|---|
-| `To` | `string` | Ja | Empfänger-E-Mail-Adresse |
-| `Subject` | `string` | Ja | Betreff |
-| `HtmlBody` | `string` | Ja | HTML-Inhalt der E-Mail |
-| `Attachments` | `IReadOnlyList<EmailAttachment>?` | Nein | Optionale Anhänge |
+| `To` | `string` | Yes | Recipient email address |
+| `Subject` | `string` | Yes | Subject line |
+| `HtmlBody` | `string` | Yes | HTML content of the email |
+| `Attachments` | `IReadOnlyList<EmailAttachment>?` | No | Optional attachments |
 
-## E-Mail mit Anhang senden
+## Send email with attachment
 
 ```csharp
 var pdfBytes = await GeneratePdfAsync();
 
 var message = new EmailMessage(
     To:      "user@example.com",
-    Subject: "Ihre Rechnung",
-    HtmlBody: "<p>Im Anhang finden Sie Ihre Rechnung.</p>",
+    Subject: "Your invoice",
+    HtmlBody: "<p>Please find your invoice attached.</p>",
     Attachments: new[]
     {
         new EmailAttachment(
-            FileName:    "Rechnung.pdf",
+            FileName:    "Invoice.pdf",
             Data:        pdfBytes,
             ContentType: "application/pdf")
     });
@@ -50,9 +50,9 @@ var message = new EmailMessage(
 await emailSender.SendAsync(message, ct);
 ```
 
-## IEmailTemplateRenderer — Templates verwenden
+## IEmailTemplateRenderer — Use templates
 
-`IEmailTemplateRenderer.Render` ersetzt `{{Key}}`-Platzhalter in einer HTML-Template-Datei:
+`IEmailTemplateRenderer.Render` replaces `{{Key}}` placeholders in an HTML template file:
 
 ```csharp
 using BieberWorks.SDK.Email.Contracts;
@@ -69,37 +69,37 @@ public class PasswordResetService(
             ["UserEmail"] = to,
         });
 
-        var message = new EmailMessage(to, "Passwort zurücksetzen", html);
+        var message = new EmailMessage(to, "Reset password", html);
         await emailSender.SendAsync(message, ct);
     }
 }
 ```
 
-Das Template `PasswordResetEmail.html` enthält Platzhalter in doppelten geschweiften Klammern:
+The template `PasswordResetEmail.html` contains placeholders in double curly braces:
 
 ```html
 <!DOCTYPE html>
 <html>
 <body>
-  <p>Klicke auf den Link um dein Passwort zurückzusetzen:</p>
-  <a href="{{ResetLink}}">Passwort zurücksetzen</a>
-  <p><small>Diese E-Mail wurde an {{UserEmail}} gesendet.</small></p>
+  <p>Click the link to reset your password:</p>
+  <a href="{{ResetLink}}">Reset password</a>
+  <p><small>This email was sent to {{UserEmail}}.</small></p>
 </body>
 </html>
 ```
 
-::: warning Exception bei fehlendem Template
-`IEmailTemplateRenderer.Render` wirft eine `InvalidOperationException`, wenn kein Provider das Template liefern kann. Stelle sicher, dass das Template entweder als Embedded Resource oder im konfigurierten `TemplatePath` vorhanden ist.
+::: warning Exception if template is missing
+`IEmailTemplateRenderer.Render` throws an `InvalidOperationException` if no provider can supply the template. Ensure the template exists either as an embedded resource or in the configured `TemplatePath`.
 :::
 
-## IEmailTemplateProvider — Eigene Provider registrieren
+## IEmailTemplateProvider — Register custom providers
 
-### Eingebettete Ressourcen aus eigener Assembly
+### Embedded resources from own assembly
 
 ```csharp
 using BieberWorks.SDK.Email.Contracts;
 
-// In Program.cs oder einem IModule:
+// In Program.cs or an IModule:
 services.AddSingleton<IEmailTemplateProvider>(
     new EmbeddedEmailTemplateProvider(
         assembly:          typeof(MyModuleMarker).Assembly,
@@ -107,7 +107,7 @@ services.AddSingleton<IEmailTemplateProvider>(
         order:             EmailTemplateProviderOrder.Embedded));
 ```
 
-Die Ressource-Datei `PasswordResetEmail.html` muss als `EmbeddedResource` im Projekt liegen:
+The resource file `PasswordResetEmail.html` must exist as `EmbeddedResource` in the project:
 
 ```xml
 <!-- MyModule.csproj -->
@@ -116,39 +116,39 @@ Die Ressource-Datei `PasswordResetEmail.html` muss als `EmbeddedResource` im Pro
 </ItemGroup>
 ```
 
-### Eigener Custom-Provider (höchste Priorität)
+### Custom provider (highest priority)
 
 ```csharp
 public sealed class DatabaseEmailTemplateProvider : IEmailTemplateProvider
 {
-    public int Order => EmailTemplateProviderOrder.Custom; // 0 = höchste Priorität
+    public int Order => EmailTemplateProviderOrder.Custom; // 0 = highest priority
 
     public string? TryGetTemplate(string templateName)
     {
-        // Aus DB laden, null zurückgeben wenn nicht gefunden
+        // Load from DB, return null if not found
         return _db.EmailTemplates.FirstOrDefault(t => t.Name == templateName)?.HtmlContent;
     }
 }
 
-// Registrierung
+// Registration
 services.AddSingleton<IEmailTemplateProvider, DatabaseEmailTemplateProvider>();
 ```
 
-## Provider-Priorität im Überblick
+## Provider priority overview
 
 ```
 Render("PasswordResetEmail.html")
     │
-    ├─ Custom-Provider (Order 0)          → gefunden? → rendern
-    ├─ FileSystemEmailTemplateProvider    → Email:TemplatePath/<name>.html vorhanden? → rendern
-    ├─ EmbeddedEmailTemplateProvider      → Embedded Resource vorhanden? → rendern
-    └─ kein Provider hat Treffer          → InvalidOperationException
+    ├─ Custom provider (order 0)          → found? → render
+    ├─ FileSystemEmailTemplateProvider    → Email:TemplatePath/<name>.html exists? → render
+    ├─ EmbeddedEmailTemplateProvider      → Embedded resource exists? → render
+    └─ no provider has match              → InvalidOperationException
 ```
 
-## SMTP-Verbindung
+## SMTP connection
 
-`SmtpEmailSender` verwendet **MailKit** mit STARTTLS (Port 587). Verbindungsaufbau, Authentifizierung und Trennung erfolgen pro `SendAsync`-Aufruf. Der Sender ist als Scoped registriert.
+`SmtpEmailSender` uses **MailKit** with STARTTLS (port 587). Connection setup, authentication, and teardown occur per `SendAsync` call. The sender is registered as scoped.
 
 ::: info Logging
-Sowohl `SmtpEmailSender` (nach erfolgreichem Versand) als auch `LoggingEmailSender` (anstelle des Versands) schreiben einen `Information`-Log-Eintrag mit Empfänger und Betreff.
+Both `SmtpEmailSender` (after successful send) and `LoggingEmailSender` (instead of send) write an `Information` log entry with recipient and subject.
 :::

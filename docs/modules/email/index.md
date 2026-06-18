@@ -1,36 +1,36 @@
 # SDK-Email
 
-Das Modul **BieberWorks.SDK.Email** stellt einen MailKit-basierten SMTP-Versand sowie ein Template-System für transaktionale E-Mails bereit. Ohne Konfiguration (`UseSmtp: false`) fällt das Modul automatisch auf einen `LoggingEmailSender` zurück, der ausgehende E-Mails nur ins Log schreibt — praktisch für lokale Entwicklung.
+The module **BieberWorks.SDK.Email** provides a MailKit-based SMTP send facility and a template system for transactional emails. Without configuration (`UseSmtp: false`), the module automatically falls back to a `LoggingEmailSender` that logs outgoing emails only — practical for local development.
 
-## Pakete
+## Packages
 
-| NuGet-Paket | Inhalt | Referenzieren |
+| NuGet package | Contents | Reference |
 |---|---|---|
-| `BieberWorks.SDK.Email.Contracts` | `IEmailSender`, `IEmailTemplateProvider`, `IEmailTemplateRenderer`, `EmailMessage`, `EmailAttachment`, `EmailSettings`, `EmbeddedEmailTemplateProvider`, `EmailTemplateProviderOrder` | andere Module |
-| `BieberWorks.SDK.Email` | `EmailModule`, `SmtpEmailSender`, `LoggingEmailSender`, `FileSystemEmailTemplateProvider`, `EmailTemplateRenderer` | Host |
+| `BieberWorks.SDK.Email.Contracts` | `IEmailSender`, `IEmailTemplateProvider`, `IEmailTemplateRenderer`, `EmailMessage`, `EmailAttachment`, `EmailSettings`, `EmbeddedEmailTemplateProvider`, `EmailTemplateProviderOrder` | other modules |
+| `BieberWorks.SDK.Email` | `EmailModule`, `SmtpEmailSender`, `LoggingEmailSender`, `FileSystemEmailTemplateProvider`, `EmailTemplateRenderer` | host |
 
-**Aktuelle Version:** `v0.0.5`
+**Current version:** `v0.0.5`
 
-## Interfaces im Überblick
+## Interfaces at a glance
 
-| Interface | Registrierung | Zweck |
+| Interface | Registration | Purpose |
 |---|---|---|
-| `IEmailSender` | Scoped | E-Mail senden (`SendAsync`) |
-| `IEmailTemplateRenderer` | Singleton | Template rendern (`Render`) |
-| `IEmailTemplateProvider` | Singleton, mehrere möglich | Template-HTML liefern (`TryGetTemplate`) |
+| `IEmailSender` | Scoped | Send email (`SendAsync`) |
+| `IEmailTemplateRenderer` | Singleton | Render template (`Render`) |
+| `IEmailTemplateProvider` | Singleton, multiple possible | Provide template HTML (`TryGetTemplate`) |
 
-## Template-Provider-Priorität
+## Template Provider priority
 
-Mehrere `IEmailTemplateProvider` können registriert sein. Der mit dem niedrigsten `Order`-Wert gewinnt.
+Multiple `IEmailTemplateProvider` can be registered. The one with the lowest `Order` value wins.
 
-| Provider | Order | Aktivierung |
+| Provider | Order | Activation |
 |---|---|---|
-| Custom (eigene Implementierung) | `0` | Manuell registriert |
-| `FileSystemEmailTemplateProvider` | `100` | Automatisch; aktiv wenn `Email:TemplatePath` gesetzt |
-| `EmbeddedEmailTemplateProvider` | `1000` | Manuell registriert, z. B. durch Auth-Modul |
+| Custom (own implementation) | `0` | Manually registered |
+| `FileSystemEmailTemplateProvider` | `100` | Automatic; active if `Email:TemplatePath` is set |
+| `EmbeddedEmailTemplateProvider` | `1000` | Manually registered, e.g. by Auth module |
 
-Der `FileSystemEmailTemplateProvider` gibt `null` zurück (kein Fehler), wenn der Pfad nicht konfiguriert ist oder die Datei nicht existiert — dann wird der nächste Provider versucht.
+The `FileSystemEmailTemplateProvider` returns `null` (no error) if the path is not configured or the file does not exist — then the next provider is tried.
 
-## Abhängigkeiten
+## Dependencies
 
-Das Modul hängt von keinem anderen Fachmodul ab (kein Auth, kein Audit). Es benötigt nur `BieberWorks.SDK.Core`.
+The module depends on no other domain module (no Auth, no Audit). It only requires `BieberWorks.SDK.Core`.
