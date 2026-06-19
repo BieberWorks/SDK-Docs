@@ -15,6 +15,12 @@ export default defineLoader({
     const docsDir = path.resolve(__dirname)
     const modulesDir = path.join(docsDir, 'modules')
 
+    // Load pre-fetched versions from CI (not present in local dev builds)
+    const versionsFile = path.join(docsDir, 'modules-versions.json')
+    const versions: Record<string, string> = fs.existsSync(versionsFile)
+      ? JSON.parse(fs.readFileSync(versionsFile, 'utf8'))
+      : {}
+
     const names = fs
       .readdirSync(modulesDir, { withFileTypes: true })
       .filter((d) => d.isDirectory())
@@ -40,15 +46,18 @@ export default defineLoader({
           }
         }
 
-        // Extract version — badge URL first
-        const badgeMatch = content.match(/version-(\d+\.\d+\.\d+)-blue/)
-        if (badgeMatch) {
-          version = `v${badgeMatch[1]}`
+        // Version: prefer CI-fetched value, fall back to badge/bold extraction
+        if (versions[name]) {
+          version = versions[name]
         } else {
-          // Fallback: **vX.Y.Z** in text
-          const boldMatch = content.match(/\*\*(v\d+\.\d+\.\d+)\*\*/)
-          if (boldMatch) {
-            version = boldMatch[1]
+          const badgeMatch = content.match(/version-(\d+\.\d+\.\d+)-blue/)
+          if (badgeMatch) {
+            version = `v${badgeMatch[1]}`
+          } else {
+            const boldMatch = content.match(/\*\*(v\d+\.\d+\.\d+)\*\*/)
+            if (boldMatch) {
+              version = boldMatch[1]
+            }
           }
         }
 
