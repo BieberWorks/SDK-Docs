@@ -20,6 +20,7 @@ The Auth module provides complete authentication and authorization infrastructur
 |---|---|---|
 | `BieberWorks.SDK.Auth.Contracts` | Interfaces, DTOs, domain events, permission abstraction — no dependency on implementation | Always when another module consumes Auth services |
 | `BieberWorks.SDK.Auth` | Complete implementation: Identity, EF Core, JWT/Cookie, Minimal API endpoints, CQRS handlers | In the host providing the Auth API |
+| `BieberWorks.SDK.Auth.Management` | Separate `IModule` for admin REST endpoints under `/api/admin/users` and `/api/admin/roles` | When admin user/role management via REST is needed |
 | `BieberWorks.SDK.Auth.Management` | Separate `IModule` for admin REST endpoints under `/api/admin/users` | When admin user management is needed |
 | `BieberWorks.SDK.Auth.UI` | Abstract Blazor base classes (framework-agnostic logic, `ComponentBase` derivations) | Transitively — referenced by `.UI.MudBlazor` |
 | `BieberWorks.SDK.Auth.UI.MudBlazor` | Ready-made MudBlazor Razor components and pages | When using the built-in Auth pages in the host |
