@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Debounce — wait for further updates
-        run: sleep 300
+        run: sleep 120
 
       - uses: actions/checkout@v4
         with:
