@@ -26,6 +26,11 @@ The module `SDK-Account` provides a self-service shell for logged-in users ("My 
 
 ## Version reference
 
-Current stable version: **v0.0.1**
+Current stable version: **v0.5.0**
 
 Package IDs: `BieberWorks.SDK.Account.Contracts` and `BieberWorks.SDK.Account.UI.MudBlazor`.
+
+## Further Reading
+
+- [Setup & Configuration](./setup.md)
+- [Custom Pages & Sections](./custom-pages.md)

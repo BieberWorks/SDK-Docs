@@ -14,6 +14,10 @@ The **SDK-Audit** module provides automatic, configuration-free audit logging fo
 SDK-Audit's core logic only depends on **SDK-Foundation** (`BieberWorks.SDK.SharedKernel` + `BieberWorks.SDK.Core`). The open-generic handler `AuditableEventHandler<TEvent>` is resolved via MS.DI reflection to concrete event types — at runtime, not compile time. Auth or Auth.Contracts are not referenced by the handler.
 :::
 
+::: tip Current version
+All SDK-Audit packages are released together. Current stable version: **v0.3.0**.
+:::
+
 ## Packages
 
 | Package | Description |

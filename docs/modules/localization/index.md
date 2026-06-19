@@ -11,7 +11,7 @@ The module **BieberWorks.SDK.Localization** extends Foundation's localization wi
 | `BieberWorks.SDK.Localization.UI` | `TranslationEditorPageBase` (MudBlazor-independent base classes) | Host with UI |
 | `BieberWorks.SDK.Localization.UI.MudBlazor` | MudBlazor rendering, `AddLocalizationUi()` | Host with MudBlazor |
 
-**Current Version:** `v0.0.2`
+**Current Version:** `v0.5.1`
 
 ## Layering Model
 

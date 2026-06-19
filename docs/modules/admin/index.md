@@ -9,7 +9,7 @@ The admin shell module for the BieberWorks SDK. Provides central navigation and 
 
 ## Version History
 
-**v0.3.0** — current version
+**v0.10.2** — current version
 
 ## Features
 

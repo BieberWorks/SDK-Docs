@@ -12,74 +12,83 @@
 ## Prerequisites
 
 1. **SDK-UI** must be registered (required by Admin.UI.MudBlazor).
-2. **SDK-Settings** is optional, but **recommended** for persistence of navigation structure. Without settings, the admin shell functions (order resets on each reload).
+2. **SDK-Settings** is optional, but **recommended** for persistence of navigation structure. Without settings, the admin shell functions but order resets on each reload.
 
 ## Program.cs
 
 ```csharp
-// 1. SDK-Core (if not already registered)
-services.AddBieberWorksCore();
+using BieberWorks.SDK.Admin.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Core.Web.Modularity;
 
-// 2. SDK-UI (prerequisite)
-services.AddBieberWorksUi();
+// Discovers and registers all IModule implementations (including AdminModule)
+// from the dependency graph. Call once — covers all modules.
+builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// 3. SDK-Settings (optional)
-services.AddBieberWorksSettings();
+// SDK-UI must come before SDK-Admin (Admin depends on it)
+builder.Services.AddBieberWorksUi();
 
-// 4. SDK-Admin
-services.AddBieberWorksAdmin();
+// SDK-Admin shell registration
+builder.Services.AddBieberWorksAdmin();
 
-// 5. MudBlazor services (already included in AddBieberWorksAdmin)
-
-// 6. Auth module (if permissions are needed)
-services.AddBieberWorksAuth();
-
-// ASP.NET Core Razor Components
-var builder = services
-    .AddRazorComponents()
+// Blazor Server with interactive render mode
+builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Additional assemblies (UI modules must be registered here)
-builder.AddAdditionalAssemblies(
-    typeof(BieberWorks.SDK.Admin.UI.MudBlazor.AdminModule).Assembly
-    // ... additional *.UI.MudBlazor assemblies
-);
+// ...
+
+var app = builder.Build();
+
+// Apply EF migrations for all IModuleInitializer modules
+await app.InitializeBieberWorksModulesAsync();
+
+// Map Minimal API routes for all IEndpointModule modules (including Admin REST endpoints)
+app.MapBieberWorksModules();
+
+// Auto-discovers all BieberWorks.SDK.*.MudBlazor assemblies including Admin.UI.MudBlazor
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 ## Routes.razor
 
 ```razor
-@using Microsoft.AspNetCore.Components.Routing
+@using BieberWorks.SDK.Admin.Contracts
+@using BieberWorks.SDK.Admin.UI.MudBlazor.Layout
+@using BieberWorks.SDK.UI.MudBlazor.Components
+@using BieberWorks.SDK.UI.MudBlazor.Routing
 
-<Router AppAssembly="@typeof(Program).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Admin.UI.MudBlazor.AdminModule).Assembly }">
+<BwThemeProvider>
+<BwRouter AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(BwShellLayout)" />
+        <RouteView RouteData="@routeData"
+                   DefaultLayout="@(typeof(IAdminPage).IsAssignableFrom(routeData.PageType)
+                                     ? typeof(AdminLayout)
+                                     : typeof(MainLayout))" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
-    <NotFound>
-        <PageTitle>Not found</PageTitle>
-        <BwShellLayout>
-            <MudAlert Severity="Severity.Error">Page not found</MudAlert>
-        </BwShellLayout>
-    </NotFound>
-</Router>
+</BwRouter>
+</BwThemeProvider>
 ```
 
-## Alternative: IModule-based
+::: warning BwThemeProvider is mandatory
+`BwThemeProvider` must wrap the router as the outermost element. It must appear exactly once in `Routes.razor` — never inside a layout. Without it, `AdminLayout` and `BwShellLayout` cannot apply theming.
+:::
 
-If the host uses the BieberWorks.SDK.Core module system:
+## IModule-based Approach
+
+`AdminModule` already implements `IModule`. When you call `builder.Services.AddBieberWorksModules(builder.Configuration)`, `AdminModule` is discovered automatically and calls `AddBieberWorksAdmin()` internally.
+
+If you want to call `AddBieberWorksAdmin()` explicitly in your own module (e.g. to ensure ordering), you can do so inside your module's `RegisterServices`:
 
 ```csharp
-public class MyModule : IModule
+public IServiceCollection RegisterServices(IServiceCollection services, IConfiguration config)
 {
-    public string Name => "MyModule";
-    
-    public IServiceCollection RegisterServices(IServiceCollection services, IConfiguration config)
-    {
-        services.AddBieberWorksAdmin();
-        // ... additional services
-        return services;
-    }
+    services.AddBieberWorksUi();
+    services.AddBieberWorksAdmin();
+    // ... additional module services
+    return services;
 }
 ```
 

@@ -175,13 +175,50 @@ public interface ICookieConsentService
 
 The override system allows a host to replace individual SDK pages or layouts with custom components, without creating route conflicts.
 
+### Registration
+
+All three extension methods delegate to the same `IComponentOverrideRegistry`:
+
 ```csharp
-// Program.cs
+// Program.cs — replace an SDK page with a host-specific page
 builder.Services.OverridePage(
-    sdkType:  typeof(SomeSdkPage),
-    hostType: typeof(MyCustomPage));
+    sdkType:  typeof(BieberWorks.SDK.Localization.UI.MudBlazor.Pages.Admin.TranslationEditorPage),
+    hostType: typeof(MyApp.Pages.Admin.CustomTranslationPage));
+
+// Replace a layout
+builder.Services.OverrideLayout(
+    sdkType:  typeof(SomeSdkLayout),
+    hostType: typeof(MyCustomLayout));
+
+// Replace a non-page component
+builder.Services.OverrideComponent(
+    sdkType:  typeof(SomeSdkComponent),
+    hostType: typeof(MyCustomComponent));
 ```
 
-`BwRouter` (custom router from SDK-UI) automatically suppresses the SDK route and renders the host component instead. The host component needs no own `@page` directive.
+### Host Component Requirements
 
-Further extension methods: `OverrideLayout(...)`, `OverrideComponent(...)` — all delegate internally to `OverridePage`.
+The replacement component (`hostType`) must **not** have a `@page` directive. `BwRouter` resolves the route to the SDK type and then swaps it for the host type at render time. If the host component also declares `@page`, both routes exist and the SDK route is not suppressed.
+
+### BwRouter vs. Standard Router
+
+Use `BwRouter` (from `BieberWorks.SDK.UI.MudBlazor.Routing`) instead of the standard Blazor `Router` component when:
+
+- The host has pages that share the same route as SDK module pages (host `@page` should always win), or
+- Any `OverridePage` / `OverrideLayout` / `OverrideComponent` registrations are used.
+
+`BwRouter` consults the `IComponentOverrideRegistry` on every navigation and replaces the resolved component type before rendering. The standard Blazor `Router` ignores the registry.
+
+### Host-Assembly Priority
+
+`AddBieberWorksRouting(typeof(Program).Assembly)` registers the host assembly with priority 1000. When `BwRouter` encounters two `@page` directives for the same path — one in the host, one in an SDK module — the host page wins. This is the alternative to `OverridePage` for cases where the host component does declare `@page`.
+
+### Limitations
+
+- **One override per SDK type.** If `OverridePage` is called twice with the same `sdkType`, the second call wins.
+- **Resolved at router level, not at render time.** The swap happens when `BwRouter` selects the component to render. Re-registration after the application has started has no effect on running circuits.
+- **Assembly must be registered.** The `hostType` component's assembly must be discoverable by the Blazor component system. Custom RCL assemblies need explicit inclusion if `AddBwModuleAssemblies` does not cover them.
+
+### Alternative: @page in Host Component
+
+Instead of `OverridePage`, declare `@page "/admin/settings"` directly in a host component. `BwRouter` sees the host assembly's route first (higher priority via `AddBieberWorksRouting`) and never reaches the SDK page. The SDK component is not rendered and its DI dependencies are not resolved.

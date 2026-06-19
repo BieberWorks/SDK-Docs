@@ -26,7 +26,7 @@ The Auth module provides complete authentication and authorization infrastructur
 | `BieberWorks.SDK.Auth.Client` | `HttpAuthClient` — HTTP implementation of `IAuthClient` for WASM/MAUI-Hybrid | When an external client (not in-proc) calls the Auth API |
 
 ::: tip Current version
-All packages are released together. Current stable version: **v0.13.0**.
+All packages are released together. Current stable version: **v0.16.0**.
 :::
 
 ## When to use which package

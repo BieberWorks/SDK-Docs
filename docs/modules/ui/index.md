@@ -23,6 +23,6 @@ Domain modules that only implement `IAppBarWidget` or receive `BwViewportInfo` n
 
 ## Version reference
 
-Current stable version: **v0.3.0**
+Current stable version: **v0.8.0**
 
 Package IDs: `BieberWorks.SDK.UI.Contracts` and `BieberWorks.SDK.UI.MudBlazor`.

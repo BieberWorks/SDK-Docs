@@ -11,7 +11,7 @@ The module **BieberWorks.SDK.Settings** provides database-backed application set
 | `BieberWorks.SDK.Settings.UI` | `AppSettingsPageBase`, `FeatureFlagsPageBase` (MudBlazor-independent base classes) | host with UI |
 | `BieberWorks.SDK.Settings.UI.MudBlazor` | MudBlazor rendering, `AddSettingsUi()` | host with MudBlazor |
 
-**Current version:** `v0.0.1`
+**Current version:** `v0.3.0`
 
 ## When to use settings vs. appsettings.json?
 

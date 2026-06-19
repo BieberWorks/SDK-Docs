@@ -18,11 +18,11 @@ The Storage module provides complete, provider-independent file management for B
 
 | Package | Description | Version |
 |---|---|---|
-| `BieberWorks.SDK.Storage.Contracts` | Interfaces, DTOs, domain events, permissions — referenced by other modules | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
-| `BieberWorks.SDK.Storage` | Core implementation: FileSystem provider, DB-Blob provider, `StorageModule`, migrations (schema `storage`) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
-| `BieberWorks.SDK.Storage.Aws` | AWS S3 / S3-compatible provider (`S3FileStorage`) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
-| `BieberWorks.SDK.Storage.Azure` | Azure Blob Storage provider (`AzureBlobFileStorage`) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
-| `BieberWorks.SDK.Storage.UI.MudBlazor` | Admin pages, user pages, shared components (MudBlazor RCL) | ![v0.1.1](https://img.shields.io/badge/version-0.1.1-blue) |
+| `BieberWorks.SDK.Storage.Contracts` | Interfaces, DTOs, domain events, permissions — referenced by other modules | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
+| `BieberWorks.SDK.Storage` | Core implementation: FileSystem provider, DB-Blob provider, `StorageModule`, migrations (schema `storage`) | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
+| `BieberWorks.SDK.Storage.Aws` | AWS S3 / S3-compatible provider (`S3FileStorage`) | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
+| `BieberWorks.SDK.Storage.Azure` | Azure Blob Storage provider (`AzureBlobFileStorage`) | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
+| `BieberWorks.SDK.Storage.UI.MudBlazor` | Admin pages, user pages, shared components (MudBlazor RCL) | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
 
 ::: tip Contracts-First
 Other modules reference only `BieberWorks.SDK.Storage.Contracts`. Implementation packages are known only to the host.

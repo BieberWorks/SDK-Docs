@@ -6,9 +6,9 @@ Foundation is the cornerstone of all BieberWorks SDK modules. It provides depend
 
 | Package | Description | Version |
 |---|---|---|
-| `BieberWorks.SDK.SharedKernel` | Dependency-free base types: `IDomainEvent`, `IAuditableEvent`, `Result`/`Result<T>`, `DomainError` | ![v0.3.0](https://img.shields.io/badge/version-0.3.0-blue) |
-| `BieberWorks.SDK.Core` | Module system (`IModule`, Discovery, DI registration) + Messaging (`IAppMessageDispatcher`, `IDomainEventPublisher`, `IDomainEventProcessor<T>`) | ![v0.3.0](https://img.shields.io/badge/version-0.3.0-blue) |
-| `BieberWorks.SDK.Core.Web` | ASP.NET Core integration: `IEndpointModule`, `AddBieberWorksModules`, `MapBieberWorksModules`, `InitializeBieberWorksModulesAsync`, layered localization | ![v0.3.0](https://img.shields.io/badge/version-0.3.0-blue) |
+| `BieberWorks.SDK.SharedKernel` | Dependency-free base types: `IDomainEvent`, `IAuditableEvent`, `Result`/`Result<T>`, `DomainError` | ![v0.7.1](https://img.shields.io/badge/version-0.7.1-blue) |
+| `BieberWorks.SDK.Core` | Module system (`IModule`, Discovery, DI registration) + Messaging (`IAppMessageDispatcher`, `IDomainEventPublisher`, `IDomainEventProcessor<T>`) | ![v0.7.1](https://img.shields.io/badge/version-0.7.1-blue) |
+| `BieberWorks.SDK.Core.Web` | ASP.NET Core integration: `IEndpointModule`, `AddBieberWorksModules`, `MapBieberWorksModules`, `InitializeBieberWorksModulesAsync`, layered localization | ![v0.7.1](https://img.shields.io/badge/version-0.7.1-blue) |
 
 ## Dependency Graph
 

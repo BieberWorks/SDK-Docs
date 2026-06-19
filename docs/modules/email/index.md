@@ -9,7 +9,7 @@ The module **BieberWorks.SDK.Email** provides a MailKit-based SMTP send facility
 | `BieberWorks.SDK.Email.Contracts` | `IEmailSender`, `IEmailTemplateProvider`, `IEmailTemplateRenderer`, `EmailMessage`, `EmailAttachment`, `EmailSettings`, `EmbeddedEmailTemplateProvider`, `EmailTemplateProviderOrder` | other modules |
 | `BieberWorks.SDK.Email` | `EmailModule`, `SmtpEmailSender`, `LoggingEmailSender`, `FileSystemEmailTemplateProvider`, `EmailTemplateRenderer` | host |
 
-**Current version:** `v0.0.5`
+**Current version:** `v0.6.0`
 
 ## Interfaces at a glance
 
