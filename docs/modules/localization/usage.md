@@ -155,12 +155,15 @@ To add a new culture (e.g. French) to your application:
 ### 1. Configure Supported Cultures in Program.cs
 
 ```csharp
+// Replace the culture list with all cultures you support
 builder.Services.AddBieberWorksLocalization("en", "de", "fr");
 ```
 
 `AddBieberWorksLocalization` configures `RequestLocalizationOptions.SupportedCultures` and `SupportedUICultures` and registers `ILanguageService` with the provided list.
 
 ### 2. Add .resx Files to Each Module
+
+For every module that has localizable text, add a culture-specific `.resx` file alongside the existing neutral and German files:
 
 ```
 src/MyModule.Contracts/Resources/
@@ -179,6 +182,8 @@ The file must be an `EmbeddedResource` in the `.csproj`:
 
 ### 3. Test the Culture Switch
 
+Navigate to the set-culture endpoint to activate the new language:
+
 ```
 /bw/set-culture?culture=fr&redirectUri=/
 ```
@@ -187,7 +192,7 @@ The `LanguageSwitcher` component (SDK-UI) shows all cultures registered via `Add
 
 ### 4. Override Individual Strings at Runtime
 
-Once the new culture is active, SDK-Localization's admin UI at `/admin/localization` shows the French column in the translation editor. Add DB overrides per key without redeployment.
+Once the new culture is active, SDK-Localization's admin UI at `/admin/localization` shows the French column in the translation editor. You can add DB overrides per key without redeployment — useful for translations that differ from the `.resx` default or for rapid iteration.
 
 ---
 
