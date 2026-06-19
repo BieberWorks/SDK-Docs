@@ -204,10 +204,12 @@ The replacement component (`hostType`) must **not** have a `@page` directive. `B
 
 Use `BwRouter` (from `BieberWorks.SDK.UI.MudBlazor.Routing`) instead of the standard Blazor `Router` component when:
 
-- The host has pages that share the same route as SDK module pages (host `@page` should always win), or
+- The host has pages that share the same route as SDK module pages (the host's `@page` should always win), or
 - Any `OverridePage` / `OverrideLayout` / `OverrideComponent` registrations are used.
 
 `BwRouter` consults the `IComponentOverrideRegistry` on every navigation and replaces the resolved component type before rendering. The standard Blazor `Router` ignores the registry.
+
+If none of these conditions apply and you have no route conflicts, the standard `Router` works without issues.
 
 ### Host-Assembly Priority
 
@@ -215,10 +217,12 @@ Use `BwRouter` (from `BieberWorks.SDK.UI.MudBlazor.Routing`) instead of the stan
 
 ### Limitations
 
-- **One override per SDK type.** If `OverridePage` is called twice with the same `sdkType`, the second call wins.
-- **Resolved at router level, not at render time.** The swap happens when `BwRouter` selects the component to render. Re-registration after the application has started has no effect on running circuits.
-- **Assembly must be registered.** The `hostType` component's assembly must be discoverable by the Blazor component system. Custom RCL assemblies need explicit inclusion if `AddBwModuleAssemblies` does not cover them.
+- **One override per SDK type.** If `OverridePage` is called twice with the same `sdkType`, the second call wins. There is no stacking or chaining.
+- **Resolved at router level, not at render time.** The swap happens when `BwRouter` selects the component to render, not inside the component tree. Re-registration after the application has started has no effect on running circuits.
+- **Assembly must be registered.** The `hostType` component's assembly must be discoverable by the Blazor component system. If using `AddBwModuleAssemblies`, SDK assemblies are auto-discovered. Host assemblies are included via `typeof(Program).Assembly` in `MapRazorComponents<App>()`. Custom RCL assemblies need explicit inclusion.
 
 ### Alternative: @page in Host Component
 
-Instead of `OverridePage`, declare `@page "/admin/settings"` directly in a host component. `BwRouter` sees the host assembly's route first (higher priority via `AddBieberWorksRouting`) and never reaches the SDK page. The SDK component is not rendered and its DI dependencies are not resolved.
+Instead of `OverridePage`, you can declare `@page "/admin/settings"` directly in a host component. `BwRouter` sees the host assembly's route first (higher priority via `AddBieberWorksRouting`) and never reaches the SDK page. The SDK component is not rendered and its DI dependencies are not resolved.
+
+This approach is simpler but requires a `@page` directive on the host component.
