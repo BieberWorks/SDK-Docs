@@ -1,4 +1,95 @@
 import { defineConfig } from 'vitepress'
+import fs from 'fs'
+import path from 'path'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const docsDir = path.resolve(__dirname, '..')
+
+/** Extract the text of the first `# Heading` in a markdown file. */
+function extractH1(filePath: string): string {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8')
+    for (const line of content.split('\n')) {
+      const m = line.match(/^#\s+(.+)/)
+      if (m) return m[1].trim()
+    }
+  } catch {
+    // file unreadable — fall through
+  }
+  const base = path.basename(filePath, '.md')
+  return base.charAt(0).toUpperCase() + base.slice(1).replace(/-/g, ' ')
+}
+
+/** Return sorted module directory names under docs/modules/. */
+function moduleNames(): string[] {
+  const modulesDir = path.join(docsDir, 'modules')
+  return fs
+    .readdirSync(modulesDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort()
+}
+
+/** Build sidebar items for a single module directory. */
+function moduleSidebarItems(name: string) {
+  const dir = path.join(docsDir, 'modules', name)
+  const files = fs
+    .readdirSync(dir)
+    .filter(
+      (f) =>
+        f.endsWith('.md') &&
+        f !== '.gitkeep' &&
+        f !== 'CHANGES.md'
+    )
+    .sort()
+
+  const items: { text: string; link: string }[] = []
+
+  // index.md always first
+  if (files.includes('index.md')) {
+    items.push({ text: 'Overview', link: `/modules/${name}/` })
+  }
+
+  for (const file of files) {
+    if (file === 'index.md') continue
+    const stem = file.replace(/\.md$/, '')
+    const text = extractH1(path.join(dir, file))
+    items.push({ text, link: `/modules/${name}/${stem}` })
+  }
+
+  return items
+}
+
+/** Capitalise the first letter of a string. */
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic nav items for the Modules dropdown
+// ---------------------------------------------------------------------------
+
+const navModuleItems = moduleNames().map((name) => ({
+  text: cap(name),
+  link: `/modules/${name}/`,
+}))
+
+// ---------------------------------------------------------------------------
+// Dynamic sidebar for /modules/
+// ---------------------------------------------------------------------------
+
+const modulesSidebar = moduleNames().map((name) => ({
+  text: cap(name),
+  collapsed: name !== 'foundation',
+  items: moduleSidebarItems(name),
+}))
+
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
 
 export default defineConfig({
   title: 'BieberWorks SDK',
@@ -17,20 +108,7 @@ export default defineConfig({
       { text: 'Getting Started', link: '/guide/getting-started' },
       {
         text: 'Modules',
-        items: [
-          { text: 'Foundation', link: '/modules/foundation/' },
-          { text: 'Auth', link: '/modules/auth/' },
-          { text: 'Email', link: '/modules/email/' },
-          { text: 'Audit', link: '/modules/audit/' },
-          { text: 'UI', link: '/modules/ui/' },
-          { text: 'Admin', link: '/modules/admin/' },
-          { text: 'Localization', link: '/modules/localization/' },
-          { text: 'Storage', link: '/modules/storage/' },
-          { text: 'Account', link: '/modules/account/' },
-          { text: 'Settings', link: '/modules/settings/' },
-          { text: 'Notifications', link: '/modules/notifications/' },
-          { text: 'Wallet', link: '/modules/wallet/' },
-        ],
+        items: navModuleItems,
       },
       {
         text: 'Guides',
@@ -58,125 +136,7 @@ export default defineConfig({
         },
       ],
 
-      '/modules/': [
-        {
-          text: 'Foundation',
-          collapsed: false,
-          items: [
-            { text: 'Overview', link: '/modules/foundation/' },
-            { text: 'SharedKernel', link: '/modules/foundation/shared-kernel' },
-            { text: 'IModule & Setup', link: '/modules/foundation/imodule' },
-            { text: 'Messaging', link: '/modules/foundation/messaging' },
-          ],
-        },
-        {
-          text: 'Account',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/account/' },
-            { text: 'Setup', link: '/modules/account/setup' },
-            { text: 'Custom Pages', link: '/modules/account/custom-pages' },
-          ],
-        },
-        {
-          text: 'Admin',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/admin/' },
-            { text: 'Setup', link: '/modules/admin/setup' },
-            { text: 'Custom Pages', link: '/modules/admin/custom-pages' },
-            { text: 'Navigation', link: '/modules/admin/navigation' },
-          ],
-        },
-        {
-          text: 'Audit',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/audit/' },
-            { text: 'Setup', link: '/modules/audit/setup' },
-            { text: 'Auto-Auditing', link: '/modules/audit/auto-auditing' },
-            { text: 'IAuditService', link: '/modules/audit/audit-service' },
-          ],
-        },
-        {
-          text: 'Auth',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/auth/' },
-            { text: 'Setup', link: '/modules/auth/setup' },
-            { text: 'Auth Flows', link: '/modules/auth/auth-flows' },
-            { text: 'Roles & Permissions', link: '/modules/auth/roles-permissions' },
-            { text: 'UI Components', link: '/modules/auth/ui-components' },
-          ],
-        },
-        {
-          text: 'Email',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/email/' },
-            { text: 'Setup', link: '/modules/email/setup' },
-            { text: 'Usage', link: '/modules/email/usage' },
-          ],
-        },
-        {
-          text: 'Localization',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/localization/' },
-            { text: 'Setup', link: '/modules/localization/setup' },
-            { text: 'Usage', link: '/modules/localization/usage' },
-          ],
-        },
-        {
-          text: 'Notifications',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/notifications/' },
-            { text: 'Installation', link: '/modules/notifications/installation' },
-            { text: 'Usage', link: '/modules/notifications/usage' },
-          ],
-        },
-        {
-          text: 'Settings',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/settings/' },
-            { text: 'Setup', link: '/modules/settings/setup' },
-            { text: 'Usage', link: '/modules/settings/usage' },
-          ],
-        },
-        {
-          text: 'Storage',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/storage/' },
-            { text: 'Setup', link: '/modules/storage/setup' },
-            { text: 'Providers', link: '/modules/storage/providers' },
-            { text: 'Key Strategy & Visibility', link: '/modules/storage/key-strategy' },
-            { text: 'UI Components', link: '/modules/storage/ui-components' },
-          ],
-        },
-        {
-          text: 'UI',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/ui/' },
-            { text: 'Setup', link: '/modules/ui/setup' },
-            { text: 'Components', link: '/modules/ui/components' },
-          ],
-        },
-        {
-          text: 'Wallet',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/wallet/' },
-            { text: 'Getting Started', link: '/modules/wallet/getting-started' },
-            { text: 'IWalletService', link: '/modules/wallet/wallet-service' },
-            { text: 'Currencies', link: '/modules/wallet/currencies' },
-            { text: 'Permissions', link: '/modules/wallet/permissions' },
-          ],
-        },
-      ],
+      '/modules/': modulesSidebar,
     },
 
     socialLinks: [
