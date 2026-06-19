@@ -12,7 +12,7 @@
 ## Prerequisites
 
 1. **SDK-UI** must be registered (required by Admin.UI.MudBlazor).
-2. **SDK-Settings** is optional, but **recommended** for persistence of navigation structure. Without settings, the admin shell functions but order resets on each reload.
+2. **SDK-Settings** is optional, but **recommended** for persistence of navigation structure. Without settings, the admin shell functions (order resets on each reload).
 
 ## Program.cs
 
