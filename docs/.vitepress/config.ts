@@ -29,6 +29,7 @@ export default defineConfig({
           { text: 'Account', link: '/modules/account/' },
           { text: 'Settings', link: '/modules/settings/' },
           { text: 'Notifications', link: '/modules/notifications/' },
+          { text: 'Wallet', link: '/modules/wallet/' },
         ],
       },
       {
@@ -162,6 +163,17 @@ export default defineConfig({
             { text: 'Overview', link: '/modules/ui/' },
             { text: 'Setup', link: '/modules/ui/setup' },
             { text: 'Components', link: '/modules/ui/components' },
+          ],
+        },
+        {
+          text: 'Wallet',
+          collapsed: true,
+          items: [
+            { text: 'Overview', link: '/modules/wallet/' },
+            { text: 'Getting Started', link: '/modules/wallet/getting-started' },
+            { text: 'IWalletService', link: '/modules/wallet/wallet-service' },
+            { text: 'Currencies', link: '/modules/wallet/currencies' },
+            { text: 'Permissions', link: '/modules/wallet/permissions' },
           ],
         },
       ],
