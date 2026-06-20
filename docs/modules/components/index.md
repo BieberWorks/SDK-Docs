@@ -36,4 +36,4 @@ UI Base    (MarkdownViewerBase, MarkdownEditorBase, CodeBlockBase, RichTextEdito
 MudBlazor  (BwMarkdownViewer, BwMarkdownEditor, BwCodeBlock, BwRichTextEditor)
 ```
 
-Each layer is independently referenceable; the MudBlazor layer requires both UI and Contracts.
+Each layer is independently referenceable. When referencing `BieberWorks.SDK.Components.UI.MudBlazor`, all lower layers are automatically included and registered via the `IModule` dependency chain.

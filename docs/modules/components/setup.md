@@ -2,18 +2,13 @@
 
 ## NuGet installation
 
-### Minimal setup (services only)
-
-```bash
-dotnet add package BieberWorks.SDK.Components.Contracts
-dotnet add package BieberWorks.SDK.Components
-```
-
-### With MudBlazor UI
+### With MudBlazor UI (recommended)
 
 ```bash
 dotnet add package BieberWorks.SDK.Components.UI.MudBlazor
 ```
+
+This automatically includes `BieberWorks.SDK.Components` and all underlying layers via dependency chain.
 
 ### With custom UI framework
 
@@ -23,35 +18,39 @@ Use the UI Base classes to implement your own framework (FluentUI, MAUI, etc.):
 dotnet add package BieberWorks.SDK.Components.UI
 ```
 
+This also automatically pulls `BieberWorks.SDK.Components` and the contracts.
+
+### Minimal setup (services only, no UI)
+
+```bash
+dotnet add package BieberWorks.SDK.Components
+```
+
 ::: info Package source
 All packages are in GitHub Packages of the `BieberWorks` organization. A `nuget.config` with the `bieberworks` feed and a valid `PACKAGES_TOKEN` is required.
 :::
 
 ## Program.cs
 
-### Step 1: Register the module
-
-`ComponentsModule` implements `IModule`. Registration via `AddBieberWorksModules`:
+### Step 1: Add BieberWorks modules (automatic)
 
 ```csharp
 builder.Services.AddBieberWorksModules(builder.Configuration);
 ```
 
-`ComponentsModule.RegisterServices` is called automatically and registers:
+This automatically:
+1. Registers `ComponentsModule` (via module discovery)
+2. Registers all service abstractions:
+   - `IMarkdownParser` (default: `MarkdigParser`)
+   - `ICodeHighlighter` (default: `ColorCodeHighlighter`)
+   - `IRichTextSerializer` (default: `PassthroughRichTextSerializer`)
+3. **If MudBlazor UI is referenced:** automatically registers `ComponentsUiModule`, which registers the component factory and event handlers
 
-- `IMarkdownParser` (default: `MarkdigParser`)
-- `ICodeHighlighter` (default: `ColorCodeHighlighter`)
-- `IRichTextSerializer` (default: `PassthroughRichTextSerializer`)
+No additional `AddComponentsUi()` call is needed.
 
-### Step 2: Register UI (optional)
+### Step 2: Map Razor assemblies (if using MudBlazor UI)
 
-```csharp
-builder.Services.AddComponentsUi();
-```
-
-This registers the MudBlazor component factory and event handlers.
-
-### Step 3: Map Razor assemblies (if using MudBlazor UI)
+In `Program.cs`:
 
 ```csharp
 app.MapRazorComponents<App>()
@@ -61,7 +60,7 @@ app.MapRazorComponents<App>()
     );
 ```
 
-And in `Routes.razor`:
+In `Routes.razor`:
 
 ```razor
 <Router AppAssembly="typeof(App).Assembly"
