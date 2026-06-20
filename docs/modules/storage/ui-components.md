@@ -131,6 +131,84 @@ Detail view of a shared file (read-only).
 
 ## Shared components
 
+### BwFileUploadButton
+
+Styled upload button (MudBlazor) that wraps the native `<input type="file">` — no need for `IJSRuntime` in the consumer.
+
+#### Setup
+
+Add the script tag once in `App.razor` or `index.html`:
+
+```html
+<script src="_content/BieberWorks.SDK.Storage.UI.MudBlazor/bw-file-upload.js"></script>
+```
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `OnFileSelected` | `EventCallback<IBrowserFile>` | — | Fires after file selection (before upload) |
+| `OnUploaded` | `EventCallback<FileReference>` | — | Fires after successful upload (only if `UploadImmediately=true`) |
+| `Accept` | `string` | `"*/*"` | MIME filter for the file picker, e.g. `"image/*"` |
+| `MaxFileSizeMb` | `int` | `10` | Maximum file size in MB (client-side check) |
+| `Disabled` | `bool` | `false` | Disables the button |
+| `Label` | `string` | `"Datei auswählen"` | Button text |
+| `Variant` | `Variant` | `Variant.Filled` | MudBlazor button variant |
+| `Color` | `Color` | `Color.Primary` | MudBlazor button color |
+| `Size` | `Size` | `Size.Medium` | MudBlazor button size |
+| `UploadImmediately` | `bool` | `false` | If `true`: component calls `IStorageService` directly |
+| `Visibility` | `StorageFileVisibility` | `AppResource` | Visibility of the uploaded file |
+| `StorageKey` | `string?` | `null` | Optional filename override for the storage key |
+| `OwnerUserId` | `string?` | `null` | Optional user ID for file assignment (required if `UploadImmediately=true`) |
+
+#### Behavior
+
+- Automatically shows a loading spinner during upload (`UploadImmediately=true`)
+- File size exceeded → snackbar error message, no crash
+- Upload error → snackbar error message
+
+#### Example 1: File selection only (consumer handles upload)
+
+```razor
+<BwFileUploadButton
+    Accept="image/*"
+    MaxFileSizeMb="5"
+    OnFileSelected="@HandleFile" />
+
+@code {
+    private async Task HandleFile(IBrowserFile file)
+    {
+        await StorageService.UploadAsync(file.OpenReadStream(), file.Name, file.ContentType,
+            StorageFileVisibility.UserFile, ownerUserId: _userId);
+    }
+}
+```
+
+#### Example 2: Auto-upload with OwnerUserId
+
+```razor
+<BwFileUploadButton
+    Label="Profilbild hochladen"
+    Accept="image/*"
+    MaxFileSizeMb="2"
+    UploadImmediately="true"
+    Visibility="StorageFileVisibility.UserFile"
+    OwnerUserId="@_currentUserId"
+    OnUploaded="@(ref => _avatarUrl = ref.Url)" />
+```
+
+#### Example 3: Event image (no owner)
+
+```razor
+<BwFileUploadButton
+    Label="Bild hochladen"
+    Accept="image/*"
+    MaxFileSizeMb="10"
+    UploadImmediately="true"
+    Visibility="StorageFileVisibility.AppResource"
+    OnUploaded="@(ref => _imageUrl = ref.Url)" />
+```
+
 ### FileDetailView
 
 Reusable detail view for a single file. Used by admin and account detail pages.
