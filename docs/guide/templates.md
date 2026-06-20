@@ -369,38 +369,73 @@ src/MeinModul/
 
 ---
 
-## create-repo-Scripts
+## Repos anlegen — PowerShell-Modul
 
-Wenn ein neues Modul oder eine neue Anwendung als eigenes GitHub-Repo angelegt werden soll, erledigen die Scripts in `tooling/` die gesamte Infrastruktur: GitHub-Repo anlegen, Branches `main`/`staging`/`dev` (Default `dev`), CI-Workflows, `Directory.Build.props`, Solution.
+Das `BieberWorks.RepoSetup`-PowerShell-Modul erledigt die gesamte Repo-Infrastruktur: GitHub-Repo anlegen, Branches `main`/`staging`/`dev` (Default `dev`), CI-Workflows, `Directory.Build.props`, Solution und Template-Scaffolding.
 
-| Script                       | Passendes Template | Was es anlegt                                      |
-|------------------------------|--------------------|----------------------------------------------------|
-| `create-repo-module.ps1`     | `bw-module`        | NuGet-Modul-Repo (`*.Contracts` + Impl + Tests), CI/Release-Workflows |
-| `create-repo-api.ps1`        | `bw-api`           | API-Host-Repo, Docker-Support, CI-Workflow         |
-| `create-repo-wasm-api.ps1`   | `bw-wasm-api`      | WASM+API-Solution-Repo, CORS vorkonfiguriert       |
-| `create-repo-wasm.ps1`       | `bw-wasm`          | Reines WASM-Client-Repo                            |
-| `create-repo-web.ps1`        | `bw-blazor`        | Blazor Server App-Repo                             |
-| `create-repo-app.ps1`        | –                  | Allgemeine App (kein Template-Aequivalent)         |
-| `create-repo.ps1`            | –                  | Blanko-Repo (Basis fuer alles andere)              |
-
-Scripts werden **immer vom BieberWorks-Container-Root** aus aufgerufen, niemals aus dem Script-Verzeichnis heraus:
+### Installation (einmalig)
 
 ```powershell
-# Korrekt (vom Container-Root):
-& ".\tooling\powershell\github\create-repo-module.ps1" -RepoName SDK-MeinModul
+# Repository registrieren (PACKAGES_TOKEN = GitHub PAT mit read:packages)
+$cred = New-Object PSCredential("BieberWorks", (ConvertTo-SecureString "PACKAGES_TOKEN" -AsPlainText -Force))
+Register-PSRepository -Name BieberWorks `
+    -SourceLocation "https://nuget.pkg.github.com/BieberWorks/index.json" `
+    -InstallationPolicy Trusted -Credential $cred
 
-# Falsch – relativer Feed-Pfad bricht:
-cd tooling\powershell\github
-& ".\create-repo-module.ps1" -RepoName SDK-MeinModul
+Install-Module BieberWorks.RepoSetup -Repository BieberWorks -Credential $cred
 ```
 
-Nach der Repo-Anlage **PFLICHT**: Secrets setzen (sonst schlaegt CI mit 401 fehl):
+Danach von überall verfügbar — kein fester Aufrufpfad nötig.
+
+### Verfügbare Funktionen
+
+| Funktion | Passendes Template | Was es anlegt |
+|---|---|---|
+| `New-BwModuleRepo` | `bieberworks-module` | NuGet-Modul-Repo (`*.Contracts` + Impl + Tests), CI/Release-Workflows |
+| `New-BwApiRepo` | `bw-api` | API-Host-Repo, Docker-Support, CI-Workflow |
+| `New-BwWasmApiRepo` | `bw-wasm-api` | WASM+API-Solution-Repo, CORS vorkonfiguriert |
+| `New-BwWasmRepo` | `bw-wasm` | Reines WASM-Client-Repo |
+| `New-BwAppRepo` | `bw-blazor` | Blazor Server App-Repo |
+| `New-BwBlankRepo` | — | Blanko-Repo (Basis für alles andere) |
+
+### Beispiele
 
 ```powershell
-$t = Get-Content "C:\Users\biebe\source\repos\BieberWorks\.secrets.txt"
-gh secret set PACKAGES_TOKEN  --repo BieberWorks/<RepoName> --body ($t | Select-String "^ghp_"         | ForEach-Object { $_.Line.Trim() })
-gh secret set DISPATCH_TOKEN  --repo BieberWorks/<RepoName> --body ($t | Select-String "^github_pat_"  | ForEach-Object { $_.Line.Trim() })
+# Consumer-App unter p-bieber anlegen, Repo lokal in C:\repos\private\
+New-BwAppRepo -RepoName Portfolio -Owner p-bieber -TargetDirectory "C:\repos\private"
+
+# SDK-Modul unter BieberWorks anlegen (erzwingt SDK- Prefix)
+New-BwModuleRepo -RepoName SDK-Forum -Owner BieberWorks
+
+# Ohne -TargetDirectory: Repo landet im aktuellen Verzeichnis
+New-BwApiRepo -RepoName MyApi -Owner p-bieber
 ```
+
+### Parameter
+
+Alle Funktionen haben dieselbe Signatur:
+
+| Parameter | Pflicht | Beschreibung |
+|---|---|---|
+| `-RepoName` | ja | Name des Repos (z.B. `Portfolio`, `SDK-Forum`) |
+| `-Owner` | ja | GitHub-Org oder Account (z.B. `BieberWorks`, `p-bieber`) |
+| `-TargetDirectory` | nein | Lokaler Zielordner; Standard = aktuelles Verzeichnis |
+| `-Public` | nein | Switch — Repo öffentlich anlegen (Standard: privat) |
+
+### Nach der Repo-Anlage — Secrets setzen (PFLICHT)
+
+Ohne diese Secrets schlägt der CI mit 401 fehl:
+
+```powershell
+$t = Get-Content "C:\Users\bieber\source\repos\BieberWorks\.secrets.txt"
+gh secret set PACKAGES_TOKEN --repo <Owner>/<RepoName> --body ($t | Select-String "^ghp_"        | ForEach-Object { $_.Line.Trim() })
+gh secret set DISPATCH_TOKEN --repo <Owner>/<RepoName> --body ($t | Select-String "^github_pat_" | ForEach-Object { $_.Line.Trim() })
+```
+
+---
+
+## Token-Konfiguration (BIEBERWORKS_NUGET_TOKEN)
+
 
 ---
 

@@ -15,6 +15,17 @@ dotnet new install BieberWorks.Templates
 
 Danach stehen alle fünf Templates unter `dotnet new bw-*` zur Verfügung.
 
+## Repos anlegen (optional)
+
+Um ein neues GitHub-Repo mit vollständiger Infrastruktur (Branches, CI, Docker-Workflow) anzulegen, gibt es das `BieberWorks.RepoSetup`-PowerShell-Modul:
+
+```powershell
+Install-Module BieberWorks.RepoSetup -Repository BieberWorks -Credential $cred
+New-BwAppRepo -RepoName MeinProjekt -Owner p-bieber
+```
+
+Details: [Repos anlegen — PowerShell-Modul](./templates#repos-anlegen--powershell-modul)
+
 ## Verfügbare Templates
 
 | Template | Anwendungsfall | Befehl |
