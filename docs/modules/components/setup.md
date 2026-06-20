@@ -38,7 +38,7 @@ Add the following link to your `App.razor` (Blazor Server) or `index.html` (WASM
 <link rel="stylesheet" href="_content/BieberWorks.SDK.Components.UI.MudBlazor/bw-markdown.css" />
 ```
 
-This restores browser-default styles for `<hr>`, `<ul>`, `<ol>`, `<pre>`, `<code>`, `<blockquote>`, `<table>` etc. that MudBlazor resets globally.
+**Important:** MudBlazor resets all browser default styles. This stylesheet restores the rendering of Markdown elements (headings, lists, code blocks, tables, horizontal rules, blockquotes, etc.). Without this link, these elements will be displayed unstyled.
 
 ## Program.cs
 
