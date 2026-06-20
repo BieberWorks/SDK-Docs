@@ -114,6 +114,8 @@ export default defineConfig({
         text: 'Guides',
         items: [
           { text: 'Getting Started', link: '/guide/getting-started' },
+          { text: 'Templates', link: '/guide/templates' },
+          { text: 'Manuelle Integration', link: '/guide/manual-setup' },
           { text: 'NuGet Access', link: '/guide/nuget-access' },
           { text: 'Create a Module', link: '/guide/create-module' },
           { text: 'Migrations', link: '/guide/migrations' },
@@ -128,6 +130,8 @@ export default defineConfig({
           text: 'Guides',
           items: [
             { text: 'Getting Started', link: '/guide/getting-started' },
+            { text: 'Templates', link: '/guide/templates' },
+            { text: 'Manuelle Integration', link: '/guide/manual-setup' },
             { text: 'NuGet Access', link: '/guide/nuget-access' },
             { text: 'Create a Module', link: '/guide/create-module' },
             { text: 'Migrations', link: '/guide/migrations' },
