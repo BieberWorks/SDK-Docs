@@ -30,6 +30,16 @@ dotnet add package BieberWorks.SDK.Components
 All packages are in GitHub Packages of the `BieberWorks` organization. A `nuget.config` with the `bieberworks` feed and a valid `PACKAGES_TOKEN` is required.
 :::
 
+## CSS stylesheet
+
+Add the following link to your `App.razor` (Blazor Server) or `index.html` (WASM) inside `<head>`:
+
+```html
+<link rel="stylesheet" href="_content/BieberWorks.SDK.Components.UI.MudBlazor/bw-markdown.css" />
+```
+
+This restores browser-default styles for `<hr>`, `<ul>`, `<ol>`, `<pre>`, `<code>`, `<blockquote>`, `<table>` etc. that MudBlazor resets globally.
+
 ## Program.cs
 
 ### Step 1: Add BieberWorks modules (automatic)
