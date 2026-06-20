@@ -378,11 +378,11 @@ Das `BieberWorks.RepoSetup`-PowerShell-Modul erledigt die gesamte Repo-Infrastru
 ```powershell
 # Repository registrieren (PACKAGES_TOKEN = GitHub PAT mit read:packages)
 $cred = New-Object PSCredential("BieberWorks", (ConvertTo-SecureString "PACKAGES_TOKEN" -AsPlainText -Force))
-Register-PSRepository -Name BieberWorks `
-    -SourceLocation "https://nuget.pkg.github.com/BieberWorks/index.json" `
+Register-PSResourceRepository -Name BieberWorks `
+    -Uri "https://nuget.pkg.github.com/BieberWorks/index.json" `
     -InstallationPolicy Trusted -Credential $cred
 
-Install-Module BieberWorks.RepoSetup -Repository BieberWorks -Credential $cred
+Install-PSResource BieberWorks.RepoSetup -Repository BieberWorks -Credential $cred
 ```
 
 Danach von überall verfügbar — kein fester Aufrufpfad nötig.
