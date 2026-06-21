@@ -1,10 +1,23 @@
 # Changelog
 
-## Unreleased
+## v0.1.3
 
-### Changed
-- `ComponentsModule` now auto-registers `ComponentsUiModule` when `BieberWorks.SDK.Components.UI.MudBlazor` is referenced, eliminating the need for manual `AddComponentsUi()` calls
-- `ComponentsUI` now depends on `ComponentsModule`, creating an automatic dependency chain; adding only `BieberWorks.SDK.Components.UI.MudBlazor` is sufficient
+### fix: decouple Components.UI from the implementation to eliminate transitive HtmlSanitizer/AngleSharp dependency
+
+`Components.UI.csproj` previously held a direct `ProjectReference` to `Components.csproj`
+(the implementation), which caused `HtmlSanitizer 9.x` (and its `AngleSharp 0.17.1`
+requirement) to flow transitively to every consumer of `BieberWorks.SDK.Components.UI`.
+Consumer test projects using bUnit 2.7+ (AngleSharp 1.4.0) received `NU1608` warnings.
+
+**Changes:**
+- `Components.UI.csproj`: removed `ProjectReference` to `Components.csproj`; now references only `Components.Contracts`.
+- `ComponentsUiModule`: removed the `AddModule<ComponentsModule>()` call (and the associated `using`). The `.UI` layer is now a pure base-class / contract consumer.
+- `Components.UI.MudBlazor.csproj`: added direct `ProjectReference` to `Components.csproj`.
+- `ComponentsUiMudBlazorModule`: now calls both `AddModule<ComponentsModule>()` and `AddModule<ComponentsUiModule>()` to preserve the full wiring chain.
+
+Sanitizing functionality (`HtmlSanitizer` in `MarkdigParser`) is fully preserved.
+Consumers of `BieberWorks.SDK.Components.UI` no longer see `NU1608`; bUnit test projects
+do not need `<NoWarn>` entries.
 
 ---
 
