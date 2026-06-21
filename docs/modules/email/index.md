@@ -6,17 +6,17 @@ The module **BieberWorks.SDK.Email** provides a MailKit-based SMTP send facility
 
 | NuGet package | Contents | Reference |
 |---|---|---|
-| `BieberWorks.SDK.Email.Contracts` | `IEmailSender`, `IEmailTemplateProvider`, `IEmailTemplateRenderer`, `EmailMessage`, `EmailAttachment`, `EmailSettings`, `EmbeddedEmailTemplateProvider`, `EmailTemplateProviderOrder` | other modules |
-| `BieberWorks.SDK.Email` | `EmailModule`, `SmtpEmailSender`, `LoggingEmailSender`, `FileSystemEmailTemplateProvider`, `EmailTemplateRenderer` | host |
+| `BieberWorks.SDK.Email.Contracts` | `IEmailSender`, `IEmailTemplateProvider`, `IEmailTemplateRenderer`, `EmailMessage`, `EmailAttachment`, `EmailSettings`, `EmailRateLimitOptions`, `EmailRateLimitExceededException`, `EmbeddedEmailTemplateProvider`, `EmailTemplateProviderOrder` | other modules |
+| `BieberWorks.SDK.Email` | `EmailModule`, `SmtpEmailSender`, `LoggingEmailSender`, `RateLimitedEmailSender`, `FileSystemEmailTemplateProvider`, `EmailTemplateRenderer` | host |
 
-**Current version:** `v0.6.0`
+**Current version:** `v0.9.0`
 
 ## Interfaces at a glance
 
 | Interface | Registration | Purpose |
 |---|---|---|
 | `IEmailSender` | Scoped | Send email (`SendAsync`) |
-| `IEmailTemplateRenderer` | Singleton | Render template (`Render`) |
+| `IEmailTemplateRenderer` | Scoped | Render template (`Render`) |
 | `IEmailTemplateProvider` | Singleton, multiple possible | Provide template HTML (`TryGetTemplate`) |
 
 ## Template Provider priority

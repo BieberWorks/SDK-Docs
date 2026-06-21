@@ -61,6 +61,55 @@ dotnet user-secrets set "Email:Password" "your-password"
 ```
 :::
 
+## Rate limiting (opt-in)
+
+`EmailModule` can optionally wrap the registered `IEmailSender` with a rate-limiting decorator.
+The decorator is only active when at least one non-zero limit is configured under `Email:RateLimit`.
+When disabled (the default), behaviour is identical to the undecorated sender.
+
+```json
+{
+  "Email": {
+    "RateLimit": {
+      "MaxPerMinuteTotal": 10,
+      "MaxPerHourTotal": 100,
+      "MaxPerHourPerRecipient": 5
+    }
+  }
+}
+```
+
+| Property | Default | Meaning |
+|---|---|---|
+| `MaxPerMinuteTotal` | `0` (off) | Maximum emails sent globally within any 60-second window |
+| `MaxPerHourTotal` | `0` (off) | Maximum emails sent globally within any 60-minute window |
+| `MaxPerHourPerRecipient` | `0` (off) | Maximum emails sent to a single `To` address within any 60-minute window |
+
+When a limit is exceeded, `RateLimitedEmailSender` throws `EmailRateLimitExceededException`.
+Catch it at the call site and surface a user-friendly message (e.g. "Please wait before sending another message.").
+
+```csharp
+try
+{
+    await emailSender.SendAsync(message, ct);
+}
+catch (EmailRateLimitExceededException ex)
+{
+    // ex.LimitKind: GlobalPerMinute | GlobalPerHour | PerRecipientPerHour
+    logger.LogWarning("Email send blocked by rate limit: {Kind}", ex.LimitKind);
+    // Return HTTP 429 / show user-friendly message
+}
+```
+
+::: warning IP-based throttling belongs in the consumer, not here
+`IEmailSender` has no knowledge of the caller's IP address.
+IP-level throttling must be implemented at the HTTP request layer using
+ASP.NET Core's built-in `AddRateLimiter` middleware on the endpoint that triggers the email send
+(e.g. a contact-form minimal-API handler or controller action).
+The email-layer limits above are complementary: they protect the SMTP relay from overall volume
+and per-recipient spam, independent of network topology.
+:::
+
 ### Development without SMTP
 
 For local development, leave `UseSmtp: false`. The `LoggingEmailSender` writes all outgoing emails as `Information` log:
