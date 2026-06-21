@@ -223,58 +223,91 @@ Feature modules (e.g. `Experience`, `Projects`, or any other domain module) **mu
 
 > `*.UI.MudBlazor → *.UI.MudBlazor` cross-package references are forbidden.
 
-`BwFileUploadButton` is a MudBlazor UI component. A feature module that renders it would need to reference the package directly, which creates a forbidden cross-module UI coupling. The component will remain out-of-reach for feature module Razor pages by design.
+`BwFileUploadButton` is a MudBlazor UI component that lives inside `Storage.UI.MudBlazor`. A feature module that rendered it directly would need to reference the package, which creates a forbidden cross-module UI coupling. `BwFileUploadButton` is intended exclusively for the host and for Storage's own built-in admin/account pages.
 
-`FileReference` and `StorageFileVisibility` are already in `BieberWorks.SDK.Storage.Contracts` — that package is safe to reference from any module. The problem is only ever the _component_, not the types.
+`FileReference` and `StorageFileVisibility` are already in `BieberWorks.SDK.Storage.Contracts` — that package is safe to reference from any module. The restriction covers the _component_, not the types.
 
 ### Correct approach: two patterns
 
-#### Pattern A — Upload handled by the feature module's own code (contracts-only)
+#### Pattern A — Feature module builds its own upload UI (recommended)
 
-The feature module references only `BieberWorks.SDK.Storage.Contracts` and injects `IStorageService`. It builds its own upload UI (a plain `<InputFile>` or any other element) and calls `IStorageService.UploadAsync` directly. No reference to `Storage.UI.MudBlazor` is required.
+The feature module references only `BieberWorks.SDK.Storage.Contracts`, injects `IStorageService`, and uses MudBlazor primitives it already has access to (`MudFileUpload` or plain `InputFile`). No reference to `Storage.UI.MudBlazor` is required.
 
-```csharp
-// In the feature module's own .csproj — the only storage reference needed:
-// <PackageReference Include="BieberWorks.SDK.Storage.Contracts" Version="0.*-*" />
+`.csproj` — the only storage reference needed:
+
+```xml
+<PackageReference Include="BieberWorks.SDK.Storage.Contracts" Version="0.*-*" />
 ```
 
-```razor
-@* Feature module's own Razor page — no Storage.UI.MudBlazor reference *@
-@inject IStorageService StorageService
+Razor page — using `MudFileUpload` (preferred for feature modules that already use MudBlazor):
 
-<InputFile OnChange="HandleUploadAsync" accept="image/*" />
+```razor
+@* ProjectsAdminPage.razor — feature module Razor page, no Storage.UI.MudBlazor reference *@
+@inject IStorageService StorageService
+@inject ISnackbar Snackbar
+
+<MudFileUpload T="IBrowserFile" FilesChanged="HandleUploadAsync" Accept="image/*">
+    <ActivatorContent>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile">
+            Upload image
+        </MudButton>
+    </ActivatorContent>
+</MudFileUpload>
+
+@if (_coverImageUrl is not null)
+{
+    <MudImage Src="@_coverImageUrl" Alt="Cover image" />
+}
 
 @code {
-    private async Task HandleUploadAsync(InputFileChangeEventArgs e)
+    private string? _coverImageUrl;
+    private Guid? _currentUserId; // resolved from auth state in OnInitializedAsync
+
+    private const long MaxBytes = 10L * 1024 * 1024; // 10 MB
+
+    private async Task HandleUploadAsync(IBrowserFile file)
     {
-        var file = e.File;
-        long maxBytes = 10L * 1024 * 1024;
-        if (file.Size > maxBytes) { /* show your own error */ return; }
+        if (file.Size > MaxBytes)
+        {
+            Snackbar.Add("File exceeds 10 MB limit.", Severity.Warning);
+            return;
+        }
 
-        await using var stream = file.OpenReadStream(maxBytes);
-        FileReference reference = await StorageService.UploadAsync(
-            stream,
-            file.Name,
-            file.ContentType,
-            ownerUserId: _currentUserId,
-            sizeBytes: file.Size,
-            visibility: StorageFileVisibility.UserFile);
+        try
+        {
+            await using var stream = file.OpenReadStream(MaxBytes);
 
-        _uploadedUrl = reference.Url;
+            FileReference reference = await StorageService.UploadAsync(
+                content:     stream,
+                fileName:    file.Name,
+                contentType: file.ContentType,
+                ownerUserId: _currentUserId,
+                sizeBytes:   file.Size,
+                visibility:  StorageFileVisibility.UserFile);
+
+            _coverImageUrl = reference.Url;
+            Snackbar.Add("Image uploaded.", Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Upload failed. Please try again.", Severity.Error);
+        }
     }
 }
 ```
 
-This is the cleanest option and has no new dependencies.
+`IStorageService.UploadAsync` returns a `FileReference` that exposes `Url` (the resolvable public URL) and `FileId` (a `Guid` for later metadata lookups or deletion).
+
+This pattern requires approximately 30 lines and has zero additional package dependencies beyond `Storage.Contracts`.
 
 #### Pattern B — Host composes `BwFileUploadButton` as a `RenderFragment` slot
 
-The host (which already references all UI packages) owns the `BwFileUploadButton` instance and passes it into the feature module's page via a `RenderFragment` parameter. The feature module page exposes a slot, the host fills it. No forbidden reference is introduced.
+When you want to reuse `BwFileUploadButton`'s built-in loading spinner and snackbar error handling, the host (which already references all UI packages) can own the button instance and pass it into the feature module's page as a `RenderFragment` parameter.
 
-Feature module page (only `Storage.Contracts` referenced):
+Feature module page — declares a slot (only `Storage.Contracts` referenced):
 
 ```razor
-@* Feature module page — declares a slot for the upload widget *@
+@* Feature module page — slot for an externally provided upload widget *@
 
 @if (UploadWidget is not null)
 {
@@ -282,36 +315,48 @@ Feature module page (only `Storage.Contracts` referenced):
 }
 
 @code {
-    /// <summary>Injected by the host. Renders the upload widget without a direct UI package reference.</summary>
+    /// <summary>Provided by the host. Renders the upload button without a direct UI package reference.</summary>
     [Parameter] public RenderFragment? UploadWidget { get; set; }
+
+    /// <summary>Called by the host after a successful upload.</summary>
+    [Parameter] public EventCallback<FileReference> OnUploaded { get; set; }
 }
 ```
 
-Host composition in a parent layout or wrapper (host references `Storage.UI.MudBlazor`):
+Host wrapper — composes `BwFileUploadButton` into the slot (host references `Storage.UI.MudBlazor`):
 
 ```razor
-@* Host wrapper — composes BwFileUploadButton into the feature page's slot *@
+@* Host wrapper page — fills the feature module's upload slot *@
 
-<ExperienceUploadSection>
+<ProjectsAdminPage OnUploaded="@HandleUploaded">
     <UploadWidget>
         <BwFileUploadButton
             Accept="image/*"
-            MaxFileSizeMb="5"
+            MaxFileSizeMb="10"
             UploadImmediately="true"
             Visibility="StorageFileVisibility.UserFile"
             OwnerUserId="@_userId"
-            OnUploaded="@(ref => _imageUrl = ref.Url)" />
+            OnUploaded="@(r => InvokeAsync(() => HandleUploaded(r)))" />
     </UploadWidget>
-</ExperienceUploadSection>
+</ProjectsAdminPage>
+
+@code {
+    private string? _userId; // from auth state
+
+    private void HandleUploaded(FileReference reference)
+    {
+        // notify feature module or update host-level state
+    }
+}
 ```
 
 ::: tip When to use which pattern
-- Use **Pattern A** (contracts-only) when the feature module's upload logic needs precise control (error handling, progress, custom metadata). This is the default recommendation.
-- Use **Pattern B** (host-composed slot) when you want to reuse `BwFileUploadButton`'s built-in loading state, snackbar errors, and size check without duplicating that logic across modules.
+- Use **Pattern A** (contracts-only) for the majority of cases. It is self-contained, testable, and requires no coordination between host and feature module. If your feature module already depends on MudBlazor, there is no reason to avoid `MudFileUpload`.
+- Use **Pattern B** (host-composed slot) only when you explicitly want to centralise upload error handling in the host and avoid duplicating snackbar/spinner logic across multiple feature modules. The trade-off is that the host must know about and wire up each upload slot.
 :::
 
-::: warning Do not create a new abstractions package
-`FileReference` and `StorageFileVisibility` already live in `Storage.Contracts`. Adding an extra `Storage.UI.Abstractions` package for an upload-widget interface would be over-engineering. Patterns A and B above solve the problem with zero new packages.
+::: warning Do not add a new abstractions package
+`FileReference` and `StorageFileVisibility` already live in `Storage.Contracts`. An extra `Storage.UI.Abstractions` package for an upload-widget interface would solve the same problem as Pattern A with significant added maintenance overhead. Use Pattern A.
 :::
 
 ---
