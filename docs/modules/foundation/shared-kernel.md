@@ -174,3 +174,108 @@ public interface IDomainError
     DomainErrorType Type { get; }
 }
 ```
+
+## LocalizedText
+
+`LocalizedText` is an immutable, culture-open in-memory value object that holds multilingual text and resolves it via a three-tier fallback strategy.
+
+**Design principle:** `LocalizedText` has **no EF Core or persistence dependency**. Mapping it to the database (e.g. as a JSON column or a companion translation table) is the responsibility of the consuming module's `DbContext`.
+
+### Fallback Strategy
+
+Resolution is attempted in this order:
+
+1. **Exact match** — e.g. `"de-AT"` finds `"de-AT"` directly.
+2. **Language-only match** — e.g. `"de-CH"` falls back to `"de"` when `"de-CH"` is absent.
+3. **Language-prefix scan** — e.g. `"de-CH"` falls back to `"de-AT"` when only a regional variant exists.
+4. **First available** — any stored translation when nothing else matches.
+5. `null` when the instance is empty.
+
+### Usage
+
+```csharp
+// Inline construction via tuple factory
+var title = LocalizedText.From(("en", "Welcome"), ("de", "Willkommen"));
+
+// Resolve with an explicit culture name
+string? text = title.Get("de");            // "Willkommen"
+string? text = title.Get("de-CH");         // "Willkommen" (language fallback)
+
+// Resolve via the current user's ILanguageService (injected in your component/service)
+string? text = title.Get(languageService); // uses languageService.CurrentCulture
+
+// Resolve via CultureInfo
+string? text = title.Get(CultureInfo.CurrentUICulture);
+
+// Non-throwing TryGet variant
+if (title.TryGet("fr", out var french))
+    Console.WriteLine(french);
+
+// Dictionary-based construction (useful when loading from a DB or config)
+var descriptions = new Dictionary<string, string>
+{
+    ["en"] = "A great product",
+    ["de"] = "Ein tolles Produkt",
+};
+var desc = new LocalizedText(descriptions);
+```
+
+### Persisting LocalizedText (consumer DbContext responsibility)
+
+SharedKernel contains no EF Core dependency. Choose a persistence strategy in your module's `DbContext`:
+
+**Option A — JSON column (single row)**
+
+```csharp
+// In OnModelCreating:
+builder.Property(e => e.Title)
+    .HasConversion(
+        v => JsonSerializer.Serialize(v, null as JsonSerializerOptions),
+        v => JsonSerializer.Deserialize<LocalizedText>(v, null as JsonSerializerOptions)!
+    )
+    .HasColumnType("jsonb"); // PostgreSQL; use "nvarchar(max)" / "text" for others
+```
+
+**Option B — companion translation table (1:n)**
+
+```csharp
+// Separate PageTranslation entity with Culture + Text columns;
+// reconstruct LocalizedText after loading:
+var text = new LocalizedText(
+    translations.ToDictionary(t => t.Culture, t => t.Text));
+```
+
+## ISingletonEntity
+
+`ISingletonEntity` is a marker interface for entities that must exist exactly once in the database — the "singleton entity" pattern where `Id = 1` is enforced by a check constraint.
+
+**Why only a marker?** SharedKernel is intentionally dependency-free. An EF Core Fluent API helper (`HasSingletonConstraint()`) would require an EF Core `PackageReference`, which violates the federleichter Kern principle. Three lines of EF Core configuration do not justify that coupling.
+
+### Implementation
+
+```csharp
+public class AppConfig : ISingletonEntity
+{
+    public int Id { get; set; } = 1;
+    public string Theme { get; set; } = "light";
+    // ... other settings
+}
+```
+
+### EF Core Convention Snippet (copy into your module's DbContext)
+
+```csharp
+// In OnModelCreating (or an IEntityTypeConfiguration<AppConfig>):
+modelBuilder.Entity<AppConfig>(b =>
+{
+    // Enforce exactly one row at the database level
+    b.ToTable(t => t.HasCheckConstraint("CK_AppConfig_SingletonId", "\"Id\" = 1"));
+
+    // Seed the single row so it is always present after migration
+    b.HasData(new AppConfig { Id = 1, Theme = "light" });
+});
+```
+
+> **Note:** Adjust the quoted identifier style (`"Id"` vs `Id`) to match your database provider's quoting rules. PostgreSQL uses double quotes; SQL Server uses brackets (`[Id]`).
+
+The check constraint name follows the convention `CK_{TableName}_SingletonId`.
