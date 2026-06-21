@@ -247,16 +247,23 @@ var text = new LocalizedText(
 
 ## ISingletonEntity
 
-`ISingletonEntity` is a marker interface for entities that must exist exactly once in the database — the "singleton entity" pattern where `Id = 1` is enforced by a check constraint.
+`ISingletonEntity` is a pure marker interface (no members) for entities that must exist exactly once in the database — the "singleton entity" pattern.
 
-**Why only a marker?** SharedKernel is intentionally dependency-free. An EF Core Fluent API helper (`HasSingletonConstraint()`) would require an EF Core `PackageReference`, which violates the federleichter Kern principle. Three lines of EF Core configuration do not justify that coupling.
+**Why member-less?** The entity's primary key type and value are already provided by `EntityBase` (`Guid Id`). Declaring an `int Id` member on the marker would conflict with the `Guid` key from the base class and serve no purpose. The marker's sole role is intent-tagging, which requires no members.
+
+**Why only a marker?** SharedKernel is intentionally dependency-free. An EF Core Fluent API helper (`HasSingletonConstraint()`) would require an EF Core `PackageReference`, which violates the dependency-free principle. The database-level enforcement belongs in the consuming module's `DbContext`.
 
 ### Implementation
 
+Because SDK entities derive from `EntityBase` (which provides `Guid Id`), identify the singleton row with a well-known `Guid` constant rather than an integer:
+
 ```csharp
-public class AppConfig : ISingletonEntity
+public class AppConfig : EntityBase, ISingletonEntity
 {
-    public int Id { get; set; } = 1;
+    // Well-known identifier — fixed, never generated at runtime
+    public static readonly Guid SingletonId =
+        new("00000000-0000-0000-0000-000000000001");
+
     public string Theme { get; set; } = "light";
     // ... other settings
 }
@@ -269,10 +276,12 @@ public class AppConfig : ISingletonEntity
 modelBuilder.Entity<AppConfig>(b =>
 {
     // Enforce exactly one row at the database level
-    b.ToTable(t => t.HasCheckConstraint("CK_AppConfig_SingletonId", "\"Id\" = 1"));
+    b.ToTable(t => t.HasCheckConstraint(
+        "CK_AppConfig_SingletonId",
+        $"\"Id\" = '{AppConfig.SingletonId}'"));
 
     // Seed the single row so it is always present after migration
-    b.HasData(new AppConfig { Id = 1, Theme = "light" });
+    b.HasData(new AppConfig { Id = AppConfig.SingletonId, Theme = "light" });
 });
 ```
 
