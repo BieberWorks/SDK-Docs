@@ -31,6 +31,13 @@ builder.Services.AddBieberWorksModules(builder.Configuration,
     new UserManagementModule()   // optional
 );
 
+// 1b. Optional: AppBar-Widget konfigurieren (erfordert Auth.UI.MudBlazor)
+builder.Services.AddAuthUi(options =>
+{
+    options.AppBar.ShowRegister = false;          // Register-Button ausblenden
+    options.AppBar.AnonymousMode = AnonymousAppBarMode.IconOnly; // nur Icon, kein Text
+});
+
 // 2. Register Blazor component assemblies (if Auth.UI.MudBlazor is used)
 builder.Services
     .AddRazorComponents()
@@ -114,6 +121,70 @@ Cookie settings are defined in code and come from `AuthModule`:
 | Lifetime | 8 hours |
 
 When accessing without a cookie (e.g., API client with `Authorization: Bearer …`), the `Smart` policy scheme automatically switches to JWT Bearer.
+
+## AppBar-Widget konfigurieren
+
+`AddAuthUi()` akzeptiert optional einen `Action<AuthUiOptions>`-Delegate. Wird er weggelassen, gelten die Defaults (Register-Button sichtbar, Login mit Text+Icon).
+
+```csharp
+builder.Services.AddAuthUi(options =>
+{
+    // Register-Button für anonyme Nutzer ausblenden
+    options.AppBar.ShowRegister = false;
+
+    // Login-Button im anonymen Zustand: nur Icon, kein Label
+    options.AppBar.AnonymousMode = AnonymousAppBarMode.IconOnly;
+});
+```
+
+| Option | Typ | Default | Beschreibung |
+|---|---|---|---|
+| `AppBar.ShowRegister` | `bool` | `true` | Register-Button für anonyme Nutzer anzeigen |
+| `AppBar.AnonymousMode` | `AnonymousAppBarMode` | `Full` | `Full` = Text+Icon, `IconOnly` = nur Icon |
+
+> `using BieberWorks.SDK.Auth.UI.Options;` ist nötig, wenn `AnonymousAppBarMode` direkt referenziert wird.
+
+## Admin Bootstrap (first-run seed)
+
+The Auth module can create an initial Admin user on startup so that a fresh deployment has at least one privileged account without custom seeder code. The feature is **opt-in** (`SeedAdmin` defaults to `false`) and **idempotent** — it only runs when no user with the `Admin` role exists yet.
+
+### appsettings.json / environment
+
+```json
+{
+  "Auth": {
+    "Bootstrap": {
+      "SeedAdmin": true,
+      "Email": "admin@example.com",
+      "Password": "<set-via-secrets-not-here>"
+    }
+  }
+}
+```
+
+::: danger Password must never be committed
+`Auth:Bootstrap:Password` must **not** appear in `appsettings.json` or any file checked into source control. Supply it via `dotnet user-secrets` for local development and via environment variables / a secrets manager in production:
+
+```bash
+dotnet user-secrets set "Auth:Bootstrap:Password" "MyStr0ngP@ss!"
+```
+
+Or as an environment variable (ASP.NET Core flattens `:` to `__`):
+
+```
+Auth__Bootstrap__Password=MyStr0ngP@ss!
+```
+
+Change the bootstrap password after the first login.
+:::
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `Auth:Bootstrap:SeedAdmin` | `bool` | `false` | Enable the bootstrap seed (opt-in) |
+| `Auth:Bootstrap:Email` | `string` | — | E-mail address of the bootstrap admin user |
+| `Auth:Bootstrap:Password` | `string` | — | Initial password — supply via user-secrets or env, never appsettings |
+
+If `SeedAdmin` is `true` but `Email` or `Password` is missing, the seeder logs a warning and skips — the application continues to start normally.
 
 ## Migrations
 

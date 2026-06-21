@@ -74,15 +74,27 @@ Admin pages implement `IAdminPage` and automatically appear in admin navigation 
 
 ### UserMenu.razor
 
-Shows a user menu in the AppBar (name, avatar initials, logout link). Implements `IAppBarComponent` from `SDK-UI`.
+Zeigt ein User-Menü in der AppBar (Avatar/Initialen, Name, E-Mail, Logout-Link). Implementiert `IAppBarWidget` aus `SDK-UI` und wird automatisch per DI-Discovery eingebunden — kein manueller Razor-Code nötig.
 
-```razor
-@* Include in your own AppBar component: *@
-@foreach (var component in AppBarComponents)
+#### Verhalten
+
+| Zustand | Default | Konfigurierbar |
+|---|---|---|
+| Eingeloggt | Avatar-Icon mit Dropdown (Profil, Admin, Logout) | — |
+| Anonym | Login + Register als Text-Buttons | `AnonymousMode`, `ShowRegister` |
+
+#### Konfiguration via `AddAuthUi()`
+
+```csharp
+// Program.cs
+builder.Services.AddAuthUi(options =>
 {
-    <DynamicComponent Type="component.GetType()" />
-}
+    options.AppBar.ShowRegister = false;
+    options.AppBar.AnonymousMode = AnonymousAppBarMode.IconOnly;
+});
 ```
+
+Siehe [Setup → AppBar-Widget konfigurieren](setup.md#appbar-widget-konfigurieren) für alle verfügbaren Optionen.
 
 ## Localization
 
