@@ -86,4 +86,4 @@ The user-facing inbox is at `/account/notifications`. It requires `SDK-Account` 
 
 ## Admin Page
 
-Admin management UI at `/admin/notifications`. Requires `SDK-Admin` and the `notifications:admin:view` permission (granted via `SDK-Auth` role management).
+Admin management UI at `/admin/notifications`. Requires `SDK-Admin` and the `perm:notifications.admin.view` permission (granted via `SDK-Auth` role management).

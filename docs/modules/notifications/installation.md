@@ -44,16 +44,21 @@ await app.InitializeBieberWorksModulesAsync();
 
 ## Routes.razor
 
-`AddBwModuleAssemblies` auto-discovers the Notifications UI assembly. If using manual assembly registration instead:
+Add the `UI.MudBlazor` assembly to the Router AND to `MapRazorComponents`:
 
 ```razor
 @* Routes.razor *@
-<BwThemeProvider>
 <Router AppAssembly="typeof(App).Assembly"
         AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Notifications.UI.MudBlazor.NotificationBell).Assembly }">
     ...
 </Router>
-</BwThemeProvider>
+```
+
+```csharp
+// Program.cs
+app.MapRazorComponents<App>()
+   .AddInteractiveServerRenderMode()
+   .AddAdditionalAssemblies(typeof(BieberWorks.SDK.Notifications.UI.MudBlazor.NotificationBell).Assembly);
 ```
 
 ## AppBar Widget
@@ -65,7 +70,3 @@ Place the `NotificationBell` inside your AppBar (e.g. inside `SDK-UI` `AppBarRig
 ```
 
 The component requires authentication state to be available (`AuthenticationStateProvider`).
-
-::: tip Automatic AppBar integration
-If using `AdminLayout` or `AccountLayout` from SDK-Admin / SDK-Account, the `NotificationBell` is registered as an `IAppBarWidget` automatically by `AddNotificationsUi()` — no manual placement needed.
-:::
