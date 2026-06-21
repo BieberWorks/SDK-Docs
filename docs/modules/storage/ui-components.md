@@ -219,11 +219,15 @@ Reusable detail view for a single file. Used by admin and account detail pages.
 
 ### The rule: do not reference `Storage.UI.MudBlazor` from a feature module
 
-Feature modules (e.g. `Experience`, `Projects`, or any other domain module) **must not** take a `PackageReference` on `BieberWorks.SDK.Storage.UI.MudBlazor`. This is enforced by SDK UI-Dependency Rule 3:
+Feature modules (e.g. `Experience`, `Projects`, or any other domain module) **must not** take a `PackageReference` on `BieberWorks.SDK.Storage.UI.MudBlazor`. The governing rule is SDK UI-Dependency **Rule 2** (the layering rule), not Rule 3:
 
-> `*.UI.MudBlazor → *.UI.MudBlazor` cross-package references are forbidden.
+> Only `SDK-UI` is the shared UI layer. Feature modules may take a shared-UI dependency **only** on `BieberWorks.SDK.UI.Contracts` and/or `BieberWorks.SDK.UI.MudBlazor`. A feature module must not reference the `.UI.MudBlazor` package of another feature module.
 
-`BwFileUploadButton` is a MudBlazor UI component that lives inside `Storage.UI.MudBlazor`. A feature module that rendered it directly would need to reference the package, which creates a forbidden cross-module UI coupling. `BwFileUploadButton` is intended exclusively for the host and for Storage's own built-in admin/account pages.
+This is a **layering** rule, not a transitive-dependency-hygiene rule. It holds even though `Storage.UI.MudBlazor`'s nuspec is clean (it depends only on `*.Contracts` packages + `MudBlazor` + `Markdig`, and pulls in **no** implementation package). The point is not "it drags foreign implementation in" — it does not. The point is that `Storage.UI.MudBlazor` is **not** the shared UI layer (`SDK-UI` is), so referencing it from `Projects`/`Experience` couples one feature module to another feature module's UI. That coupling also pins those modules to Storage's MudBlazor version and ties their static web assets together across module boundaries.
+
+(Rule 3 — "no `*.UI.MudBlazor → *.UI.MudBlazor`" — is a separate, package-graph hygiene rule. A feature module is not itself a `.UI.MudBlazor` package, so Rule 3 alone would not catch this case. Rule 2 is what makes the reference off-pattern.)
+
+`BwFileUploadButton` is a MudBlazor UI component that lives inside `Storage.UI.MudBlazor`. It is intended exclusively for the host and for Storage's own built-in admin/account pages.
 
 `FileReference` and `StorageFileVisibility` are already in `BieberWorks.SDK.Storage.Contracts` — that package is safe to reference from any module. The restriction covers the _component_, not the types.
 
