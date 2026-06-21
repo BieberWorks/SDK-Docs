@@ -35,6 +35,17 @@ builder.Services.AddPagesModule(builder.Configuration, o =>
             ? $"Route /{slug} is already reserved by the application."
             : null;
 });
+
+// Option C — per-category route prefixes (/blog/{slug} + /legal/{slug})
+builder.Services.AddPagesModule(builder.Configuration, o =>
+{
+    o.RoutePrefix = "p";                         // fallback for uncategorised pages
+    o.CategoryPrefixes = new Dictionary<string, string>
+    {
+        ["blog"]  = "blog",    // pages with Category="blog"  → /blog/{slug}
+        ["legal"] = "legal",   // pages with Category="legal" → /legal/{slug}
+    };
+});
 builder.Services.AddPagesUi();
 ```
 
@@ -76,6 +87,11 @@ The module resolves the connection string in this order: `PagesDb` → `DefaultC
 Migrations are applied automatically on startup via `IModuleInitializer.InitializeAsync`. After migration, registered `IPageProvider` instances are seeded idempotently.
 
 **PostgreSQL schema:** `pages`
+
+> **v0.0.4 BREAKING:** `Title`/`Body`/`MetaDescription` moved to the new
+> `pages.page_translations` child table. Existing data is automatically migrated
+> (preserved as `Culture = "en"`). See [content-model.md](content-model.md) for
+> the full migration guide and updated DTO shape.
 
 ## Assembly discovery
 

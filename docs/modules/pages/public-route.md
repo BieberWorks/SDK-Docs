@@ -18,6 +18,8 @@ At runtime, only one prefix is active depending on `PagesOptions.RoutePrefix`:
 
 Both directives are always compiled into the assembly; the correct one is matched by the router based on the actual URL structure.
 
+**Category-specific prefixes** (e.g. `/blog/{slug}`) are not matched by these static templates. See [routing.md](routing.md) for the full explanation and workaround options.
+
 ## 404 Semantics
 
 `IPageService.GetPublishedBySlugAsync` returns `null` in two cases:
@@ -49,17 +51,24 @@ The check is performed in `PublicPageBase.OnParametersSetAsync` using `ClaimsPri
 
 Located in `src/BieberWorks.SDK.Pages.UI.MudBlazor/Components/PagesAccessDenied.razor`.
 
-## PagesOptions.RoutePrefix Configuration
+## PagesOptions Configuration
 
 ```csharp
 public sealed class PagesOptions
 {
     /// <summary>
-    /// Prefix for all public page routes.
+    /// Global fallback prefix for all public page routes.
     /// "" = no prefix → /{slug}
     /// Default: "p" → /p/{slug}
     /// </summary>
     public string RoutePrefix { get; set; } = "p";
+
+    /// <summary>
+    /// Per-category route prefixes. Key = category name, Value = prefix.
+    /// Pages with a matching Category use this prefix instead of RoutePrefix.
+    /// Pages with Category = null or an unknown category fall back to RoutePrefix.
+    /// </summary>
+    public Dictionary<string, string> CategoryPrefixes { get; set; } = [];
 
     /// <summary>
     /// Optional callback to validate slugs against reserved host routes.
@@ -75,14 +84,15 @@ Configure via `AddPagesModule`:
 // No prefix: pages accessible at /{slug}
 builder.Services.AddPagesModule(builder.Configuration, o => o.RoutePrefix = "");
 
-// With conflict validator:
+// Category-specific prefixes:
 builder.Services.AddPagesModule(builder.Configuration, o =>
 {
-    o.RoutePrefix = "";
-    o.RouteConflictValidator = slug =>
-        ReservedRoutes.Contains(slug)
-            ? $"Route /{slug} is reserved by the application."
-            : null;
+    o.RoutePrefix = "p";
+    o.CategoryPrefixes = new Dictionary<string, string>
+    {
+        ["blog"]  = "blog",
+        ["legal"] = "legal",
+    };
 });
 ```
 
