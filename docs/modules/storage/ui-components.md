@@ -209,6 +209,33 @@ Add the script tag once in `App.razor` or `index.html`:
     OnUploaded="@(ref => _imageUrl = ref.Url)" />
 ```
 
+### BwFilePreview
+
+Standalone file preview component. Renders images, PDFs, text, and Markdown inline without any wrapper element — no `MudPaper` or `MudCard`. Wrap it yourself if you need a visual container.
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `FileId` | `Guid` | — | **(required)** ID of the file to preview |
+| `MaxPreviewBytes` | `long` | `1 048 576` | Maximum file size for text/Markdown preview (1 MB) |
+| `Class` | `string?` | `null` | CSS class added to the root `<div>` |
+| `Style` | `string?` | `null` | Inline style added to the root `<div>` |
+| `MinHeight` | `string` | `"240px"` | Minimum height of the root element |
+
+#### Example
+
+```razor
+<BwFilePreview FileId="@_fileId" />
+
+@* With your own card wrapper: *@
+<MudCard>
+    <MudCardContent>
+        <BwFilePreview FileId="@_fileId" Class="pa-2" />
+    </MudCardContent>
+</MudCard>
+```
+
 ### FileDetailView
 
 Reusable detail view for a single file. Used by admin and account detail pages.

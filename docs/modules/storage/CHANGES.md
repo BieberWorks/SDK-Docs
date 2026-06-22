@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Fixed
+- `BwFilePreview`: removed `MudPaper` wrapper — component now renders a plain `<div>` without background, padding, or elevation. `Elevation` parameter removed. `Class`, `Style`, and `MinHeight` parameters remain and are applied to the root element. Wrap with `MudPaper`/`MudCard` yourself if needed.
+- `FileDetailView`: removed `MudPaper` wrapper from the preview panel for the same reason.
+
+### Fixed
 - `StorageSettings` singleton enforcement was incomplete: `StorageSettingsConfiguration` now adds a
   PostgreSQL check constraint (`CK_storage_settings_SingletonId`) that rejects any row whose `Id`
   differs from the well-known Guid `00000000-0000-0000-0000-000000000001`, and seeds that row via
