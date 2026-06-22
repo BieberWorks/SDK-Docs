@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### fix: remove MudPaper wrapper from BwMarkdownViewer
+
+`BwMarkdownViewer` previously always wrapped its output in a `MudPaper` element, which applied an unwanted background colour and padding. The component now renders a plain `<div class="bw-markdown-viewer">` without any visual container. Wrap with `MudPaper`/`MudCard` yourself if needed.
+
+**Breaking:** `Elevation` and `ShowRawMarkdown` parameters (which were not wired up) are removed from documentation.
+
+---
+
 ## v0.1.3
 
 ### fix: decouple Components.UI from the implementation to eliminate transitive HtmlSanitizer/AngleSharp dependency

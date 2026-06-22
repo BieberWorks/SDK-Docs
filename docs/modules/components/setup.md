@@ -129,8 +129,6 @@ Maps code fence language hints to `ColorCode.Core` language identifiers.
   "Components": {
     "MudBlazor": {
       "MarkdownViewer": {
-        "Elevation": 1,
-        "ShowRawMarkdown": false
       },
       "MarkdownEditor": {
         "EditorHeight": "400px",

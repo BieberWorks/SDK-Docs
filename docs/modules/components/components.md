@@ -8,23 +8,25 @@ Ready-made MudBlazor Razor components for rendering and editing markdown, rich t
 
 Display Markdown as rendered HTML.
 
+The component renders without any wrapper element — if you need a `MudPaper` or `MudCard` around it, wrap it yourself.
+
 ### Parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `Markdown` | `string` | — | Content to render |
-| `ShowRawMarkdown` | `bool` | `false` | Show raw markdown toggle |
-| `Elevation` | `int` | `1` | MudCard elevation |
-| `Class` | `string` | — | CSS class |
+| `Content` | `string?` | — | Raw Markdown to render |
 
 ### Example
 
 ```razor
-<BwMarkdownViewer 
-    Markdown="@markdown"
-    ShowRawMarkdown="true"
-    Elevation="2"
-/>
+<BwMarkdownViewer Content="@markdown" />
+
+@* With your own card wrapper: *@
+<MudCard>
+    <MudCardContent>
+        <BwMarkdownViewer Content="@markdown" />
+    </MudCardContent>
+</MudCard>
 ```
 
 ---
