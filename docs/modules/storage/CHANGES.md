@@ -1,5 +1,20 @@
 # Changelog
 
+## next (unreleased)
+
+### Added
+
+- `PublicFileImageEndpointExtensions.MapPublicFileImage` — registers an unauthenticated
+  GET endpoint that resolves a file id via a caller-supplied delegate, streams the file
+  via `IStorageService.DownloadAsync`, and writes `ETag`, `Last-Modified`,
+  `Cache-Control` response headers. Supports `If-None-Match` → 304 and
+  `If-Modified-Since` → 304 conditional-request handling. Cache max-age is configurable
+  (default 1 hour).
+- `StorageFileUrl.TryParseStorageFileUrl` — parses the `/storage/files/{guid}` URL
+  convention into a `Guid` file id.
+- `docs/public-image-endpoint.md` — usage guide including registration, cache-header
+  behaviour, and security guidance on GUID-based capability URLs.
+
 ## Unreleased
 
 ### Fixed
