@@ -35,7 +35,7 @@ Task<Result<WalletTransactionDto>> AdjustAsync(string userId, decimal amount, st
 
 - `DebitAsync` gibt `Result.Failure("wallet:insufficient_balance")` wenn Guthaben nicht ausreicht.
 - `AdjustAsync` kann negativ sein (Betrag wird vom Saldo abgezogen, Floor = 0).
-- Alle Operationen laufen unter `RepeatableRead`-Transaktion mit bis zu 3 Retry bei `DbUpdateConcurrencyException`.
+- Alle Operationen laufen unter einer `RepeatableRead`-Transaktion via `Core.Postgres` (`ExecuteWithConcurrencyRetryAsync`) mit bis zu 3 Retry bei `DbUpdateConcurrencyException`. Die Transaktion ist execution-strategy-safe (kompatibel mit `EnableRetryOnFailure`); Domain-Events werden erst NACH dem Commit publiziert.
 
 ### Hold-Konzept
 
