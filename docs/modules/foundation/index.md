@@ -8,6 +8,7 @@ Foundation is the cornerstone of all BieberWorks SDK modules. It provides depend
 |---|---|---|
 | `BieberWorks.SDK.SharedKernel` | Dependency-free base types: `IDomainEvent`, `IAuditableEvent`, `Result`/`Result<T>`, `DomainError` | ![v0.7.1](https://img.shields.io/badge/version-0.7.1-blue) |
 | `BieberWorks.SDK.Core` | Module system (`IModule`, Discovery, DI registration) + Messaging (`IAppMessageDispatcher`, `IDomainEventPublisher`, `IDomainEventProcessor<T>`) | ![v0.7.1](https://img.shields.io/badge/version-0.7.1-blue) |
+| `BieberWorks.SDK.Core.Postgres` | PostgreSQL data-layer helpers: execution-strategy-safe transactions, optimistic-concurrency retry, `AddBieberWorksNpgsql<TContext>` | ![v0.7.1](https://img.shields.io/badge/version-0.7.1-blue) |
 | `BieberWorks.SDK.Core.Web` | ASP.NET Core integration: `IEndpointModule`, `AddBieberWorksModules`, `MapBieberWorksModules`, `InitializeBieberWorksModulesAsync`, layered localization | ![v0.7.1](https://img.shields.io/badge/version-0.7.1-blue) |
 
 ## Dependency Graph
