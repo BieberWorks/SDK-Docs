@@ -1,5 +1,16 @@
 # Changelog
 
+## next (unreleased)
+
+### Added
+- `DualNotification` record — untyped (string variable dictionary) descriptor for dual-recipient submission notifications (customer + optional admin).
+- `DualNotification<TModel>` record — **preferred** strongly-typed variant; model properties are reflected into template placeholders automatically.
+- `ISubmissionNotifier` interface with two overloads (`NotifyAsync(DualNotification)` and `NotifyAsync<TModel>(DualNotification<TModel>)`).
+- `SubmissionNotifier` — default implementation in `BieberWorks.SDK.Email`. Renders both templates via `IEmailTemplateRenderer`, sends via `IEmailSender`. Admin email is skipped when `AdminEmail` is `null`. Send failures are caught and logged (no rethrow); customer and admin sends are independently fault-isolated.
+- All logging via `[LoggerMessage]` source-generated delegates keyed on `LogContext`.
+- Registered automatically by `EmailModule` (`AddScoped<ISubmissionNotifier, SubmissionNotifier>()`).
+
+
 ## v0.9.0 (2026-06-21)
 
 ### Added

@@ -92,6 +92,21 @@ The template `PasswordResetEmail.html` contains placeholders in double curly bra
 `IEmailTemplateRenderer.Render` throws an `InvalidOperationException` if no provider can supply the template. Ensure the template exists either as an embedded resource or in the configured `TemplatePath`.
 :::
 
+### RenderAsync — branding-aware async variant
+
+Use `RenderAsync` instead of `Render` when you want the email logo URL injected automatically. If `IBrandingService` (from `SDK-Theme`) is registered, the renderer fetches the branding email logo URL and injects it into a `{{LogoUrl}}` placeholder. Caller-supplied variables always take precedence.
+
+```csharp
+var html = await renderer.RenderAsync("PasswordResetEmail.html", new Dictionary<string, string>
+{
+    ["ResetLink"] = resetLink,
+    ["UserEmail"] = to,
+    // {{LogoUrl}} is injected automatically from IBrandingService if registered
+}, ct);
+```
+
+This is the preferred method for production use. `Render` (sync) remains available for test stubs or contexts where branding is not needed.
+
 ## IEmailTemplateProvider — Register custom providers
 
 ### Embedded resources from own assembly
@@ -144,6 +159,107 @@ Render("PasswordResetEmail.html")
     ├─ EmbeddedEmailTemplateProvider      → Embedded resource exists? → render
     └─ no provider has match              → InvalidOperationException
 ```
+
+## ISubmissionNotifier — Dual-recipient submission notifications
+
+`ISubmissionNotifier` encapsulates the "render two templates → send customer + admin email →
+catch-and-log send failures" pattern that recurs across contact forms, inquiry forms, and
+similar submission flows. It is registered as a scoped service by `EmailModule`.
+
+### Why use it
+
+Without `ISubmissionNotifier` each form handler duplicates the same render-send-catch logic.
+A transient SMTP failure in one of those copies can bubble up and fail the whole submission.
+`ISubmissionNotifier` isolates the two sends: a failure on the customer email is logged and
+swallowed; the admin email is still attempted. Neither failure is rethrown.
+
+### Preferred: typed overload (`DualNotification<TModel>`)
+
+Pass a strongly-typed model instead of a string dictionary. The implementation reflects the
+model's public properties into `{{PropertyName}}` placeholder values automatically.
+
+```csharp
+using BieberWorks.SDK.Email.Contracts;
+
+public sealed class ContactFormModel
+{
+    public string Name    { get; init; } = string.Empty;
+    public string Email   { get; init; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
+}
+
+public class ContactFormHandler(ISubmissionNotifier notifier)
+{
+    public async Task HandleAsync(ContactFormModel form, CancellationToken ct = default)
+    {
+        // Business logic …
+
+        var notification = new DualNotification<ContactFormModel>(
+            CustomerEmail:    form.Email,
+            CustomerTemplate: "ContactConfirmation.html",
+            CustomerSubject:  "Thank you for your message",
+            AdminEmail:       "team@example.com",
+            AdminTemplate:    "ContactAdminAlert.html",
+            AdminSubject:     "New contact form submission",
+            Model:            form,
+            LogContext:       "ContactForm");
+
+        await notifier.NotifyAsync(notification, ct);
+        // Never throws — send errors are logged internally.
+    }
+}
+```
+
+### Fallback: untyped overload (`DualNotification`)
+
+Use the untyped variant for ad-hoc or dynamic cases where a typed model is not available.
+All placeholder values must be provided as a flat `IReadOnlyDictionary<string, string>`.
+
+```csharp
+var notification = new DualNotification(
+    CustomerEmail:    "user@example.com",
+    CustomerTemplate: "ContactConfirmation.html",
+    CustomerSubject:  "Thank you for your message",
+    AdminEmail:       "team@example.com",
+    AdminTemplate:    "ContactAdminAlert.html",
+    AdminSubject:     "New contact form submission",
+    Variables:        new Dictionary<string, string>
+    {
+        ["Name"]    = model.Name,
+        ["Email"]   = model.Email,
+        ["Message"] = model.Message,
+    },
+    LogContext: "ContactForm");
+
+await notifier.NotifyAsync(notification, ct);
+```
+
+### Omitting the admin email
+
+Set `AdminEmail` to `null` to skip the admin notification entirely. Only the customer email
+is sent.
+
+```csharp
+var notification = new DualNotification<ContactFormModel>(
+    CustomerEmail:    form.Email,
+    CustomerTemplate: "ContactConfirmation.html",
+    CustomerSubject:  "Thank you for your message",
+    AdminEmail:       null,          // no admin email
+    AdminTemplate:    string.Empty,  // ignored when AdminEmail is null
+    AdminSubject:     string.Empty,
+    Model:            form,
+    LogContext:       "ContactFormNoAdmin");
+
+await notifier.NotifyAsync(notification, ct);
+```
+
+### Error-tolerant behaviour
+
+Both the customer send and the admin send are wrapped in independent try/catch blocks.
+An SMTP failure in either is logged at `Error` level (keyed by `LogContext`) and does not
+propagate. The caller's submission flow continues regardless of email-delivery failures.
+
+---
 
 ## SMTP connection
 
