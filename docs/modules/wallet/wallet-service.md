@@ -84,7 +84,10 @@ Beide geben `Result.Failure("wallet:hold_not_found")` wenn der Hold unbekannt od
 Task<int> ReleaseExpiredHoldsAsync(CancellationToken ct = default);
 ```
 
-Batch-Release aller abgelaufenen Holds. Wird automatisch beim Modulstart (`InitializeAsync`) aufgerufen.
+Batch-releases all expired holds (where `ExpiresAt < UtcNow`). Returns the number of holds released.
+
+Called automatically at module startup (`InitializeAsync`) for an immediate cleanup pass.
+Also called periodically by the **recurring expired-holds sweeper** (see below).
 
 ### GetTransactionsAsync / GetActiveHoldsAsync
 
@@ -107,4 +110,43 @@ Alle schreibenden Operationen publizieren ein `IAuditableEvent`:
 | CommitHoldAsync | `WalletHoldCommittedEvent` |
 | ReleaseHoldAsync | `WalletHoldReleasedEvent` |
 
-SDK-Audit loggt alle Events automatisch — kein Audit-Code im Wallet-Modul nötig.
+SDK-Audit logs all events automatically — no audit code is required in the Wallet module.
+
+---
+
+## Recurring Expired-Holds Sweeper
+
+`BieberWorks.SDK.Wallet` ships a background service (`ExpiredHoldsSweeper`) that calls
+`ReleaseExpiredHoldsAsync` on a regular schedule so expired holds are cleaned up even when the
+host runs for a long time between restarts.
+
+### Configuration (`WalletOptions`)
+
+Bind from the `"Wallet"` section of your configuration:
+
+```json
+{
+  "Wallet": {
+    "ExpiredHoldsSweepEnabled": true,
+    "ExpiredHoldsSweepInterval": "00:05:00"
+  }
+}
+```
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `ExpiredHoldsSweepEnabled` | `bool` | `true` | Enables the background sweeper. |
+| `ExpiredHoldsSweepInterval` | `TimeSpan` | `00:05:00` | How often the sweep runs. |
+
+### Behaviour
+
+- **Enabled by default.** The safe behaviour (periodic cleanup) is opt-out, not opt-in.
+- **Startup pass preserved.** `WalletModule.InitializeAsync` still calls `ReleaseExpiredHoldsAsync`
+  once at boot; the sweeper handles recurring runs thereafter.
+- **Resilient loop.** An exception in one tick is logged at `Error` level and the sweeper continues.
+  A single transient DB error never kills the background service.
+- **Scoped lifetime.** Each tick creates a new DI scope and resolves `IWalletService` inside it,
+  correctly handling the singleton-hosted-service / scoped-service lifetime boundary.
+- **Disable** by setting `ExpiredHoldsSweepEnabled: false` — for example when an external
+  scheduler (cron job, Hangfire, etc.) already invokes `ReleaseExpiredHoldsAsync` on its own cadence,
+  or when running a dedicated worker instance that should not sweep.
