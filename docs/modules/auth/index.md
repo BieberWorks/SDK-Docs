@@ -8,7 +8,7 @@ The Auth module provides complete authentication and authorization infrastructur
 - **ASP.NET Core Identity** with PostgreSQL backend (schema `auth`) and dedicated `AuthDbContext` including automatic migration
 - **Permission System** — cross-module permissions assigned to roles; fine-grained protection via `[RequiresPermission]` or `.RequirePermission()`
 - **Role Management** — CRUD for roles including permission assignment via `IRoleManagementService`
-- **User Management** — Admin endpoints for locking/unlocking users and role assignment (`UserManagementModule`)
+- **User Management** — Admin endpoints for locking/unlocking users, role assignment, and account deletion (`UserManagementModule`); self-service account deletion with password reauth and cross-module impact gate
 - **Email Flows** — confirmation email and password reset via `IAuthEmailSender`; optional integration with `SDK-Email`
 - **Two-Factor Authentication** — enable / disable / code verification
 - **Rate Limiting** — login attempts are internally limited (`ILoginRateLimitService`)

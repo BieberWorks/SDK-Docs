@@ -209,8 +209,21 @@ public interface IAuthEmailSender
 
 If no concrete `IAuthEmailSender` is registered in the DI container, the module falls back to `LoggingAuthEmailSender` — this only writes the links to the log (suitable for development).
 
-If `SDK-Email` is installed and an `IEmailSender` is registered, `AuthEmailSenderAdapter` automatically uses the email templates from the Auth module's embedded resources.
+If `SDK-Email` is installed and an `IEmailSender` is registered, `AuthEmailSenderAdapter` renders the bodies through `SDK-Email`'s rendering pipeline and sends them via `IEmailSender`.
 
 ::: tip Custom email implementation
 Simply register your own `IAuthEmailSender` implementation **before** `AddBieberWorksModules`. The module uses `TryAdd` semantics and does not override already registered implementations.
 :::
+
+## Email templates in the Email admin UI
+
+The Auth module registers its transactional emails as `IEmailTemplateDescriptor`s (from `BieberWorks.SDK.Email.Contracts`). When `SDK-Email` is present, this makes them appear in the **Email admin template list**, where they can be edited and overridden per locale without touching code.
+
+| Key (`AuthEmailTemplateKeys`) | Display name | Group | Variables |
+|---|---|---|---|
+| `auth:password-reset` | Password reset | Authentication | `CustomerName`, `ResetLink` |
+| `auth:email-confirmation` | E-mail confirmation | Authentication | `CustomerName`, `ConfirmationLink` |
+
+The descriptors expose the built-in HTML (read from the Auth assembly's embedded resources) as their `DefaultHtmlContent`. At send time `AuthEmailSenderAdapter` renders **by descriptor key**, so the Email module automatically applies, in order of precedence: a database override → the code default, then the active layout and branding variables (logo, brand colors, app name).
+
+The registration is defensive: the descriptors are always registered, but when no Email module consumes `IEmailTemplateDescriptor` they are harmless no-ops. Auth therefore couples only to `BieberWorks.SDK.Email.Contracts` — never to the Email implementation — and remains runnable without `SDK-Email` (falling back to `LoggingAuthEmailSender`).
