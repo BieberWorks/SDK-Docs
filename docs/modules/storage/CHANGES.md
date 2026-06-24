@@ -4,6 +4,7 @@
 
 ### Added
 
+- `docs/gdpr-privacy.md` — documents the GDPR privacy implementations: `StorageUserDataExporter` (file metadata only, no blob contents), `StorageUserDataEraser` (hard-delete of metadata rows + best-effort blob removal via `IFileStorage`), and `StorageErasureImpactProvider` (Warning with file count and total MB).
 - `PublicFileImageEndpointExtensions.MapPublicFileImage` — registers an unauthenticated
   GET endpoint that resolves a file id via a caller-supplied delegate, streams the file
   via `IStorageService.DownloadAsync`, and writes `ETag`, `Last-Modified`,
