@@ -63,6 +63,13 @@ Assign permissions to roles via `/admin/users/roles`:
 | `wallet:wallet:admin` | Admin-Bereich vollständig |
 | `wallet:transactions:view` | Transaktionshistorie einsehbar |
 
+## Further Reading
+
+- [Currencies](./currencies.md)
+- [Permissions](./permissions.md)
+- [Wallet Service API](./wallet-service.md)
+- [GDPR / Privacy](./gdpr-privacy.md)
+
 ## Optional: NullWalletService
 
 Consumer-Module können optional von Wallet abhängen:

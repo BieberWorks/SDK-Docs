@@ -97,6 +97,12 @@ Task<WalletPagedResult<WalletTransactionDto>> GetTransactionsAsync(
 Task<IReadOnlyList<WalletHoldDto>> GetActiveHoldsAsync(string userId, CancellationToken ct = default);
 ```
 
+`GetTransactionsAsync` is **server-side paged**: the query applies `Skip((Page - 1) * PageSize).Take(PageSize)`
+and returns a `WalletPagedResult<T>` carrying `TotalCount` alongside the current page's items — only the
+requested page is materialized, never the full history. The MudBlazor admin and account transaction grids
+drive this through `MudDataGrid.ServerData` with a `MudDataGridPager` (page navigation + selectable page
+size), so large histories are never loaded or rendered all at once.
+
 ## Events (Auto-Auditing)
 
 Alle schreibenden Operationen publizieren ein `IAuditableEvent`:
