@@ -288,3 +288,9 @@ modelBuilder.Entity<AppConfig>(b =>
 > **Note:** Adjust the quoted identifier style (`"Id"` vs `Id`) to match your database provider's quoting rules. PostgreSQL uses double quotes; SQL Server uses brackets (`[Id]`).
 
 The check constraint name follows the convention `CK_{TableName}_SingletonId`.
+
+## GDPR Data-Subject Contracts
+
+`BieberWorks.SDK.SharedKernel` also contains the cross-module interfaces for GDPR data-export and erasure: `IUserDataExporter`, `IUserDataEraser`, `IUserDataErasureImpactProvider`, and the accompanying records and enums (`ErasureMode`, `ErasureImpactSeverity`, `UserAccountDeletionRequestedEvent`).
+
+See [gdpr-data-subject-contracts.md](gdpr-data-subject-contracts.md) for the full reference, registration pattern, and implementation example.
