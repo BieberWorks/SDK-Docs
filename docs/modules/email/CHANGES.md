@@ -3,6 +3,13 @@
 ## next (unreleased)
 
 ### Added
+- `BieberWorks.SDK.Email.UI` — framework-agnostic page base classes: `EmailTemplatesPageBase`, `EmailTemplateEditorPageBase`, `EmailLayoutsPageBase`, `EmailLayoutEditorPageBase`.
+- `IEmailTemplateEditorFactory` + `EmailTemplateEditorContext` in `Email.UI` — swappable editor seam for future Monaco integration.
+- `BieberWorks.SDK.Email.UI.MudBlazor` — MudBlazor Admin UI: Templates list (grouped by Group, "customized" badge), Template editor (locale selector, layout dropdown, variable token validation, live preview via POST endpoint), Layouts CRUD with `{{ content }}` slot validation.
+- `EmailAdminSection` (`IAdminSection`, Order=60) — wires Email into the SDK-Admin shell with Templates and Layouts nav items.
+- `TextareaEmailTemplateEditorFactory` — default editor: MudBlazor-styled monospace `<textarea>`, zero JS dependencies.
+- `EmailUiModule` (`IModule` + `IEndpointModule`) — auto-discovered; registers admin section, editor factory, and the `/admin/email/preview` POST endpoint.
+- `AddEmailUi()` extension method for host `Program.cs` explicit registration.
 - `DualNotification` record — untyped (string variable dictionary) descriptor for dual-recipient submission notifications (customer + optional admin).
 - `DualNotification<TModel>` record — **preferred** strongly-typed variant; model properties are reflected into template placeholders automatically.
 - `ISubmissionNotifier` interface with two overloads (`NotifyAsync(DualNotification)` and `NotifyAsync<TModel>(DualNotification<TModel>)`).
