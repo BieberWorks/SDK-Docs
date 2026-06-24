@@ -73,11 +73,8 @@ Renders `<link>` tags only for assets that have been generated. No output if no 
 
 ### Branding Endpoints
 
-The module self-registers all `/bw/branding/*` endpoints and `/favicon.ico`. Wire them from the host's endpoint registration:
-
-```csharp
-ThemeModule.MapEndpoints(app);
-```
+The module self-registers all `/bw/branding/*` endpoints and `/favicon.ico` automatically via `IEndpointModule`.
+`app.MapBieberWorksModules()` discovers and maps the endpoints — no manual call is required.
 
 ### `site.webmanifest`
 
