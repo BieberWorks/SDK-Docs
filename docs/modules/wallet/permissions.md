@@ -9,7 +9,6 @@ Alle Wallet-Permissions folgen dem Format `{module}:{resource}:{action}`.
 public static class WalletPermissions
 {
     public const string View             = "wallet:wallet:view";
-    public const string TopUp            = "wallet:wallet:topup";
     public const string Admin            = "wallet:wallet:admin";
     public const string TransactionsView = "wallet:transactions:view";
 }
@@ -20,7 +19,6 @@ public static class WalletPermissions
 | Konstante | Wert | Wirkung |
 |---|---|---|
 | `View` | `wallet:wallet:view` | Account-Shell-Eintrag „Mein Guthaben" sichtbar. Zugriff auf `/account/wallet` und `/account/wallet/transactions`. |
-| `TopUp` | `wallet:wallet:topup` | „Guthaben aufladen"-Seite sichtbar und nutzbar (`/account/wallet/topup`). Fehlt → Seite gibt 403. |
 | `Admin` | `wallet:wallet:admin` | Vollständiger Admin-Zugang: alle Wallets sehen, manuell aufladen/abbuchen, Währungen verwalten. Steuert alle `/admin/wallet/*`-Seiten. |
 | `TransactionsView` | `wallet:transactions:view` | Transaktionshistorie einsehbar (eigene für User, alle für Admins mit zusätzlichem `Wallet.Admin`). |
 
