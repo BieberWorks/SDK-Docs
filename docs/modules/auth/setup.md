@@ -186,6 +186,39 @@ Change the bootstrap password after the first login.
 
 If `SeedAdmin` is `true` but `Email` or `Password` is missing, the seeder logs a warning and skips — the application continues to start normally.
 
+## Email Link Base URL
+
+Both `EmailConfirmationRequestedEventHandler` and `PasswordResetRequestedEventHandler` build absolute links that are embedded in transactional emails.
+
+The base URL is resolved in the following order:
+
+| Priority | Source | Key |
+|---|---|---|
+| 1 | `IConfiguration` | `App:PublicBaseUrl` |
+| 2 | Environment variable (back-compat) | `CONFIRM_EMAIL_BASE_URL` / `RESET_PASSWORD_BASE_URL` |
+| 3 | (warning logged, link is broken) | — |
+
+**Recommended configuration:**
+
+```json
+{
+  "App": {
+    "PublicBaseUrl": "https://my-app.example.com"
+  }
+}
+```
+
+::: warning No localhost default
+Unlike the previous implementation, there is no `http://localhost:5173` fallback. If neither `App:PublicBaseUrl` nor the legacy environment variable is configured, a warning is logged and the link will be broken. Always set `App:PublicBaseUrl` in staging/production appsettings.
+:::
+
+The resulting link paths are:
+
+| Flow | Link |
+|---|---|
+| Email confirmation | `{App:PublicBaseUrl}/auth/confirm-email?userId=…&token=…` |
+| Password reset | `{App:PublicBaseUrl}/auth/reset-password?email=…&token=…` |
+
 ## Migrations
 
 The module runs its EF Core migrations automatically on startup (`IModuleInitializer.InitializeAsync`). Manual migration is not necessary. The PostgreSQL schema is named `auth`.

@@ -115,10 +115,21 @@ After successful registration, the `UserRegisteredEvent` is published. If an `IA
 
 ## Email Confirmation
 
-The confirmation link contains `userId` and `token`:
+When a user registers, an `EmailConfirmationRequestedEvent` is raised. `EmailConfirmationRequestedEventHandler` builds a link pointing to the Blazor confirm-email page:
+
+```
+{App:PublicBaseUrl}/auth/confirm-email?userId={id}&token={token}
+```
+
+The page (`/auth/confirm-email`) reads `userId` and `token` from the query string and calls `IAuthClient.ConfirmEmailAsync`. On success it shows a confirmation message with a link to `/auth/login`.
+
+The API endpoint for direct (non-Blazor) confirmation still exists:
 
 ```http
-GET /api/auth/confirm-email?userId={id}&token={token}
+POST /api/auth/confirm-email
+Content-Type: application/json
+
+{ "userId": "…", "token": "…" }
 ```
 
 Alternatively, confirmation can be requested again:
