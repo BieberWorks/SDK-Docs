@@ -7,37 +7,51 @@ optional server-side mirror for authenticated users.
 
 ## How it works
 
-`LegalModule.RegisterServices` reads `LegalOptions.CookieRegistrations` and calls
-`services.RegisterCookies(...)` from `BieberWorks.SDK.UI.Contracts.Cookies`.
-The `CookieBanner` component (in `BieberWorks.SDK.UI.MudBlazor`) displays itself
-automatically as soon as at least one non-`Necessary` registration exists.
+`LegalModule.RegisterServices` registers a singleton `LegalCookieRegistrationSource`
+(which implements `ICookieRegistrationSource` from `BieberWorks.SDK.UI.Contracts.Cookies`).
+`CookieConsentService` (in `BieberWorks.SDK.UI.MudBlazor`) resolves all registered
+`ICookieRegistrationSource` implementations at construction time, deduplicates by cookie name,
+and makes the combined list available to the banner and settings page.
+
+`bw.consent` is always contributed by `LegalCookieRegistrationSource` regardless of
+`LegalOptions.CookieRegistrations`. This cookie is necessary and stores the user's consent choices.
+
+The `CookieBanner` component displays itself automatically as soon as at least one non-`Necessary`
+registration exists across all sources.
 
 ## Configuring registrations
 
-Override the default registrations in your host's `appsettings.json` or via
-`services.Configure<LegalOptions>`:
+Add consumer-specific cookies via `LegalOptions.CookieRegistrations` in `AddLegalModule`:
 
-```json
+```csharp
+builder.Services.AddLegalModule(builder.Configuration, o =>
 {
-  "Legal": {
-    "CookieRegistrations": [
-      { "Name": "bw.consent",   "Category": "Necessary", "Description": "Stores your cookie preferences.", "Module": "Legal" },
-      { "Name": "_ga",          "Category": "Analytics",  "Description": "Google Analytics tracking.",       "Module": "Legal" },
-      { "Name": "fbp",          "Category": "Marketing",  "Description": "Facebook Pixel.",                  "Module": "Legal" }
-    ]
-  }
-}
+    // bw.consent (Necessary) is always contributed by SDK-Legal — no need to list it.
+    // Add your own non-necessary cookies here:
+    o.CookieRegistrations =
+    [
+        new("_ga",  CookieCategory.Analytics, "Google Analytics tracking.", "YourApp"),
+        new("fbp",  CookieCategory.Marketing, "Facebook Pixel.",            "YourApp"),
+    ];
+});
 ```
 
-Default registrations:
+To register cookies from a custom module, implement `ICookieRegistrationSource` and register it:
 
-| Name           | Category  | Description                                        |
-|----------------|-----------|----------------------------------------------------|
-| `bw.consent`   | Necessary | Stores your cookie preferences.                    |
-| `bw.analytics` | Analytics | Anonymous usage analytics (placeholder — opt-in).  |
+```csharp
+services.TryAddEnumerable(
+    ServiceDescriptor.Singleton<ICookieRegistrationSource, YourAppCookieRegistrationSource>());
+```
 
-The default intentionally includes one non-Necessary entry so the banner appears
-out of the box. Replace the Analytics placeholder with your actual tracking cookies.
+Always-present registrations (contributed by SDK packages):
+
+| Name         | Category  | Module | Source                         |
+|--------------|-----------|--------|--------------------------------|
+| `bw.consent` | Necessary | Legal  | `LegalCookieRegistrationSource`|
+| `bw.auth`    | Necessary | Auth   | `AuthCookieRegistrationSource` |
+
+Neither of these will trigger the banner — both are `Necessary`. The banner only appears
+when at least one non-Necessary cookie is registered.
 
 ## Host layout requirements
 
