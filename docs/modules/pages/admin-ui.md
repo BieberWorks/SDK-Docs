@@ -8,7 +8,7 @@ The admin UI is provided by the `BieberWorks.SDK.Pages.UI.MudBlazor` package. It
 |---|---|---|
 | `/admin/pages` | `PagesListPage.razor` | `pages:pages:read` |
 | `/admin/pages/create` | `PageCreatePage.razor` | `pages:pages:create` |
-| `/admin/pages/{Id:guid}/edit` | `PageEditPage.razor` | `pages:pages:edit` |
+| `/admin/pages/{Id}/edit` | `PageEditPage.razor` | `pages:pages:edit` |
 
 ## Page List (`/admin/pages`)
 
@@ -40,6 +40,10 @@ Fields:
 After successful creation the user is redirected to `/admin/pages`.
 
 ## Edit Page (`/admin/pages/{Id}/edit`)
+
+The `Id` route segment is bound as a `string` and parsed with `Guid.TryParse`. An
+invalid id renders the standard "not found" state instead of throwing a
+parameter-cast error, so malformed URLs degrade gracefully.
 
 Same fields as Create, pre-populated from the existing `PageDto`. Additional controls:
 
