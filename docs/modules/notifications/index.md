@@ -49,3 +49,4 @@ Individual strings can be overridden at runtime via `SDK-Localization` (DB overr
 
 - [Installation & Setup](./installation.md)
 - [Usage — Events, Channels, Resolvers](./usage.md)
+- [GDPR / Privacy](./gdpr-privacy.md)

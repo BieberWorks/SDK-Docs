@@ -1,5 +1,11 @@
 # Changelog
 
+## next (unreleased)
+
+### Added
+
+- `docs/gdpr-privacy.md` — documents the GDPR privacy implementations: `NotificationsUserDataExporter` (notification items as JSON), `NotificationsUserDataEraser` (hard-delete strategy, no retention), and `NotificationsErasureImpactProvider` (Warning with row count).
+
 ## v0.5.0 (2026-06-19)
 
 ### Added
