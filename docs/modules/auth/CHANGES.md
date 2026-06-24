@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.25.0 (2026-06-24)
+
+### Added
+- `AuthCookieRegistrationSource` — internal `ICookieRegistrationSource` implementation that provides the `bw.auth` session cookie registration. Description is resolved from `AuthResources` resx (en + de key `Auth.Cookies.bw.auth.Description`).
+- `Auth.Cookies.bw.auth.Description` resx key added to `AuthResources.resx` and `AuthResources.de.resx`.
+
+### Changed
+- `AddAuthUi` no longer calls the deprecated `RegisterCookies(...)`. Cookie registration now uses `services.TryAddEnumerable(ServiceDescriptor.Singleton<ICookieRegistrationSource, AuthCookieRegistrationSource>())` which is idempotent and honours the module idempotency guard.
+
 ## Unreleased
 
 ### Added
