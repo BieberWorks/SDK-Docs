@@ -53,8 +53,50 @@ Add the UI assembly to the Blazor router so `/admin/maintenance` is found:
 | Property | Type | Default | Description |
 |---|---|---|---|
 | `PagePath` | `string` | `/maintenance` | Redirect target for browser requests during maintenance |
-| `AlwaysAllowedPaths` | `string[]` | `/admin`, `/health`, `/favicon.ico`, `/_blazor`, `/_framework`, `/maintenance` | Path prefixes that always bypass the middleware. Preserve `/_blazor` and `/_framework` when overriding. |
-| `BypassPredicate` | `Func<HttpContext, bool>?` | `null` | Consumer bypass predicate — runs before `IsEnabledAsync` to avoid a Settings round-trip |
+| `AlwaysAllowedPaths` | `IList<string>` | `/_blazor`, `/_framework`, `/favicon.ico` | Path prefixes that always bypass the middleware. Add entries at startup. Preserve `/_blazor` and `/_framework` when replacing the list. |
+| `BypassPredicate` | `Func<HttpContext, bool>` | Admin role check | Consumer bypass predicate — runs before `IsEnabledAsync` to avoid a Settings round-trip |
+
+---
+
+## Allowed Paths
+
+`AlwaysAllowedPaths` is a mutable list — consumers can add paths at startup without replacing the entire list:
+
+```csharp
+builder.Services.AddBieberWorksMaintenance(opts =>
+{
+    // Auth routes must be reachable so users can log in during maintenance.
+    opts.AlwaysAllowedPaths.Add("/bw/auth/");
+    opts.AlwaysAllowedPaths.Add("/bw/account/login");
+
+    // Health-check endpoint for load-balancer probes.
+    opts.AlwaysAllowedPaths.Add("/health");
+});
+```
+
+The middleware performs a case-insensitive `StartsWith` match, so `/bw/auth/` allows `/bw/auth/login`, `/bw/auth/register`, etc.
+
+---
+
+## Extending Path Providers
+
+`IMaintenancePathProvider` (in `BieberWorks.SDK.Maintenance.Contracts`) is a DI-based extension point for packages or modules that need to contribute allowed paths without touching `MaintenanceOptions`:
+
+```csharp
+using BieberWorks.SDK.Maintenance.Contracts;
+
+internal sealed class AuthPathProvider : IMaintenancePathProvider
+{
+    public IEnumerable<string> GetAllowedPaths()
+        => ["/bw/auth/", "/bw/account/login"];
+}
+
+// In your module's AddXxx extension method:
+services.TryAddEnumerable(
+    ServiceDescriptor.Singleton<IMaintenancePathProvider, AuthPathProvider>());
+```
+
+Multiple providers are fully additive — each registration contributes its paths on top of others. The middleware merges all provider paths with `AlwaysAllowedPaths` at request time.
 
 ---
 
