@@ -182,6 +182,10 @@ Content-Type: application/json
 
 ## Two-Factor Authentication
 
+The module ships an **email-based one-time-code (OTP)** second factor with single-use
+recovery codes. It is delivered through the same template pipeline as the other
+transactional emails (template key `auth:two-factor-code`).
+
 ### Enable 2FA
 
 ```http
@@ -192,19 +196,41 @@ Content-Type: application/json
 { "userId": "…" }
 ```
 
+Enabling returns **8 single-use recovery codes**. They are shown **exactly once** — the
+server stores only an HMAC-SHA256 hash (salted), never the plaintext. The management UI
+on the Security page surfaces the remaining-code count and lets the user regenerate the
+set (which invalidates the previous codes) or disable 2FA again.
+
 ### Login with 2FA
 
-After a login attempt, when `requires2FA: true` is returned:
+When credentials are valid and 2FA is enabled, the login response carries
+`requires2FA: true` together with a short-lived **`tempAccessToken`** — a signed JWT with
+`purpose: "2fa-pending"` that expires after 10 minutes. At the same time a fresh 6-digit
+OTP is generated and emailed to the user. The client never receives or sends the raw
+`userId`; the verify step derives the user from the temp token, so the second factor
+cannot be completed for an arbitrary account.
 
 ```http
 POST /api/auth/2fa/verify
 Content-Type: application/json
 
 {
-  "userId": "…",
+  "tempAccessToken": "eyJ…",
   "code": "123456"
 }
 ```
+
+The `code` accepts either the emailed OTP **or** one of the recovery codes (consumed on
+use). On success both transport paths — the in-process Blazor Server cookie flow and the
+JWT/API flow — converge on the same finalize-login step a normal login uses, so the
+resulting session is identical.
+
+A new OTP can be requested via `POST /api/auth/2fa/resend` (subject to a 60-second
+cooldown). Verification is brute-force protected: 5 failed attempts trigger a 15-minute
+lockout. Both limits are enforced server-side by `ITwoFactorRateLimitService`.
+
+> TOTP authenticator apps and WebAuthn/passkeys are intentionally out of scope for this
+> email-OTP factor; they are tracked as separate follow-up work.
 
 ## IAuthEmailSender
 
@@ -215,6 +241,7 @@ public interface IAuthEmailSender
 {
     Task SendPasswordResetEmailAsync(string email, string customerName, string resetLink);
     Task SendEmailConfirmationAsync(string email, string customerName, string confirmationLink);
+    Task SendTwoFactorCodeAsync(string email, string customerName, string code);
 }
 ```
 
@@ -234,6 +261,7 @@ The Auth module registers its transactional emails as `IEmailTemplateDescriptor`
 |---|---|---|---|
 | `auth:password-reset` | Password reset | Authentication | `CustomerName`, `ResetLink` |
 | `auth:email-confirmation` | E-mail confirmation | Authentication | `CustomerName`, `ConfirmationLink` |
+| `auth:two-factor-code` | Two-factor sign-in code | Authentication | `CustomerName`, `Code` |
 
 The descriptors expose the built-in HTML (read from the Auth assembly's embedded resources) as their `DefaultHtmlContent`. At send time `AuthEmailSenderAdapter` renders **by descriptor key**, so the Email module automatically applies, in order of precedence: a database override → the code default, then the active layout and branding variables (logo, brand colors, app name).
 
