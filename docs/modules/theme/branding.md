@@ -1,6 +1,6 @@
-# Branding (SDK-Theme v2)
+# Branding
 
-SDK-Theme v2 introduces a full SVG-based branding pipeline. Upload a **BrandingLogo** SVG and a **BrandingIcon** SVG; the module generates all required PNG assets (favicons, Apple touch icon, PWA icons, email logos) automatically using the active theme palette.
+The module provides a full SVG-based branding pipeline. Upload a **BrandingLogo** SVG and a **BrandingIcon** SVG; the module generates all required PNG assets (favicons, Apple touch icon, PWA icons, email logos) automatically using the active theme palette.
 
 ---
 
@@ -82,7 +82,7 @@ Available at `/bw/branding/site.webmanifest`. Dynamically generated from the `ap
 
 ---
 
-## `IBrandingService` Reference (v2)
+## `IBrandingService` Reference
 
 ```csharp
 // SVG source management
@@ -103,7 +103,7 @@ Task<string> GetFaviconHeadMarkupAsync(CancellationToken ct = default);
 Task<EmailBranding> GetEmailBrandingAsync(CancellationToken ct = default);
 ```
 
-`EmailBranding` v2 adds `LogoUrlDark`:
+`EmailBranding` includes both light- and dark-mode logo URLs:
 
 ```csharp
 public sealed record EmailBranding(
@@ -203,9 +203,9 @@ The page uses `MudGrid` with `xs`/`sm`/`md` breakpoints throughout. On xs screen
 
 ---
 
-## Migration from v1.x
+## Migrating from the legacy logo API
 
-### Removed API Surface
+### Removed API surface
 
 | Removed | Replacement |
 |---|---|
@@ -220,9 +220,9 @@ The page uses `MudGrid` with `xs`/`sm`/`md` breakpoints throughout. On xs screen
 | `IThemeAdminService.DeleteLogoAsync()` | `IBrandingService.DeleteLogoSvgAsync()` |
 | `ThemeLogoChangedEvent` (obsolete) | `BrandingChangedEvent` |
 
-### Settings Migration
+### Settings migration
 
-The following v1 settings keys are **deleted automatically** during `ThemeModule.InitializeAsync`:
+The following legacy settings keys are **deleted automatically** during `ThemeModule.InitializeAsync`:
 
 - `theme.logo.storageKey`
 - `theme.logo.svgMarkup`
@@ -231,10 +231,10 @@ The following v1 settings keys are **deleted automatically** during `ThemeModule
 
 The old SVG markup value is **not migrated** to the new `theme.branding.logo.svgMarkup` key. Re-upload the logo SVG via Admin UI → Branding.
 
-### Orphaned Storage Blobs
+### Orphaned storage blobs
 
 Old email logo PNG blobs in SDK-Storage are **not automatically deleted**. They appear in the Storage Admin list; delete manually if desired.
 
-### Version Range
+### Version range
 
-Update version range references from `1.*-*` to `2.*-*`.
+Check the [Releases page](https://github.com/BieberWorks/SDK-Theme/releases) for the current stable version and update your version range references accordingly.
