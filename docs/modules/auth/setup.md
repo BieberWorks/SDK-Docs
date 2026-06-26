@@ -31,11 +31,12 @@ builder.Services.AddBieberWorksModules(builder.Configuration,
     new UserManagementModule()   // optional
 );
 
-// 1b. Optional: AppBar-Widget konfigurieren (erfordert Auth.UI.MudBlazor)
+// 1b. Optional: configure the AppBar widget (requires Auth.UI.MudBlazor)
 builder.Services.AddAuthUi(options =>
 {
-    options.AppBar.ShowRegister = false;          // Register-Button ausblenden
-    options.AppBar.AnonymousMode = AnonymousAppBarMode.IconOnly; // nur Icon, kein Text
+    options.AppBar.ShowLogin = false;             // hide the Login button
+    options.AppBar.ShowRegister = false;          // hide the Register button
+    options.AppBar.AnonymousMode = AnonymousAppBarMode.IconOnly; // icon only, no label
 });
 
 // 2. Register Blazor component assemblies (if Auth.UI.MudBlazor is used)
@@ -122,27 +123,33 @@ Cookie settings are defined in code and come from `AuthModule`:
 
 When accessing without a cookie (e.g., API client with `Authorization: Bearer …`), the `Smart` policy scheme automatically switches to JWT Bearer.
 
-## AppBar-Widget konfigurieren
+## AppBar widget configuration
 
-`AddAuthUi()` akzeptiert optional einen `Action<AuthUiOptions>`-Delegate. Wird er weggelassen, gelten die Defaults (Register-Button sichtbar, Login mit Text+Icon).
+`AddAuthUi()` optionally accepts an `Action<AuthUiOptions>` delegate. When omitted, the defaults apply (Login and Register buttons visible, text + icon).
 
 ```csharp
 builder.Services.AddAuthUi(options =>
 {
-    // Register-Button für anonyme Nutzer ausblenden
+    // Hide the Login button for anonymous users (route stays reachable)
+    options.AppBar.ShowLogin = false;
+
+    // Hide the Register button for anonymous users
     options.AppBar.ShowRegister = false;
 
-    // Login-Button im anonymen Zustand: nur Icon, kein Label
+    // Anonymous buttons: icon only, no label
     options.AppBar.AnonymousMode = AnonymousAppBarMode.IconOnly;
 });
 ```
 
-| Option | Typ | Default | Beschreibung |
+| Option | Type | Default | Description |
 |---|---|---|---|
-| `AppBar.ShowRegister` | `bool` | `true` | Register-Button für anonyme Nutzer anzeigen |
-| `AppBar.AnonymousMode` | `AnonymousAppBarMode` | `Full` | `Full` = Text+Icon, `IconOnly` = nur Icon |
+| `AppBar.ShowLogin` | `bool` | `true` | Show the Login button for anonymous users (display-only; does not protect `/auth/login`) |
+| `AppBar.ShowRegister` | `bool` | `true` | Show the Register button for anonymous users (display-only; does not protect `/auth/register`) |
+| `AppBar.AnonymousMode` | `AnonymousAppBarMode` | `Full` | `Full` = text + icon, `IconOnly` = icon only |
 
-> `using BieberWorks.SDK.Auth.UI.Options;` ist nötig, wenn `AnonymousAppBarMode` direkt referenziert wird.
+> `using BieberWorks.SDK.Auth.UI.Options;` is required when referencing `AnonymousAppBarMode` directly.
+>
+> These flags only hide buttons. To actually disable registration, use the gate in [Registration](registration.md).
 
 ## Admin Bootstrap (first-run seed)
 

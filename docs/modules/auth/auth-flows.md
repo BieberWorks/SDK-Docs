@@ -180,6 +180,27 @@ Content-Type: application/json
 }
 ```
 
+## Profile Self-Service
+
+Beyond passwords, a signed-in user can manage their own identity from the **Profile page**
+(`/auth/profile` / `/account/profile`, rendered by `ProfileBase`). These actions go through
+`IAuthClient` in-process — there is no public REST route for them — and each returns an
+`AuthResult` so the page can surface validation errors inline.
+
+| Action | `IAuthClient` method | Notes |
+|--------|----------------------|-------|
+| Change username | `ChangeUsernameAsync(userId, ChangeUsernameRequest)` | Subject to Identity username validation + uniqueness. |
+| Change display name | `ChangeDisplayNameAsync(userId, ChangeDisplayNameRequest)` | Free-form display name; falls back to the email when empty. |
+| Resend confirmation email | `ResendConfirmationEmailAsync(userId)` | Re-sends the confirmation link; also exposed as `POST /api/auth/resend-confirmation`. |
+
+The `userId` is taken from the authenticated principal — a user can only edit their own
+profile. Each successful change refreshes the corresponding field on the page; a failed
+change leaves the previous value untouched and shows the error message.
+
+> Email **address** changes are intentionally not a self-service flow here; the confirmation
+> pipeline (see [Email Confirmation](#email-confirmation)) covers verifying the address set at
+> registration. Admin-side user edits live under [User Management](roles-permissions.md#user-management-iusermanagementservice).
+
 ## Two-Factor Authentication
 
 The module ships an **email-based one-time-code (OTP)** second factor with single-use

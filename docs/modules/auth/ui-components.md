@@ -55,8 +55,8 @@ builder.Services
 
 | Page | Route | IAccountPage |
 |---|---|---|
-| `Profile.razor` | `/auth/profile`, `/account/profile` | Yes — appears in account navigation |
-| `Security.razor` | `/account/security` | Yes — change password |
+| `Profile.razor` | `/auth/profile`, `/account/profile` | Yes — change username, change display name, resend confirmation email (see [Profile Self-Service](auth-flows.md#profile-self-service)) |
+| `Security.razor` | `/account/security` | Yes — change password and manage two-factor auth (enable/disable, recovery codes; see [Two-Factor](auth-flows.md#two-factor-authentication)) |
 | `AvatarPage.razor` | `/account/avatar` | Yes — upload avatar (requires `SDK-Storage`) |
 
 ### Admin pages (require permissions)
@@ -67,6 +67,9 @@ builder.Services
 | `UserDetailPage.razor` | `/admin/users/{userId}` | `auth:users:read` |
 | `RoleListPage.razor` | `/admin/roles` | `auth:roles:read` |
 | `RoleEditPage.razor` | `/admin/roles/{roleId}` | `auth:roles:manage` |
+| `RegistrationSettingsPage.razor` | `/admin/auth/registration` | `auth:registration:manage` |
+
+The registration page toggles self-registration at runtime; see [Registration](registration.md) for the full host-config + admin-toggle gate.
 
 Admin pages implement `IAdminPage` and automatically appear in admin navigation when `SDK-Admin` is also installed.
 
@@ -74,27 +77,30 @@ Admin pages implement `IAdminPage` and automatically appear in admin navigation 
 
 ### UserMenu.razor
 
-Zeigt ein User-Menü in der AppBar (Avatar/Initialen, Name, E-Mail, Logout-Link). Implementiert `IAppBarWidget` aus `SDK-UI` und wird automatisch per DI-Discovery eingebunden — kein manueller Razor-Code nötig.
+Renders a user menu in the app bar (avatar/initials, name, email, logout link). Implements `IAppBarWidget` from `SDK-UI` and is wired automatically via DI discovery — no manual Razor code required.
 
-#### Verhalten
+#### Behavior
 
-| Zustand | Default | Konfigurierbar |
+| State | Default | Configurable |
 |---|---|---|
-| Eingeloggt | Avatar-Icon mit Dropdown (Profil, Admin, Logout) | — |
-| Anonym | Login + Register als Text-Buttons | `AnonymousMode`, `ShowRegister` |
+| Authenticated | Avatar icon with dropdown (profile, admin, logout) | — |
+| Anonymous | Login + Register as text buttons | `AnonymousMode`, `ShowLogin`, `ShowRegister` |
 
-#### Konfiguration via `AddAuthUi()`
+#### Configuration via `AddAuthUi()`
 
 ```csharp
 // Program.cs
 builder.Services.AddAuthUi(options =>
 {
-    options.AppBar.ShowRegister = false;
+    options.AppBar.ShowLogin = false;     // hide the Login button (route stays reachable)
+    options.AppBar.ShowRegister = false;  // hide the Register button
     options.AppBar.AnonymousMode = AnonymousAppBarMode.IconOnly;
 });
 ```
 
-Siehe [Setup → AppBar-Widget konfigurieren](setup.md#appbar-widget-konfigurieren) für alle verfügbaren Optionen.
+`ShowLogin` and `ShowRegister` are **display-only** — they hide the buttons but do not protect the `/auth/login` or `/auth/register` routes. For a real registration lock, use the gate described in [Registration](registration.md); for a single-user setup, see its [portfolio recipe](registration.md#recipe-single-user--portfolio-setup).
+
+See [Setup → AppBar widget configuration](setup.md#appbar-widget-configuration) for all available options.
 
 ## Localization
 
