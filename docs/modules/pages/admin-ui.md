@@ -16,10 +16,10 @@ The list page shows all pages regardless of status (Draft and Published). Column
 
 | Column | Source |
 |---|---|
-| Title | `PageSummaryDto.Title` |
+| Title | `PageSummaryDto.ResolvedTitle` |
 | Slug | `PageSummaryDto.Slug` |
 | Status | `PageSummaryDto.Status` — rendered as a badge (Draft/Published) |
-| Visibility | Lock badge when `RequiredRole != null`: `Pages.RequiredRole.Restricted` key with the role name |
+| Visibility | Lock icon with tooltip when `RequiredRole != null`: `Pages.RequiredRole.Restricted` key with the role name |
 | Last modified | `PageSummaryDto.UpdatedAt` |
 | Actions | Edit / Publish / Unpublish / Delete — visible only when the user has the corresponding permission |
 
@@ -59,10 +59,6 @@ When `PageDto.AllowAdminEdit == false` (page managed by an `IPageProvider` with 
 - The Save button is hidden.
 - Publish/Unpublish and Delete buttons remain functional (managed pages can still be published or deleted by admins with the right permissions).
 
-### Lock Badge
-
-In `PageEditPage`, a lock badge is displayed next to the page title when `RequiredRole` is set, indicating restricted visibility.
-
 ## Admin Section Registration
 
 `PagesAdminSection` registers the module in the Admin Shell navigation:
@@ -70,13 +66,14 @@ In `PageEditPage`, a lock badge is displayed next to the page title when `Requir
 ```csharp
 public sealed class PagesAdminSection : IAdminSection
 {
+    public string Key   => "pages";
     public string Title => "Seiten";
     public string Icon  => Icons.Material.Filled.Article;
     public int    Order => 50;
 
     public IReadOnlyList<AdminNavItem> NavItems =>
     [
-        new("Alle Seiten", "/admin/pages", Icons.Material.Filled.List),
+        new AdminNavItem("Alle Seiten", "/admin/pages", Icons.Material.Filled.List),
     ];
 }
 ```

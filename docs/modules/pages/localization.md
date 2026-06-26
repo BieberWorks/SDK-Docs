@@ -11,10 +11,10 @@ Located in `src/BieberWorks.SDK.Pages.UI.MudBlazor/Resources/`:
 | `Pages.de.resx` | German (default/fallback) |
 | `Pages.en.resx` | English |
 
-Injected in Razor components as `IStringLocalizer<PagesUiMudBlazorModule>`:
+Injected in Razor components as `IStringLocalizer<PagesResources>`:
 
 ```razor
-@inject IStringLocalizer<PagesUiMudBlazorModule> L
+@inject IStringLocalizer<PagesResources> L
 
 <MudText>@L["Pages.Title"]</MudText>
 ```
@@ -56,8 +56,12 @@ Injected in Razor components as `IStringLocalizer<PagesUiMudBlazorModule>`:
 | `Pages.RequiredRole.Public` | Öffentlich (alle) | Public (everyone) |
 | `Pages.RequiredRole.Restricted` | Nur für: {0} | Restricted to: {0} |
 | `Pages.AccessDenied` | Du hast keinen Zugriff auf diese Seite. | You do not have access to this page. |
+| `Pages.Category` | Kategorie | Category |
+| `Pages.Category.Hint` | Optional. Wird für kategoriespezifische Route-Präfixe verwendet (z.B. "blog" → /blog/{slug}). | Optional. Used to select a category-specific route prefix (e.g. "blog" → /blog/{slug}). |
+| `Pages.Translations` | Übersetzungen | Translations |
+| `Pages.Translation.FallbackNote` | Inhalt in Fallback-Sprache: {0} | Content shown in fallback culture: {0} |
 
-30 keys total.
+34 keys total.
 
 ## Overriding via SDK-Localization Admin
 

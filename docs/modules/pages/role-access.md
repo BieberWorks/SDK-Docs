@@ -67,11 +67,11 @@ The check uses `ClaimsPrincipal.IsInRole` directly — no call to `IPermissionSe
 In the page list (`/admin/pages`), pages with a non-null `RequiredRole` display a lock badge using the `Pages.RequiredRole.Restricted` localization key:
 
 ```razor
-@if (page.RequiredRole is not null)
+@if (context.Item.RequiredRole is not null)
 {
-    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Lock">
-        @L["Pages.RequiredRole.Restricted", page.RequiredRole]
-    </MudChip>
+    <MudTooltip Text="@string.Format(L["Pages.RequiredRole.Restricted"], context.Item.RequiredRole)">
+        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Warning" />
+    </MudTooltip>
 }
 ```
 
@@ -85,7 +85,7 @@ In create/edit forms, the Visibility field is rendered as:
 `PagesAccessDenied.razor` is a simple alert component in `Pages.UI.MudBlazor/Components/`:
 
 ```razor
-@inject IStringLocalizer<PagesUiMudBlazorModule> L
+@inject IStringLocalizer<PagesResources> L
 
 <MudAlert Severity="Severity.Error">@L["Pages.AccessDenied"]</MudAlert>
 ```

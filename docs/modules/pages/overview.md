@@ -1,15 +1,6 @@
 # Overview — SDK-Pages
 
-SDK-Pages is a modular CMS component for static content pages (e.g. Imprint, About, FAQ, Privacy Policy). It provides full admin CRUD, public routing, provider-based seeding, role-based visibility, and automatic auditing via `IAuditableEvent`.
-
-## Packages
-
-| Package | Purpose |
-|---|---|
-| `BieberWorks.SDK.Pages.Contracts` | Interfaces, DTOs, Events, Permissions, `IPageProvider`, `IRoleProvider`, `PagesOptions` |
-| `BieberWorks.SDK.Pages` | EF entity, `PagesDbContext`, migrations, services, `PagesModule` |
-| `BieberWorks.SDK.Pages.UI` | Framework-agnostic `ComponentBase` base classes |
-| `BieberWorks.SDK.Pages.UI.MudBlazor` | Razor components, admin section registration, localization resources |
+> For the module summary, package table, and documentation TOC see [index.md](index.md).
 
 ## PostgreSQL Schema
 
@@ -73,7 +64,7 @@ Draft pages return `null` from `IPageService.GetPublishedBySlugAsync` — the pu
 - **IPageProvider seeding** — consumer modules declare static pages; Pages seeds them on startup if the slug does not yet exist
 - **AllowAdminEdit** flag — pages seeded with `AllowAdminEdit: false` are read-only in the admin UI
 - **RequiredRole** — optional role restriction on the public route; anonymous users are redirected to login, authenticated users without the role see the `PagesAccessDenied` component
-- **PagesOptions.RoutePrefix** — configurable global fallback prefix for public routes (default `"p"` → `/p/{slug}`, empty string → `/{slug}`)
+- **`PagesOptions.RoutePrefix`** — configurable global fallback prefix for public routes (default `"p"` → `/p/{slug}`, empty string → `/{slug}`)
 - **PagesOptions.CategoryPrefixes** — optional per-category prefix map; a page with `Category = "blog"` and `CategoryPrefixes["blog"] = "blog"` resolves to `/blog/{slug}` instead of the global prefix
 - **PageEntity.Category** — optional nullable string field; `null` means the global `RoutePrefix` applies; set to a category name to activate a per-category prefix
 - **RouteConflictValidator** — optional callback to block slugs that conflict with existing host routes
