@@ -104,7 +104,7 @@ The module applies its migrations automatically at startup (`IModuleInitializer.
 
 ```bash
 dotnet ef migrations add <Name> \
-  --project src/BieberWorks.SDK.Localization.Contracts \
+  --project src/BieberWorks.SDK.Localization \
   --startup-project <HostProject>
 ```
 

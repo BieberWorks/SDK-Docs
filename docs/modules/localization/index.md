@@ -6,12 +6,12 @@ The module **BieberWorks.SDK.Localization** extends Foundation's localization wi
 
 | NuGet Package | Content | Reference |
 |---|---|---|
-| `BieberWorks.SDK.Localization.Contracts` | `ITranslationAdminService`, `TranslationKeyView`, `LocalizationScanOptions`, `ModuleInfo`, Permissions | other modules (contracts only) |
+| `BieberWorks.SDK.Localization.Contracts` | `ITranslationAdminService`, `TranslationKeyView`, `ModuleInfo`, `LocalizationScanOptions`, Permissions | other modules (contracts only) |
 | `BieberWorks.SDK.Localization` | `LocalizationModule`, `CachedTranslationStore`, `TranslationAdminService`, `LocalizationDbContext` (schema `localization`) | Host |
 | `BieberWorks.SDK.Localization.UI` | `TranslationEditorPageBase` (MudBlazor-independent base classes) | Host with UI |
 | `BieberWorks.SDK.Localization.UI.MudBlazor` | MudBlazor rendering, `AddLocalizationUi()` | Host with MudBlazor |
 
-**Current Version:** `v0.5.1`
+For the current release version see the [GitHub Releases page](https://github.com/BieberWorks/SDK-Localization/releases).
 
 ## Layering Model
 
@@ -32,13 +32,11 @@ The layering order is fixed: DB override takes precedence over `.resx`. If no ov
 
 `TranslationAdminService` scans all loaded assemblies on first call for embedded `.resources` streams whose name starts with `BieberWorks.SDK.`. The prefix is configurable via `LocalizationScanOptions.AdditionalAssemblyPrefixes` if own assemblies should be included.
 
-The module name is derived from the resource base name, e.g.:
+The module name is derived from the resource base name after stripping the prefix, e.g.:
 - `BieberWorks.SDK.Auth.Resources` → Module **Auth**
 - `BieberWorks.SDK.Localization.UI.Resources` → Module **Localization**
 
-::: info No Domain Module Changes Required
-A module only needs to deliver its `.resx` files. SDK-Localization discovers them automatically — no separate registration call in the domain module.
-:::
+> **No domain module changes required.** A module only needs to deliver its `.resx` files. SDK-Localization discovers them automatically — no separate registration call in the domain module.
 
 ## Cache Behavior
 
@@ -57,3 +55,11 @@ The lookup happens synchronously on the hot path (every label render). With cult
 | Constant | Value | Meaning |
 |---|---|---|
 | `LocalizationPermissions.TranslationsManage` | `localization:translations:manage` | Display and edit overrides |
+
+## Documentation
+
+| Topic | Description |
+|---|---|
+| [Setup](setup.md) | NuGet installation, `Program.cs` wiring, assembly registration, connection string, migrations |
+| [Usage](usage.md) | Creating `.resx` files, `IStringLocalizer`, language switch, programmatic API, admin UI, adding languages |
+| [Changelog](CHANGES.md) | Auto-generated release notes |
