@@ -162,10 +162,10 @@ The module registers three endpoints under `/api/audit`. All require authorizati
 ### GET /api/audit — query parameters
 
 ```
-GET /api/audit?page=1&pageSize=50&userId=user-123&resource=User,Role&action=created&from=2026-01-01T00:00:00Z&search=admin
+GET /api/audit?page=1&pageSize=50&userId=user-123&resource=User,Role&action=created&resourceId=post-42&from=2026-01-01T00:00:00Z&search=admin
 ```
 
-`resource` and `action` accept comma-separated values for the IN filter.
+`resource` and `action` accept comma-separated values for the IN filter. `resourceId` is a case-insensitive contains-match on the `ResourceId` column.
 
 ## Permissions
 
@@ -180,3 +180,16 @@ public sealed class AuditPermissions : IPermissionContributor
 ```
 
 They are automatically registered on startup via `IPermissionContributor` in the Auth module when SDK-Auth and SDK-Audit are used together.
+
+## GDPR / Personal-Data Handling
+
+SDK-Audit registers two GDPR providers automatically (no additional setup required):
+
+| Provider | Interface | Behaviour |
+|---|---|---|
+| `AuditUserDataExporter` | `IUserDataExporter` | Returns all audit entries for the requested user as a JSON array, ordered by timestamp. |
+| `AuditUserDataEraser` | `IUserDataEraser` | Replaces the `UserId` column with the tombstone value `"ERASED"` for all matching rows. The rows themselves are **never deleted** — audit records are forensic evidence. The operation is idempotent. |
+
+::: info Erasure mode is ignored
+`AuditUserDataEraser` always anonymises regardless of the `ErasureMode` requested (hard delete vs. anonymise). This is intentional: audit trails must be retained for compliance.
+:::
