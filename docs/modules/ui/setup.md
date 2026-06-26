@@ -28,6 +28,8 @@ builder.Services.AddBieberWorksUi();
 | `ICookieConsentService` → `CookieConsentService` | Scoped | Cookie consent management |
 | `ILayoutThemeProvider` → `DefaultLayoutThemeProvider` | Scoped | Provides `LayoutThemeData` per layout key; registered via `TryAddScoped` — can be overridden by SDK-Theme |
 | `ILayoutThemeContext` → `LayoutThemeContext` | Scoped | Holds current layout key and fires `OnChanged` on switch |
+| `IUserTimeZoneAccessor` → `UserTimeZoneAccessor` | Scoped | UTC/Local display mode, browser timezone detection via JS, `bw.tz` cookie persistence |
+| `ICookieRegistrationSource` → `TimeZoneCookieRegistrationSource` | Singleton (enumerable) | Registers the `bw.tz` cookie as a `Necessary` cookie in the consent subsystem |
 
 ## Routes.razor
 

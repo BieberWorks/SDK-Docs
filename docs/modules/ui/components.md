@@ -156,7 +156,7 @@ Page components within `BwThemeProvider` (which contains `BwViewport`) can acces
 
 ## ICookieConsentService / CookieBanner
 
-`ICookieConsentService` manages cookie consents per category (`Necessary`, `Functional`, `Analytics`, `Marketing`). Modules register their cookies via `CookieRegistration`.
+`ICookieConsentService` manages cookie consents per category (`Necessary`, `Functional`, `Analytics`, `Marketing`). Modules declare their cookies by implementing `ICookieRegistrationSource` (in `BieberWorks.SDK.UI.Contracts`).
 
 ```csharp
 public interface ICookieConsentService
@@ -170,6 +170,97 @@ public interface ICookieConsentService
 ```
 
 `CookieBanner` is the associated UI component shown when consent is missing.
+
+### Registering module cookies via ICookieRegistrationSource
+
+Implement `ICookieRegistrationSource` and register it as a singleton enumerable:
+
+```csharp
+internal sealed class MyCookieRegistrationSource : ICookieRegistrationSource
+{
+    public IEnumerable<CookieRegistration> GetRegistrations()
+    {
+        yield return new CookieRegistration(
+            Name: "my.cookie",
+            Category: CookieCategory.Functional,
+            Description: "Used for ...",
+            Module: "MyModule"
+        );
+    }
+}
+
+// In IModule.RegisterServices / Program.cs:
+services.TryAddEnumerable(
+    ServiceDescriptor.Singleton<ICookieRegistrationSource, MyCookieRegistrationSource>());
+```
+
+`CookieConsentService` consumes `IEnumerable<ICookieRegistrationSource>` and deduplicates entries by `Name`.
+
+::: warning Deprecated API
+`CookieConsentServiceCollectionExtensions.RegisterCookies()` is marked `[Obsolete]`. Migrate to `ICookieRegistrationSource`. The method will be removed in the next major release.
+:::
+
+## IUserTimeZoneAccessor / BwTime
+
+`IUserTimeZoneAccessor` (in `BieberWorks.SDK.UI.Contracts.TimeZone`) provides UTC/Local display mode switching and consistent timestamp formatting. One instance per Blazor circuit (Scoped).
+
+```csharp
+public interface IUserTimeZoneAccessor
+{
+    TimeZoneDisplayMode DisplayMode { get; }   // Utc (default) or Local
+    string? BrowserTimeZone { get; }           // IANA zone, e.g. "Europe/Berlin"; null until JS resolved
+    event Action? OnChanged;
+    Task InitializeAsync();   // reads bw.tz cookie; idempotent
+    Task SetLocalAsync();     // detects browser IANA zone via JS; persists bw.tz cookie
+    Task SetUtcAsync();       // clears bw.tz cookie
+    string Format(DateTimeOffset value);
+}
+```
+
+**Formatting rules:**
+- UTC mode: `"dd MMM yyyy HH:mm UTC"` (e.g. `"25 Jun 2026 14:30 UTC"`)
+- Local mode: `"dd MMM yyyy HH:mm +02:00"` (offset notation; falls back to UTC if zone not yet resolved)
+
+**`bw.tz` cookie:** classified as `Necessary` — no consent banner required. The cookie stores the IANA zone string and survives page reloads. Cleared when the user switches back to UTC.
+
+### BwTime component
+
+`BwTime` renders a single `DateTimeOffset` as a formatted string that reacts to mode changes. It is the recommended way to display timestamps in module pages.
+
+```razor
+<BwTime Value="@myTimestamp" />
+```
+
+The component calls `InitializeAsync()` in `OnInitializedAsync`, subscribes to `OnChanged`, and disposes the subscription cleanly.
+
+### Toggling display mode
+
+Inject `IUserTimeZoneAccessor` and call `SetLocalAsync()` / `SetUtcAsync()`:
+
+```razor
+@inject IUserTimeZoneAccessor TimeZoneAccessor
+
+<MudToggleIconButton @bind-Toggled="_isLocal"
+    Icon="@Icons.Material.Filled.AccessTime"
+    ToggledIcon="@Icons.Material.Filled.Language"
+    ToggledChanged="OnToggled" />
+
+@code {
+    private bool _isLocal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TimeZoneAccessor.InitializeAsync();
+        _isLocal = TimeZoneAccessor.DisplayMode == TimeZoneDisplayMode.Local;
+    }
+
+    private async Task OnToggled(bool local)
+    {
+        if (local) await TimeZoneAccessor.SetLocalAsync();
+        else       await TimeZoneAccessor.SetUtcAsync();
+    }
+}
+```
 
 ## Component Override System
 
@@ -226,3 +317,64 @@ If none of these conditions apply and you have no route conflicts, the standard 
 Instead of `OverridePage`, you can declare `@page "/admin/settings"` directly in a host component. `BwRouter` sees the host assembly's route first (higher priority via `AddBieberWorksRouting`) and never reaches the SDK page. The SDK component is not rendered and its DI dependencies are not resolved.
 
 This approach is simpler but requires a `@page` directive on the host component.
+
+
+## BwDataView\<TItem\>
+
+Declarative responsive data component. Desktop (md+) renders a `MudDataGrid`; mobile (xs/sm) renders a `MudCard` list with a bottom-sheet filter drawer and sort menu. Both views are driven by the same `IReadOnlyList<BwColumn<TItem>>` — no duplication between desktop and mobile.
+
+### Column descriptor
+
+```csharp
+new BwColumn<MyDto>
+{
+    Title          = "Email",
+    PropertyName   = nameof(MyDto.Email),   // for grid sort
+    Value          = d => d.Email,           // text fallback
+    CellContent    = d => @<MudLink Href="...">@d.Email</MudLink>,  // desktop cell
+    CardFieldContent = d => @<span>@d.Email</span>,                  // mobile card field (optional)
+    IsCardTitle    = true,
+    Sortable       = true,
+    FilterType     = BwFilterType.Text,
+    FilterDebounce = 400,
+    GetFilterValue = () => _emailFilter,
+    OnFilterChanged = async v => { _emailFilter = v as string; await ReloadAsync(); },
+}
+```
+
+### BwFilterType values
+
+| Value | Mobile drawer control |
+|---|---|
+| `None` | No filter |
+| `Text` | Debounced `MudTextField` |
+| `Select` | `MudSelect` single-value |
+| `Multiselect` | Scrollable `MudCheckBox` list (from `FilterOptions`) |
+| `DateRange` | From / To `MudDatePicker` pair |
+| `Tree` | Caller-supplied `FilterTreeContent` RenderFragment |
+
+### Component parameters
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Columns` | `IReadOnlyList<BwColumn<TItem>>` | Required |
+| `Items` | `IEnumerable<TItem>?` | In-memory (mutually exclusive with `ServerData`) |
+| `ServerData` | `Func<GridState<TItem>, CancellationToken, Task<GridData<TItem>>>?` | Server-side paging |
+| `ToolbarContent` | `RenderFragment?` | Rendered above the data on both viewports |
+| `NoRecordsContent` | `RenderFragment?` | Empty-state slot |
+| `RowActions` | `RenderFragment<TItem>?` | Last column (desktop) / card footer (mobile) |
+| `RowsPerPage` | `int` | Default 25 |
+| `PageSizeOptions` | `int[]?` | Default `[10, 25, 50, 100]` |
+| `GridRef` / `GridRefChanged` | `MudDataGrid<TItem>?` | Two-way binding to expose internal grid |
+
+### Calling ReloadAsync
+
+```csharp
+private BwDataView<MyDto>? _dataView;
+// ...
+await _dataView!.ReloadAsync(); // reloads correct viewport automatically
+```
+
+### CSS
+
+Include `_content/BieberWorks.SDK.UI.MudBlazor/css/bw-dataview.css` in the host's `<head>` (or via `app.css` import). This file is served as a static web asset automatically when the NuGet package is referenced.

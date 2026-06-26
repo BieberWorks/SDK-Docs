@@ -1,17 +1,14 @@
 # Changelog
 
-## v0.10.0 (2026-06-24)
+The changelog is **generated automatically** from [Conventional Commits](https://www.conventionalcommits.org/) and published per release — it is **not** maintained by hand in this repository.
 
-### Added
-- `ICookieRegistrationSource` interface in `BieberWorks.SDK.UI.Contracts.Cookies`. Modules implement this to contribute cookie registrations without tight coupling to any options type. Register via `services.TryAddEnumerable(ServiceDescriptor.Singleton<ICookieRegistrationSource, T>())`.
+👉 **[View the full changelog on the GitHub Releases page →](https://github.com/BieberWorks/SDK-UI/releases)**
 
-### Changed
-- `CookieConsentService` constructor now accepts `IEnumerable<ICookieRegistrationSource>` instead of `IEnumerable<CookieRegistration>`. Registrations are resolved lazily at construction time, deduplicated by name (`DistinctBy(r => r.Name)`).
+## How it works
 
-### Deprecated
-- `CookieConsentServiceCollectionExtensions.RegisterCookies()` is marked `[Obsolete]`. Migrate to `ICookieRegistrationSource`. Will be removed in the next major release.
+- Every release is cut from a git tag (`vX.Y.Z`). The version is computed from the commit messages since the previous tag (`feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major) by the release workflow.
+- The same workflow generates the release notes from those commits and attaches them to the GitHub Release. That auto-generated list is the single source of truth.
 
-## v0.3.0 (2026-06-18)
+## What this means for contributors
 
-### Added
-- English documentation added to module repository
+There is nothing to edit here. Just write clear **Conventional Commit** messages — the changelog takes care of itself.
