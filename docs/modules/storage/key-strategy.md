@@ -27,6 +27,8 @@ Three strategies are included and selectable via `appsettings.json`:
 
 #### Examples
 
+File IDs and owner IDs are embedded as 32-character lowercase hex strings (`Guid.ToString("N")`, no hyphens):
+
 ```
 Date:   2026/06/18/3f4a1b2c3d4e5f6a7b8c9d0e1f2a3b4c_report.pdf
 Owner:  a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6/3f4a1b2c3d4e5f6a7b8c9d0e1f2a3b4c_report.pdf

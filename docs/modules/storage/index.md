@@ -16,13 +16,15 @@ The Storage module provides complete, provider-independent file management for B
 
 ## Package table
 
-| Package | Description | Version |
-|---|---|---|
-| `BieberWorks.SDK.Storage.Contracts` | Interfaces, DTOs, domain events, permissions — referenced by other modules | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
-| `BieberWorks.SDK.Storage` | Core implementation: FileSystem provider, DB-Blob provider, `StorageModule`, migrations (schema `storage`) | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
-| `BieberWorks.SDK.Storage.Aws` | AWS S3 / S3-compatible provider (`S3FileStorage`) | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
-| `BieberWorks.SDK.Storage.Azure` | Azure Blob Storage provider (`AzureBlobFileStorage`) | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
-| `BieberWorks.SDK.Storage.UI.MudBlazor` | Admin pages, user pages, shared components (MudBlazor RCL) | ![v0.7.0](https://img.shields.io/badge/version-0.7.0-blue) |
+Current versions are published on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Storage/releases).
+
+| Package | Description |
+|---|---|
+| `BieberWorks.SDK.Storage.Contracts` | Interfaces, DTOs, domain events, permissions — referenced by other modules |
+| `BieberWorks.SDK.Storage` | Core implementation: FileSystem provider, DB-Blob provider, `StorageModule`, migrations (schema `storage`) |
+| `BieberWorks.SDK.Storage.Aws` | AWS S3 / S3-compatible provider (`S3FileStorage`) |
+| `BieberWorks.SDK.Storage.Azure` | Azure Blob Storage provider (`AzureBlobFileStorage`) |
+| `BieberWorks.SDK.Storage.UI.MudBlazor` | Admin pages, user pages, shared components (MudBlazor RCL) |
 
 ::: tip Contracts-First
 Other modules reference only `BieberWorks.SDK.Storage.Contracts`. Implementation packages are known only to the host.
@@ -43,10 +45,13 @@ Other modules reference only `BieberWorks.SDK.Storage.Contracts`. Implementation
 `DatabaseFileStorage` reads every file fully into RAM (`MemoryStream`). For files over a few MB, use FileSystem, S3, or Azure provider.
 :::
 
-## Further Reading
+## Documentation
 
-- [Setup & Configuration](./setup.md)
-- [Key Strategy](./key-strategy.md)
-- [Providers](./providers.md)
-- [UI Components](./ui-components.md)
-- [GDPR / Privacy](./gdpr-privacy.md)
+| Topic | File |
+|---|---|
+| Setup & Configuration | [setup.md](./setup.md) |
+| Providers (FileSystem, DB-Blob, S3, Azure) | [providers.md](./providers.md) |
+| Key Strategy & Visibility | [key-strategy.md](./key-strategy.md) |
+| Public Image Streaming Endpoint | [public-image-endpoint.md](./public-image-endpoint.md) |
+| UI Components (MudBlazor) | [ui-components.md](./ui-components.md) |
+| GDPR / Privacy | [gdpr-privacy.md](./gdpr-privacy.md) |

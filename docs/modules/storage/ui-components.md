@@ -179,7 +179,8 @@ Add the script tag once in `App.razor` or `index.html`:
     private async Task HandleFile(IBrowserFile file)
     {
         await StorageService.UploadAsync(file.OpenReadStream(), file.Name, file.ContentType,
-            StorageFileVisibility.UserFile, ownerUserId: _userId);
+            ownerUserId: _userId, sizeBytes: file.Size,
+            visibility: StorageFileVisibility.Private);
     }
 }
 ```
@@ -188,25 +189,25 @@ Add the script tag once in `App.razor` or `index.html`:
 
 ```razor
 <BwFileUploadButton
-    Label="Profilbild hochladen"
+    Label="Upload profile picture"
     Accept="image/*"
     MaxFileSizeMb="2"
     UploadImmediately="true"
-    Visibility="StorageFileVisibility.UserFile"
+    Visibility="StorageFileVisibility.AppResource"
     OwnerUserId="@_currentUserId"
-    OnUploaded="@(ref => _avatarUrl = ref.Url)" />
+    OnUploaded="@(reference => _avatarUrl = $"/storage/files/{reference.FileId}")" />
 ```
 
 #### Example 3: Event image (no owner)
 
 ```razor
 <BwFileUploadButton
-    Label="Bild hochladen"
+    Label="Upload image"
     Accept="image/*"
     MaxFileSizeMb="10"
     UploadImmediately="true"
     Visibility="StorageFileVisibility.AppResource"
-    OnUploaded="@(ref => _imageUrl = ref.Url)" />
+    OnUploaded="@(reference => _imageUrl = $"/storage/files/{reference.FileId}")" />
 ```
 
 ### BwFilePreview
@@ -314,9 +315,9 @@ Razor page — using `MudFileUpload` (preferred for feature modules that already
                 contentType: file.ContentType,
                 ownerUserId: _currentUserId,
                 sizeBytes:   file.Size,
-                visibility:  StorageFileVisibility.UserFile);
+                visibility:  StorageFileVisibility.Private);
 
-            _coverImageUrl = reference.Url;
+            _coverImageUrl = $"/storage/files/{reference.FileId}";
             Snackbar.Add("Image uploaded.", Severity.Success);
         }
         catch (Exception)
@@ -365,7 +366,7 @@ Host wrapper — composes `BwFileUploadButton` into the slot (host references `S
             Accept="image/*"
             MaxFileSizeMb="10"
             UploadImmediately="true"
-            Visibility="StorageFileVisibility.UserFile"
+            Visibility="StorageFileVisibility.Private"
             OwnerUserId="@_userId"
             OnUploaded="@(r => InvokeAsync(() => HandleUploaded(r)))" />
     </UploadWidget>
