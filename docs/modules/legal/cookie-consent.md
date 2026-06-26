@@ -126,11 +126,11 @@ Add the assembly to your host's `Program.cs` and `Routes.razor` (required for al
 ```csharp
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(typeof(BieberWorks.SDK.Legal.UI.MudBlazor.LegalAdminSection).Assembly);
+    .AddAdditionalAssemblies(typeof(BieberWorks.SDK.Legal.UI.MudBlazor.LegalUiMudBlazorModule).Assembly);
 ```
 
 **Routes.razor:**
 ```razor
 <Router AppAssembly="@typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Legal.UI.MudBlazor.LegalAdminSection).Assembly }">
+        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Legal.UI.MudBlazor.LegalUiMudBlazorModule).Assembly }">
 ```
