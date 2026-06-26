@@ -1,37 +1,44 @@
-# SDK-Wallet
+# Wallet
 
-The **SDK-Wallet** module provides a ledger-backed wallet system for BieberWorks SDK applications — multi-currency balances, hold/commit/release transactions, and an embedded ISO-4217 currency catalogue.
+The Wallet module provides a multi-currency, permission-gated balance system for BieberWorks SDK hosts. It supports credit/debit operations, fund holds with automatic expiry, server-side paged transaction history, an ISO 4217 currency catalog with admin-managed active currencies, and full GDPR erasure support.
 
-## Packages
+## What the module offers
 
-| Package | Purpose | Version |
+- **Balance management** — top-up (admin/programmatic), debit, and manual adjustment operations with optimistic concurrency retry
+- **Hold / Reserve pattern** — create, commit, and release fund holds; configurable expiry via SDK-Settings
+- **Recurring expired-holds sweeper** — background service cleans up expired holds automatically (configurable interval, opt-out)
+- **ISO 4217 currency catalog** — ~170 currencies embedded as a static dictionary; active currencies managed via Admin UI at `/admin/wallet/currencies`
+- **Server-side paged transaction history** — `WalletPagedResult<T>` keeps memory usage flat for large histories; MudBlazor grids use `MudDataGrid.ServerData`
+- **Permission-gated UI** — Account pages under `/account/wallet/*` (requires `wallet:balance:view`); Admin pages under `/admin/wallet/*` (requires `wallet:admin:manage`)
+- **Auto-auditing** — all write operations publish an `IAuditableEvent`; SDK-Audit logs them without any module-level audit code
+- **GDPR** — export, anonymise-always erasure, and impact assessment (warning on wallet data; blocker on active holds)
+- **NullWalletService** — allows consumer modules to declare an optional dependency on Wallet without forcing hosts to install it
+- **IWalletTopUpProvider** — extension point for external payment providers (Stripe, PayPal, etc.); no built-in self-service top-up endpoint
+
+## Package overview
+
+| Package | Description | When needed |
 |---|---|---|
-| `BieberWorks.SDK.Wallet.Contracts` | Interfaces, DTOs, Events, Permissions — reference this in consumer modules | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) |
-| `BieberWorks.SDK.Wallet` | Core implementation, `WalletDbContext` (schema `wallet`), REST endpoints | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) |
-| `BieberWorks.SDK.Wallet.UI.MudBlazor` | Admin UI (`/admin/wallet/*`) + Account UI (`/account/wallet/*`), permission-gated | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) |
+| `BieberWorks.SDK.Wallet.Contracts` | Interfaces, DTOs, domain events, permission constants, `Iso4217Catalog`, `NullWalletService` | Always when another module consumes Wallet services |
+| `BieberWorks.SDK.Wallet` | Complete implementation: EF Core (`WalletDbContext`, schema `wallet`), service layer, Minimal API endpoints, GDPR handlers, `ExpiredHoldsSweeper` | In the host providing the Wallet feature |
+| `BieberWorks.SDK.Wallet.UI.MudBlazor` | Ready-made MudBlazor Razor components and pages for admin and account areas | When using the built-in Wallet pages |
 
-::: tip Current version
-All packages are released together. Current stable version: **v1.0.0**.
-:::
+## When to use which package
 
-## Key Capabilities
+| Scenario | Required packages |
+|---|---|
+| Another module calls `IWalletService` or `IWalletCurrencyService` | `Wallet.Contracts` |
+| Host provides the Wallet feature | `Wallet` + optional `Wallet.UI.MudBlazor` |
+| Host without Wallet (optional dependency) | Register `NullWalletService` via `TryAddScoped<IWalletService, NullWalletService>()` |
+| Host with external payment top-up flow | Implement and register `IWalletTopUpProvider` in the host |
 
-- **Multi-currency balances** — per-user wallet per ISO-4217 currency code
-- **Hold / Commit / Release** — two-phase reservation pattern for safe deductions
-- **Concurrency-safe** — optimistic concurrency with automatic retry via `ConcurrencyRetry`
-- **Embedded ISO-4217 catalogue** — no external dependency for currency metadata
-- **Auto-Auditing** — wallet operations implement `IAuditableEvent`; zero audit boilerplate
-- **NullWalletService** — optional fallback for hosts that don't include the wallet
+## Documentation
 
-## Database
-
-Own `WalletDbContext` under PostgreSQL schema `wallet`. Migrations run automatically via `InitializeBieberWorksModulesAsync()`.
-
-Connection string lookup order: `WalletDb` → `DefaultConnection`.
-
-## Further Reading
-
-- [Getting Started](./getting-started) — installation, Program.cs, connection string
-- [IWalletService](./wallet-service) — full API reference
-- [Currencies](./currencies) — ISO-4217 catalogue usage
-- [Permissions](./permissions) — permission keys and role assignment
+| Topic | Document |
+|---|---|
+| Installation, `Program.cs`, connection string, permissions setup, `NullWalletService` | [Getting Started](getting-started.md) |
+| `IWalletService` methods, hold/release lifecycle, `WalletOptions`, sweeper configuration | [Wallet Service API](wallet-service.md) |
+| ISO 4217 catalog, `IWalletCurrencyService`, currency rules, admin UI | [Currencies](currencies.md) |
+| Permission constants, assignment, REST endpoint protection | [Permissions](permissions.md) |
+| GDPR export, anonymise-always erasure, impact assessment (holds blocker) | [GDPR / Privacy](gdpr-privacy.md) |
+| Release history | [Changelog](CHANGES.md) |

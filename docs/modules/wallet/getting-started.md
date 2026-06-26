@@ -6,13 +6,13 @@ Add the packages to your host project:
 
 ```xml
 <!-- Core wallet logic + REST endpoints -->
-<PackageReference Include="BieberWorks.SDK.Wallet" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Wallet" Version="1.*-*" />
 
 <!-- Optional: Admin + Account UI (MudBlazor) -->
-<PackageReference Include="BieberWorks.SDK.Wallet.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Wallet.UI.MudBlazor" Version="1.*-*" />
 
 <!-- Consumer modules reference ONLY contracts, never the implementation -->
-<PackageReference Include="BieberWorks.SDK.Wallet.Contracts" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Wallet.Contracts" Version="1.*-*" />
 ```
 
 ## Program.cs Registration
@@ -21,7 +21,7 @@ Add the packages to your host project:
 // Registers WalletModule automatically via IModule discovery.
 builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// If using the UI package, register the section:
+// If using the UI package, register the sections:
 builder.Services.AddSingleton<IAdminSection, WalletAdminSection>();
 builder.Services.AddSingleton<IAccountSection, WalletAccountSection>();
 
@@ -37,7 +37,7 @@ app.MapRazorComponents<App>()
         AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Wallet.UI.MudBlazor._Imports).Assembly }">
 ```
 
-## ConnectionString
+## Connection String
 
 ```json
 {
@@ -47,7 +47,7 @@ app.MapRazorComponents<App>()
 }
 ```
 
-Falls `WalletDb` fehlt, wird `DefaultConnection` als Fallback genutzt.
+If `WalletDb` is absent, `DefaultConnection` is used as a fallback.
 
 ## Permissions Setup
 
@@ -56,26 +56,26 @@ The `WalletPermissionContributor` is registered automatically by `WalletModule`.
 
 Assign permissions to roles via `/admin/users/roles`:
 
-| Permission | Bedeutung |
+| Permission | Effect |
 |---|---|
-| `wallet:wallet:view` | Wallet sichtbar im Account-Bereich |
-| `wallet:wallet:topup` | Auflade-Seite sichtbar |
-| `wallet:wallet:admin` | Admin-Bereich vollständig |
-| `wallet:transactions:view` | Transaktionshistorie einsehbar |
+| `wallet:balance:view` | Wallet entry visible in the Account area; grants access to `/account/wallet` |
+| `wallet:admin:manage` | Full Admin access: view all wallets, top up, adjust, manage currencies |
+| `wallet:transactions:view` | Transaction history visible (own for user, all for admins with `wallet:admin:manage`) |
+
+## Optional: NullWalletService
+
+Consumer modules can optionally depend on Wallet:
+
+```csharp
+// Host without SDK-Wallet:
+services.TryAddScoped<IWalletService, NullWalletService>();
+// → all methods return Result.Failure("wallet:not_configured")
+```
 
 ## Further Reading
 
+- [Module Overview & Packages](./index.md)
 - [Currencies](./currencies.md)
 - [Permissions](./permissions.md)
 - [Wallet Service API](./wallet-service.md)
 - [GDPR / Privacy](./gdpr-privacy.md)
-
-## Optional: NullWalletService
-
-Consumer-Module können optional von Wallet abhängen:
-
-```csharp
-// Host ohne SDK-Wallet:
-services.TryAddScoped<IWalletService, NullWalletService>();
-// → alle Methoden geben Result.Failure("wallet:not_configured") zurück
-```

@@ -4,7 +4,7 @@
 
 `BieberWorks.SDK.Wallet.Contracts.Interfaces`
 
-## Methoden
+## Methods
 
 ### GetOrCreateAsync
 
@@ -12,7 +12,7 @@
 Task<WalletDto> GetOrCreateAsync(string userId, string currencyCode = "EUR", CancellationToken ct = default);
 ```
 
-Erstellt eine Wallet wenn keine existiert (idempotent). Gibt immer eine `WalletDto` zurück.
+Creates a wallet if none exists (idempotent). Always returns a `WalletDto`.
 
 ### GetAvailableBalanceAsync
 
@@ -20,7 +20,7 @@ Erstellt eine Wallet wenn keine existiert (idempotent). Gibt immer eine `WalletD
 Task<decimal> GetAvailableBalanceAsync(string userId, CancellationToken ct = default);
 ```
 
-Gibt das verfügbare Guthaben zurück (`Balance`, ohne `HeldAmount`).
+Returns the available balance (`Balance` minus `HeldAmount`).
 
 ### TopUpAsync / DebitAsync / AdjustAsync
 
@@ -28,34 +28,37 @@ Gibt das verfügbare Guthaben zurück (`Balance`, ohne `HeldAmount`).
 Task<Result<WalletTransactionDto>> TopUpAsync(string userId, decimal amount, string currencyCode = "EUR",
     string? reference = null, string? description = null, CancellationToken ct = default);
 
-Task<Result<WalletTransactionDto>> DebitAsync(...);
+Task<Result<WalletTransactionDto>> DebitAsync(string userId, decimal amount, string currencyCode = "EUR",
+    string? reference = null, string? description = null, CancellationToken ct = default);
+
 Task<Result<WalletTransactionDto>> AdjustAsync(string userId, decimal amount, string currencyCode = "EUR",
     string? reason = null, string? adjustedByUserId = null, CancellationToken ct = default);
 ```
 
-- `DebitAsync` gibt `Result.Failure("wallet:insufficient_balance")` wenn Guthaben nicht ausreicht.
-- `AdjustAsync` kann negativ sein (Betrag wird vom Saldo abgezogen, Floor = 0).
-- Alle Operationen laufen unter einer `RepeatableRead`-Transaktion via `Core.Postgres` (`ExecuteWithConcurrencyRetryAsync`) mit bis zu 3 Retry bei `DbUpdateConcurrencyException`. Die Transaktion ist execution-strategy-safe (kompatibel mit `EnableRetryOnFailure`); Domain-Events werden erst NACH dem Commit publiziert.
+- `TopUpAsync` is intended for admin-initiated and programmatic (consumer module) top-ups only. There is no self-service top-up endpoint. Hosts that require an online payment flow must implement `IWalletTopUpProvider` (see below).
+- `DebitAsync` returns `Result.Failure("wallet:insufficient_balance")` when the balance is too low.
+- `AdjustAsync` can carry a negative amount (balance is reduced, floor = 0).
+- All write operations run inside a `RepeatableRead` transaction via `Core.Postgres` (`ExecuteWithConcurrencyRetryAsync`) with up to 3 retries on `DbUpdateConcurrencyException`. The transaction is execution-strategy-safe (compatible with `EnableRetryOnFailure`); domain events are published only **after** commit.
 
-### Hold-Konzept
+### Hold concept
 
-Ein **Hold** reserviert Guthaben, ohne es zu buchen:
+A **hold** reserves funds without booking them:
 
 ```
-Balance -= Amount          → Guthaben sinkt (nicht mehr verfügbar)
-HeldAmount += Amount       → Reservierung angelegt
+Balance -= Amount          → funds are no longer available
+HeldAmount += Amount       → reservation created
 ```
 
-Bei **Commit**:
+On **commit**:
 ```
-HeldAmount -= Amount       → Reservierung aufgelöst
-Debit-Transaktion erzeugt  → Buchung erscheint in Historie
+HeldAmount -= Amount       → reservation resolved
+Debit transaction created  → booking appears in history
 ```
 
-Bei **Release**:
+On **release**:
 ```
-Balance += Amount          → Guthaben wieder verfügbar
-HeldAmount -= Amount       → Reservierung aufgelöst
+Balance += Amount          → funds available again
+HeldAmount -= Amount       → reservation resolved
 ```
 
 ### HoldAsync
@@ -65,9 +68,10 @@ Task<Result<WalletHoldDto>> HoldAsync(string userId, decimal amount, string curr
     string? reference = null, CancellationToken ct = default);
 ```
 
-Ablaufzeit: aus `ISettingsService.GetValue("Wallet:HoldTimeInMinutes", "30")`.
-- `30` → Hold läuft in 30 Minuten ab.
-- `0` → Hold läuft NIEMALS automatisch ab (`ExpiresAt = null`).
+Expiry is read from `ISettingsService.GetValue("Wallet:HoldTimeInMinutes", "30")`.
+
+- `30` → hold expires in 30 minutes.
+- `0` → hold **never** expires automatically (`ExpiresAt = null`).
 
 ### CommitHoldAsync / ReleaseHoldAsync
 
@@ -76,7 +80,7 @@ Task<Result<WalletTransactionDto>> CommitHoldAsync(Guid holdId, CancellationToke
 Task<Result> ReleaseHoldAsync(Guid holdId, CancellationToken ct = default);
 ```
 
-Beide geben `Result.Failure("wallet:hold_not_found")` wenn der Hold unbekannt oder bereits released ist.
+Both return `Result.Failure("wallet:hold_not_found")` when the hold is unknown or already released.
 
 ### ReleaseExpiredHoldsAsync
 
@@ -105,16 +109,16 @@ size), so large histories are never loaded or rendered all at once.
 
 ## Events (Auto-Auditing)
 
-Alle schreibenden Operationen publizieren ein `IAuditableEvent`:
+All write operations publish an `IAuditableEvent`:
 
 | Operation | Event |
 |---|---|
-| TopUpAsync | `WalletToppedUpEvent` |
-| DebitAsync | `WalletDebitedEvent` |
-| AdjustAsync | `WalletAdjustedEvent` |
-| HoldAsync | `WalletHoldCreatedEvent` |
-| CommitHoldAsync | `WalletHoldCommittedEvent` |
-| ReleaseHoldAsync | `WalletHoldReleasedEvent` |
+| `TopUpAsync` | `WalletToppedUpEvent` |
+| `DebitAsync` | `WalletDebitedEvent` |
+| `AdjustAsync` | `WalletAdjustedEvent` |
+| `HoldAsync` | `WalletHoldCreatedEvent` |
+| `CommitHoldAsync` | `WalletHoldCommittedEvent` |
+| `ReleaseHoldAsync` | `WalletHoldReleasedEvent` |
 
 SDK-Audit logs all events automatically — no audit code is required in the Wallet module.
 
@@ -147,12 +151,28 @@ Bind from the `"Wallet"` section of your configuration:
 ### Behaviour
 
 - **Enabled by default.** The safe behaviour (periodic cleanup) is opt-out, not opt-in.
-- **Startup pass preserved.** `WalletModule.InitializeAsync` still calls `ReleaseExpiredHoldsAsync`
-  once at boot; the sweeper handles recurring runs thereafter.
-- **Resilient loop.** An exception in one tick is logged at `Error` level and the sweeper continues.
-  A single transient DB error never kills the background service.
-- **Scoped lifetime.** Each tick creates a new DI scope and resolves `IWalletService` inside it,
-  correctly handling the singleton-hosted-service / scoped-service lifetime boundary.
-- **Disable** by setting `ExpiredHoldsSweepEnabled: false` — for example when an external
-  scheduler (cron job, Hangfire, etc.) already invokes `ReleaseExpiredHoldsAsync` on its own cadence,
-  or when running a dedicated worker instance that should not sweep.
+- **Startup pass preserved.** `WalletModule.InitializeAsync` still calls `ReleaseExpiredHoldsAsync` once at boot; the sweeper handles recurring runs thereafter.
+- **Resilient loop.** An exception in one tick is logged at `Error` level and the sweeper continues. A single transient DB error never kills the background service.
+- **Scoped lifetime.** Each tick creates a new DI scope and resolves `IWalletService` inside it, correctly handling the singleton-hosted-service / scoped-service lifetime boundary.
+- **Disable** by setting `ExpiredHoldsSweepEnabled: false` — for example when an external scheduler (cron job, Hangfire, etc.) already invokes `ReleaseExpiredHoldsAsync` on its own cadence, or when running a dedicated worker instance that should not sweep.
+
+---
+
+## IWalletTopUpProvider
+
+Hosts that need an external payment flow (Stripe, PayPal, etc.) implement this contract and register it in DI. The Wallet module has no built-in self-service top-up UI or endpoint — the provider abstraction is the extension point for Phase 5.
+
+```csharp
+// Namespace: BieberWorks.SDK.Wallet.Contracts.Interfaces
+public interface IWalletTopUpProvider
+{
+    string ProviderKey { get; }
+
+    Task<Result<string>> InitiateTopUpAsync(
+        string userId, decimal amount, string currencyCode,
+        string returnUrl, CancellationToken ct = default);
+
+    Task<Result<WalletTransactionDto>> ConfirmTopUpAsync(
+        string providerReference, CancellationToken ct = default);
+}
+```

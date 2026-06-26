@@ -1,10 +1,14 @@
 # Changelog
 
-## next (unreleased)
+The changelog is **generated automatically** from [Conventional Commits](https://www.conventionalcommits.org/) and published per release — it is **not** maintained by hand in this repository.
 
-### Added
+👉 **[View the full changelog on the GitHub Releases page →](https://github.com/BieberWorks/SDK-Wallet/releases)**
 
-- `docs/gdpr-privacy.md` — documents the GDPR privacy implementations: `WalletUserDataExporter` (wallet/transactions/holds as JSON), `WalletUserDataEraser` (anonymise-always strategy, financial record retention), and `WalletErasureImpactProvider` (Warning on wallet data; Blocker on active holds).
+## How it works
 
-- **Recurring expired-holds sweeper** (`ExpiredHoldsSweeper`): a background service that periodically calls `IWalletService.ReleaseExpiredHoldsAsync` so expired holds are released even on long-running hosts without a restart. Enabled by default (`WalletOptions.ExpiredHoldsSweepEnabled = true`). Interval configurable via `WalletOptions.ExpiredHoldsSweepInterval` (default: 5 minutes). A tick exception is logged and the loop continues — one transient error does not stop the sweeper.
-- **`WalletOptions`**: new configuration class bound from the `"Wallet"` configuration section. Exposes `ExpiredHoldsSweepEnabled` and `ExpiredHoldsSweepInterval`.
+- Every release is cut from a git tag (`vX.Y.Z`). The version is computed from the commit messages since the previous tag (`feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major) by the release workflow.
+- The same workflow generates the release notes from those commits and attaches them to the GitHub Release. That auto-generated list is the single source of truth.
+
+## What this means for contributors
+
+There is nothing to edit here. Just write clear **Conventional Commit** messages — the changelog takes care of itself.

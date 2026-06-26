@@ -1,4 +1,4 @@
-# Währungen — ISO 4217 Catalog & WalletCurrencyService
+# Currencies — ISO 4217 Catalog & WalletCurrencyService
 
 ## Iso4217Catalog
 
@@ -12,9 +12,9 @@ public static class Iso4217Catalog
 }
 ```
 
-- ~170 ISO-4217-Codes als statisches Dictionary (kein externer Datei-Lookup, kein NuGet).
-- Code-Lookup ist case-insensitive (`"eur"` → findet `"EUR"`).
-- Enthaltene Codes: EUR, USD, GBP, CHF, JPY, CAD, AUD, SEK, NOK, DKK, PLN, CZK, HUF, RON, BGN, CNY, INR, BRL, MXN, SGD, HKD, NZD, ZAR, TRY, KRW, IDR, MYR, PHP, THB, AED, SAR, ILS, EGP, NGN, KES, GHS, MAD, TND, XOF, XAF, und ~130 weitere.
+- ~170 ISO 4217 codes as a static dictionary (no external file lookup, no additional NuGet).
+- Code lookup is case-insensitive (`"eur"` resolves to `"EUR"`).
+- Included codes: EUR, USD, GBP, CHF, JPY, CAD, AUD, SEK, NOK, DKK, PLN, CZK, HUF, RON, BGN, CNY, INR, BRL, MXN, SGD, HKD, NZD, ZAR, TRY, KRW, IDR, MYR, PHP, THB, AED, SAR, ILS, EGP, NGN, KES, GHS, MAD, TND, XOF, XAF, and ~130 more.
 
 ## IWalletCurrencyService
 
@@ -29,18 +29,18 @@ public interface IWalletCurrencyService
 }
 ```
 
-### Regeln
+### Rules
 
-- Nur Codes aus `Iso4217Catalog` können freigeschaltet werden.
-- Die Default-Währung kann nicht deaktiviert werden (erst eine andere als Default setzen).
-- Genau eine Währung kann `IsDefault = true` haben (Application-Level-Constraint).
-- Wallet-Einträge speichern die Währung denormalisiert (`CurrencyCode`-Spalte).
+- Only codes present in `Iso4217Catalog` can be enabled.
+- The default currency cannot be disabled — set another currency as default first.
+- Exactly one currency can have `IsDefault = true` (application-level constraint).
+- Wallet entries store the currency denormalised (`CurrencyCode` column).
 
-## Admin-UI
+## Admin UI
 
 Route: `/admin/wallet/currencies`
 
-- ISO-4217-Katalog durchsuchen (Code-Suche).
-- Währung freischalten (→ `EnableCurrencyAsync`).
-- Default-Währung setzen (→ `SetDefaultCurrencyAsync`).
-- Währung deaktivieren (→ `DisableCurrencyAsync`, nicht möglich für Default).
+- Search the ISO 4217 catalog (code search).
+- Enable a currency (`EnableCurrencyAsync`).
+- Set the default currency (`SetDefaultCurrencyAsync`).
+- Disable a currency (`DisableCurrencyAsync` — not available for the current default).
