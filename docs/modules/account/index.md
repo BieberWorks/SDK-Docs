@@ -6,14 +6,14 @@ The module `SDK-Account` provides a self-service shell for logged-in users ("My 
 
 | Package | Contents |
 |---|---|
-| `BieberWorks.SDK.Account.Contracts` | `IAccountPage`, `IAccountSection`, `AccountNavItem` |
+| `BieberWorks.SDK.Account.Contracts` | `IAccountPage`, `IAccountSection`, `AccountNavItem`, `IAccountNavigationService` and related navigation types |
 | `BieberWorks.SDK.Account.UI.MudBlazor` | `AccountLayout`, `AccountShell`, `AccountModule` (`IModule` + `IEndpointModule`), `AddBieberWorksAccount()` |
 
 ## AccountShell concept
 
 `AccountLayout` is a MudBlazor `LayoutComponentBase` using `BwShellLayout` (from SDK-UI) as responsive base. It:
 
-- renders all registered `IAccountSection` implementations as `MudNavGroup` in the drawer,
+- renders all registered `IAccountSection` implementations as `MudNavGroup` in the drawer via `IAccountNavigationService`,
 - supports optional permission checks per section via `IAccountSection.RequiredPermission` (policy format `perm:{key}`),
 - renders all registered `IAppBarWidget` instances (from SDK-UI) in the AppBar,
 - sets the layout theme key to `"account"` via `ILayoutThemeContext`.
@@ -26,11 +26,13 @@ The module `SDK-Account` provides a self-service shell for logged-in users ("My 
 
 ## Version reference
 
-Current stable version: **v0.5.0**
+The latest stable release and full version history are on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Account/releases).
 
-Package IDs: `BieberWorks.SDK.Account.Contracts` and `BieberWorks.SDK.Account.UI.MudBlazor`.
+## Documentation
 
-## Further Reading
-
-- [Setup & Configuration](./setup.md)
-- [Custom Pages & Sections](./custom-pages.md)
+| Topic | Document |
+|---|---|
+| NuGet references, `Program.cs`, `Routes.razor`, `IModule`-based setup | [Setup & Configuration](setup.md) |
+| Navigation override system, `IAccountNavigationService`, resolve pipeline | [Navigation Overrides](navigation.md) |
+| Implementing `IAccountSection` / `IAccountPage`, permission gating, feature flags | [Custom Pages & Sections](custom-pages.md) |
+| Release history | [Changelog](CHANGES.md) |

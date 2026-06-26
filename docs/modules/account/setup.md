@@ -45,6 +45,8 @@ builder.Services
 | Service | Lifetime | Description |
 |---|---|---|
 | MudBlazor services | — | via `AddMudServices()` |
+| `IAccountNavigationService` | Scoped | Resolves the final nav tree with overrides applied |
+| `INavOverrideTarget` | Scoped | Exposes the account shell to the Admin navigation editor |
 
 The `IAccountSection` collection is not populated by `AddBieberWorksAccount()` — domain modules do that by registering their sections via `services.AddSingleton<IAccountSection, MySection>()`.
 

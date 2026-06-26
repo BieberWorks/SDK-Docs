@@ -19,6 +19,7 @@ Groups multiple `AccountNavItem` links under a drawer entry.
 ```csharp
 public interface IAccountSection
 {
+    string Key   { get; }  // stable, lower-kebab-case, globally unique
     string Title { get; }
     string Icon  { get; }
     int    Order { get; }
@@ -34,6 +35,7 @@ public interface IAccountSection
 
 | Member | Description |
 |---|---|
+| `Key` | Stable, lower-kebab-case identifier (e.g. `"storage"`). Used as the persistence key for nav overrides. Must be unique across all modules and must never change after first deployment. |
 | `Title` | Display name in the drawer (e.g. `"My Files"`) |
 | `Icon` | MudBlazor icon constant (e.g. `Icons.Material.Filled.Folder`) |
 | `Order` | Sorting; lower values appear higher |
@@ -68,6 +70,7 @@ using MudBlazor;
 
 public sealed class MyAccountSection : IAccountSection
 {
+    public string Key   => "my-module";   // stable, never change after first deployment
     public string Title => "My Files";
     public string Icon  => Icons.Material.Filled.Folder;
     public int    Order => 100;
@@ -168,4 +171,4 @@ public bool IsEnabled(IServiceProvider services)
 }
 ```
 
-`AccountLayout` evaluates `IsEnabled` during render (in the `@foreach` loop) and skips disabled sections.
+`AccountLayout` evaluates `IsEnabled` via `IAccountNavigationService.GetResolvedNav()` and skips disabled sections.
