@@ -97,13 +97,22 @@ public class Seeder(ISettingsAdminService admin)
         // Reset to default
         await admin.ResetToDefaultAsync("ui:items-per-page");
 
-        // Delete setting completely
-        await admin.DeleteAsync("obsolete:key");
+        // Delete setting completely (definition + value)
+        await admin.DeleteAsync("obsolete:key", modifiedBy: "seed");
     }
 }
 ```
 
 The cache is automatically invalidated after each write operation.
+
+`ISettingsAdminService` also exposes `RegisterDefinitionAsync` for programmatic one-off registration (e.g. integration test setup) when calling `AddSettingDefinition` via DI is not practical:
+
+```csharp
+await admin.RegisterDefinitionAsync(
+    new AppSettingDefinition("feature:beta-mode", "features", AppSettingType.Boolean, "false"));
+```
+
+This is idempotent — calling it for an already-registered key is a no-op.
 
 ## Cache behavior
 

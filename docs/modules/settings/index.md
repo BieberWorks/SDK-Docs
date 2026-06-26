@@ -11,7 +11,7 @@ The module **BieberWorks.SDK.Settings** provides database-backed application set
 | `BieberWorks.SDK.Settings.UI` | `AppSettingsPageBase`, `FeatureFlagsPageBase` (MudBlazor-independent base classes) | host with UI |
 | `BieberWorks.SDK.Settings.UI.MudBlazor` | MudBlazor rendering, `AddSettingsUi()` | host with MudBlazor |
 
-**Current version:** `v0.3.0`
+For the current release version see the [GitHub Releases page](https://github.com/BieberWorks/SDK-Settings/releases).
 
 ## When to use settings vs. appsettings.json?
 
@@ -63,3 +63,11 @@ SDK-Audit captures these events automatically via the open-generic handler — n
 |---|---|---|
 | `SettingsPermissions.SettingsRead` | `settings:settings:read` | Read admin UI |
 | `SettingsPermissions.SettingsManage` | `settings:settings:manage` | Change / reset values |
+
+## Documentation
+
+| Topic | File |
+|---|---|
+| Setup & registration | [setup.md](setup.md) |
+| Runtime usage (ISettingsService, IFeatureFlagService, ISettingsAdminService, cache) | [usage.md](usage.md) |
+| Changelog | [CHANGES.md](CHANGES.md) |
