@@ -6,19 +6,21 @@ The Components module provides reusable, extensible rendering and editing compon
 
 - **Markdown parsing** (`IMarkdownParser`) — renders Markdown to sanitized HTML with `Markdig` + `HtmlSanitizer`
 - **Syntax highlighting** (`ICodeHighlighter`) — colors code blocks with `ColorCode.Core`
-- **Rich text serialization** (`IRichTextSerializer`) — convert between formats
+- **Rich text serialization** (`IRichTextSerializer`) — round-trips the editor's internal value to a storable string
 - **Framework-agnostic base classes** — extend for FluentUI, MAUI, or custom UI frameworks
 - **Ready-made MudBlazor components** — viewer, editor, code block, rich text editor
 - **No database** — pure service layer; integrates seamlessly with other SDK modules
 
 ## Package table
 
-| Package | Description | Version |
-|---|---|---|
-| `BieberWorks.SDK.Components.Contracts` | Interfaces, options, DTOs — referenced by components and hosts | ![v0.1.0](https://img.shields.io/badge/version-0.1.0-blue) |
-| `BieberWorks.SDK.Components` | Core implementation: `MarkdigParser`, `ColorCodeHighlighter`, `PassthroughRichTextSerializer`, `ComponentsModule` | ![v0.1.0](https://img.shields.io/badge/version-0.1.0-blue) |
-| `BieberWorks.SDK.Components.UI` | Framework-agnostic base classes: `MarkdownViewerBase`, `MarkdownEditorBase`, `CodeBlockBase`, `RichTextEditorBase` | ![v0.1.0](https://img.shields.io/badge/version-0.1.0-blue) |
-| `BieberWorks.SDK.Components.UI.MudBlazor` | MudBlazor RCL: `BwMarkdownViewer`, `BwMarkdownEditor`, `BwCodeBlock`, `BwRichTextEditor` | ![v0.1.0](https://img.shields.io/badge/version-0.1.0-blue) |
+| Package | Description |
+|---|---|
+| `BieberWorks.SDK.Components.Contracts` | Interfaces and options — referenced by components and hosts |
+| `BieberWorks.SDK.Components` | Core implementation: `MarkdigParser`, `ColorCodeHighlighter`, `PassthroughRichTextSerializer`, `ComponentsModule` |
+| `BieberWorks.SDK.Components.UI` | Framework-agnostic base classes: `MarkdownViewerBase`, `MarkdownEditorBase`, `CodeBlockBase`, `RichTextEditorBase` |
+| `BieberWorks.SDK.Components.UI.MudBlazor` | MudBlazor RCL: `BwMarkdownViewer`, `BwMarkdownEditor`, `BwCodeBlock`, `BwRichTextEditor` |
+
+For current release versions see the [GitHub Releases page](https://github.com/BieberWorks/SDK-Components/releases).
 
 ::: tip Contracts-First
 Other modules reference only `BieberWorks.SDK.Components.Contracts`. Implementations are known only to the host.
@@ -37,3 +39,12 @@ MudBlazor  (BwMarkdownViewer, BwMarkdownEditor, BwCodeBlock, BwRichTextEditor)
 ```
 
 Each layer is independently referenceable. When referencing `BieberWorks.SDK.Components.UI.MudBlazor`, all lower layers are automatically included and registered via the `IModule` dependency chain.
+
+## Documentation
+
+| Topic | Description |
+|---|---|
+| [Setup & Configuration](setup.md) | NuGet installation, Program.cs wiring, `appsettings.json` options |
+| [MudBlazor Components](components.md) | Component parameters, examples, and styling |
+| [Extensibility](extensibility.md) | Custom parsers, highlighters, serializers, and UI frameworks |
+| [Changelog](CHANGES.md) | Auto-generated — links to GitHub Releases |

@@ -33,26 +33,23 @@ The component renders without any wrapper element — if you need a `MudPaper` o
 
 ## BwMarkdownEditor
 
-Split-pane markdown editor with live preview.
+Split-pane markdown editor with live preview. Preview is refreshed after a 300 ms debounce on each keystroke. A built-in help dialog shows a markdown cheat sheet.
 
 ### Parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `Markdown` | `string` | — | Initial content (two-way bindable) |
-| `MarkdownChanged` | `EventCallback<string>` | — | Fired when user edits |
-| `EditorHeight` | `string` | `"400px"` | Height of editor pane |
-| `PreviewWidth` | `string` | `"50%"` | Width of preview pane |
-| `ReadOnly` | `bool` | `false` | Disable editing |
-| `Class` | `string` | — | CSS class |
+| `Value` | `string` | `""` | Current Markdown source (two-way bindable via `@bind-Value`) |
+| `ValueChanged` | `EventCallback<string>` | — | Fired when the user edits |
+| `Label` | `string?` | — | Optional label shown above the editor |
+| `Class` | `string?` | — | CSS class applied to the root element |
 
 ### Example
 
 ```razor
 <BwMarkdownEditor 
-    @bind-Markdown="@content"
-    EditorHeight="500px"
-    PreviewWidth="40%"
+    @bind-Value="@content"
+    Label="Description"
 />
 
 @code {
@@ -64,18 +61,15 @@ Split-pane markdown editor with live preview.
 
 ## BwCodeBlock
 
-Highlighted code display with copy button.
+Syntax-highlighted code display with a copy-to-clipboard button.
 
 ### Parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `Code` | `string` | — | Source code to highlight |
-| `Language` | `string` | `"plaintext"` | Code fence language hint (csharp, javascript, etc.) |
-| `CopyButtonPosition` | `string` | `"TopRight"` | Copy button placement |
-| `Theme` | `string` | `"vs"` | Highlight theme (vs, vs-dark, monokai) |
-| `ShowLineNumbers` | `bool` | `false` | Display line numbers |
-| `Class` | `string` | — | CSS class |
+| `Code` | `string` | `""` | Source code to highlight |
+| `Language` | `string` | `"text"` | Language identifier (e.g. `csharp`, `json`, `bash`) |
+| `ShowCopyButton` | `bool` | `true` | Show the copy-to-clipboard button |
 
 ### Example
 
@@ -83,8 +77,7 @@ Highlighted code display with copy button.
 <BwCodeBlock 
     Code="@code"
     Language="csharp"
-    Theme="vs-dark"
-    ShowLineNumbers="true"
+    ShowCopyButton="true"
 />
 
 @code {
@@ -100,28 +93,22 @@ Highlighted code display with copy button.
 
 ## BwRichTextEditor
 
-Unified editor for markdown, HTML, and plain text.
+Plain-text editor backed by `IRichTextSerializer`. Phase 1 uses a `MudTextField` multiline input; a WYSIWYG widget is planned for a future phase once MudBlazor provides one.
 
 ### Parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `Content` | `string` | — | Initial content (two-way bindable) |
-| `ContentChanged` | `EventCallback<string>` | — | Fired when user edits |
-| `Format` | `RichTextFormat` | `Markdown` | Input format: Markdown, Html, PlainText |
-| `EditorHeight` | `string` | `"500px"` | Height of editor |
-| `ReadOnly` | `bool` | `false` | Disable editing |
-| `ShowToolbar` | `bool` | `true` | Display formatting toolbar |
-| `Class` | `string` | — | CSS class |
+| `Value` | `string` | `""` | Current content (two-way bindable via `@bind-Value`) |
+| `ValueChanged` | `EventCallback<string>` | — | Fired when the user edits |
+| `Placeholder` | `string?` | — | Placeholder text shown when the editor is empty |
 
 ### Example
 
 ```razor
 <BwRichTextEditor 
-    @bind-Content="@richText"
-    Format="RichTextFormat.Markdown"
-    EditorHeight="600px"
-    ShowToolbar="true"
+    @bind-Value="@richText"
+    Placeholder="Enter content…"
 />
 
 @code {
@@ -139,26 +126,24 @@ The components module does not define permissions; rendering is unrestricted. Au
 
 ## Styling
 
-All components support the `Class` parameter for custom styling. MudBlazor theming is automatically applied.
-
-To override component styles globally, create a custom CSS in your host:
+`BwMarkdownViewer` and `BwMarkdownEditor` expose CSS hooks via class names. To override component styles globally, add rules to your host stylesheet:
 
 ```css
 .bw-markdown-viewer {
     /* custom styles */
 }
 
-.bw-markdown-editor {
-    /* custom styles */
+.bw-markdown-preview {
+    /* preview pane in the editor */
 }
 
 .bw-code-block {
-    /* custom styles */
+    /* code block wrapper */
 }
 
-.bw-rich-text-editor {
-    /* custom styles */
+.bw-code-block__content {
+    /* code block inner content area */
 }
 ```
 
-Include the CSS in `App.razor` or `_Layout.html`.
+Include the stylesheet in `App.razor` or `_Layout.html`.

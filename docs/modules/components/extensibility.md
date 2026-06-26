@@ -18,10 +18,13 @@ public class CustomMarkdownParser : IMarkdownParser
         _logger = logger;
     }
 
-    public Task<string> ParseAsync(string markdown, MarkdownParserOptions? options = null)
+    public string Parse(string? markdown)
     {
-        // Your custom parsing logic
-        return Task.FromResult(html);
+        if (string.IsNullOrWhiteSpace(markdown))
+            return string.Empty;
+
+        // Your custom parsing logic — return an HTML string.
+        return html;
     }
 }
 ```
@@ -45,10 +48,12 @@ using BieberWorks.SDK.Components.Contracts;
 
 public class CustomCodeHighlighter : ICodeHighlighter
 {
-    public Task<string> HighlightAsync(string code, string language)
+    public IReadOnlyList<string> SupportedLanguages => new[] { "csharp", "json" };
+
+    public string Highlight(string code, string languageId)
     {
-        // Your custom highlighting logic
-        return Task.FromResult(highlighted);
+        // Your custom highlighting logic — return an HTML string.
+        return highlighted;
     }
 }
 ```
@@ -70,10 +75,16 @@ using BieberWorks.SDK.Components.Contracts;
 
 public class CustomRichTextSerializer : IRichTextSerializer
 {
-    public Task<string> SerializeAsync(string content, RichTextFormat from, RichTextFormat to)
+    public string Serialize(string? editorValue)
     {
-        // Your custom serialization logic
-        return Task.FromResult(result);
+        // Convert the editor's internal value to a storable string.
+        return editorValue ?? string.Empty;
+    }
+
+    public string Deserialize(string? stored)
+    {
+        // Convert a stored string back to the editor's internal format.
+        return stored ?? string.Empty;
     }
 }
 ```
@@ -92,54 +103,42 @@ The UI Base classes allow you to build components for any framework.
 
 ### Base classes
 
-- `MarkdownViewerBase` — display-only markdown rendering
-- `MarkdownEditorBase` — editable markdown with split pane preview
-- `CodeBlockBase` — highlighted code display
-- `RichTextEditorBase` — unified rich text editor
+- `MarkdownViewerBase` — display-only markdown rendering; exposes `RenderedHtml`
+- `MarkdownEditorBase` — editable markdown with debounced live preview; exposes `PreviewHtml`, `Value`, `ValueChanged`, `Label`, `Class`
+- `CodeBlockBase` — syntax-highlighted code display with copy button; exposes `HighlightedHtml`, `Code`, `Language`, `ShowCopyButton`, `Copied`
+- `RichTextEditorBase` — rich text editor delegating serialization; exposes `EditorValue`, `Value`, `ValueChanged`, `Placeholder`
 
 ### Example: FluentUI implementation
 
 Add a reference to `BieberWorks.SDK.Components.UI` and create a FluentUI component:
 
 ```csharp
-// FluentUI/BwMarkdownViewer.razor.cs
-using BieberWorks.SDK.Components.UI;
+// FluentUI/FluentMarkdownViewer.razor.cs
+using BieberWorks.SDK.Components.UI.Components;
 
-public partial class BwMarkdownViewer : MarkdownViewerBase
+public partial class FluentMarkdownViewer : MarkdownViewerBase
 {
-    // Inject services and override rendering logic
-    // Use FluentUI components in BwMarkdownViewer.razor
+    // Inject services and override rendering logic if needed.
+    // Use FluentUI components in FluentMarkdownViewer.razor.
 }
 ```
 
-In `BwMarkdownViewer.razor`:
+In `FluentMarkdownViewer.razor`:
 
 ```razor
-@inherits BwMarkdownViewer
+@inherits MarkdownViewerBase
 @namespace BieberWorks.SDK.Components.UI.FluentUI
 
 <FluentCard>
     @((MarkupString)RenderedHtml)
-    @if (ShowRawMarkdown)
-    {
-        <FluentButton>Toggle Raw</FluentButton>
-    }
 </FluentCard>
-```
-
-Register in `Program.cs`:
-
-```csharp
-builder.Services.AddScoped<IMarkdownParser>(sp => sp.GetRequiredService<ComponentsModule>().Parser);
-// ... other services
-// Users will now use your FluentUI components
 ```
 
 ---
 
 ## Logging
 
-All built-in implementations use structured logging via `ILogger<T>` and `[LoggerMessage]` delegates. Custom implementations should follow the same pattern for consistency.
+All built-in implementations use structured logging via `ILogger<T>` and `[LoggerMessage]` source-generator delegates. Custom implementations should follow the same pattern for consistency.
 
 ---
 
@@ -149,18 +148,18 @@ Custom implementations are easily testable because they depend only on the Contr
 
 ```csharp
 [Fact]
-public async Task CustomParser_ParsesValidMarkdown()
+public void CustomParser_ParsesValidMarkdown()
 {
     // Arrange
     var parser = new CustomMarkdownParser(new MockLogger<CustomMarkdownParser>());
     var markdown = "# Heading";
 
     // Act
-    var html = await parser.ParseAsync(markdown);
+    var html = parser.Parse(markdown);
 
     // Assert
-    html.Should().Contain("<h1>");
+    html.ShouldContain("<h1>");
 }
 ```
 
-No database, no HTTP calls—pure unit testing.
+No database, no HTTP calls — pure unit testing.

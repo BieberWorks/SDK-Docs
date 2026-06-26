@@ -86,61 +86,22 @@ Missing the assembly entry in `MapRazorComponents` means components won't be fou
 
 ## Configuration
 
-### Markdown parser options
+### Markdown parser options (`MarkdownParserOptions`)
 
 ```json
 {
   "Components": {
     "Markdown": {
-      "AllowHtml": false,
-      "BreakOnSingleLineBreak": false,
-      "TableExtension": true,
-      "StrikethroughExtension": true
+      "SanitizeHtml": true,
+      "UseAdvancedExtensions": true,
+      "UseBootstrapClasses": false
     }
   }
 }
 ```
 
-These options configure the `MarkdigParser`. Defaults are conservative for security.
-
-### Code highlighter language map
-
-```json
-{
-  "Components": {
-    "CodeHighlighter": {
-      "LanguageMap": {
-        "cs": "csharp",
-        "js": "javascript",
-        "ts": "typescript",
-        "ps": "powershell"
-      }
-    }
-  }
-}
-```
-
-Maps code fence language hints to `ColorCode.Core` language identifiers.
-
-### MudBlazor component defaults
-
-```json
-{
-  "Components": {
-    "MudBlazor": {
-      "MarkdownViewer": {
-      },
-      "MarkdownEditor": {
-        "EditorHeight": "400px",
-        "PreviewWidth": "50%"
-      },
-      "CodeBlock": {
-        "CopyButtonPosition": "TopRight",
-        "Theme": "vs"
-      }
-    }
-  }
-}
-```
-
-All defaults can be overridden per component instance or globally via configuration.
+| Key | Default | Description |
+|---|---|---|
+| `SanitizeHtml` | `true` | Strip potentially dangerous tags using `Ganss.Xss.HtmlSanitizer` (XSS prevention). Recommended — leave enabled in production. |
+| `UseAdvancedExtensions` | `true` | Enable the Markdig "advanced" extension set (tables, task lists, citations, and more). |
+| `UseBootstrapClasses` | `false` | Apply Bootstrap-compatible CSS classes to generated HTML. Useful when the host uses Bootstrap rather than MudBlazor. |
