@@ -4,12 +4,12 @@ The admin shell module for the BieberWorks SDK. Provides central navigation and 
 
 ## Packages
 
-- **`BieberWorks.SDK.Admin.Contracts`** — `IAdminSection`, `IAdminPage`, `AdminNavItem`. Dependency-free, implemented by other modules.
-- **`BieberWorks.SDK.Admin.UI.MudBlazor`** — AdminLayout, AdminShell, Navigation engine. Base UI for the admin shell.
+- **`BieberWorks.SDK.Admin.Contracts`** — `IAdminSection`, `IAdminPage`, `AdminNavItem`, `IAdminNavigationService`, `INavOverrideTarget`. Dependency-free; implemented by other modules.
+- **`BieberWorks.SDK.Admin.UI.MudBlazor`** — AdminLayout, AdminShell, navigation engine, override editor. Base UI for the admin shell.
 
-## Version History
+## Version
 
-**v0.10.2** — current version
+See the [GitHub Releases page](https://github.com/BieberWorks/SDK-Admin/releases) for the latest stable version and changelog.
 
 ## Features
 
@@ -17,24 +17,24 @@ The admin shell module for the BieberWorks SDK. Provides central navigation and 
 
 Each domain module implements `IAdminSection` and registers it via DI to offer one or more pages in the admin navigation. Properties:
 
-- **`Title`** — Display name in drawer (e.g., "Audit Logs")
+- **`Key`** — Stable lower-kebab-case identifier (e.g. `"auth"`, `"storage"`). Used as the persistence key in the override store. Must be unique across all registered modules.
+- **`Title`** — Display name in the drawer (e.g., `"Audit Logs"`)
 - **`Icon`** — MudBlazor icon (e.g., `Icons.Material.Filled.History`)
-- **`Order`** — Sort position (ascending by seconds)
+- **`Order`** — Default sort position (ascending, lower = first)
 - **`NavItems`** — List of navigation links
-- **`IsEnabled(IServiceProvider)`** — Runtime condition (feature flags, permissions)
+- **`IsEnabled(IServiceProvider)`** — Runtime condition (feature flags, permissions); returns `true` by default
 
-### Navigation with Drag-and-Drop
+### Navigation Override System
 
-In **Edit Mode** (only for users with `admin:shell:access` permission):
+The admin nav supports persistent overrides (order, title, icon, visibility, item reassignment) stored via SDK-Settings. See [navigation.md](./navigation.md) for the full override model.
 
-- Reorder sections via drag-and-drop
-- Create, rename, and delete custom folders
-- Move sections into folders
-- All groups collapsed by default
+### Navigation Editor — `/admin/navigation`
+
+A built-in editor page that lets admins manage navigation overrides through the UI. Requires `admin:shell:access` permission.
 
 ### Persistence via SDK-Settings
 
-Navigation is stored in SDK-Settings under key `admin.nav.section-order`. Format: JSON v2 with sections and folders. The admin shell functions without SDK-Settings (order is not persisted).
+Overrides are stored in SDK-Settings. The admin shell functions without SDK-Settings (code-default order is used, no overrides applied).
 
 ### Permission Protection
 
@@ -51,3 +51,14 @@ See [custom-pages.md](./custom-pages.md)
 ## Navigation Features
 
 See [navigation.md](./navigation.md)
+
+---
+
+## Documentation
+
+| Topic | File |
+|---|---|
+| Installation and registration | [setup.md](./setup.md) |
+| Adding custom admin pages | [custom-pages.md](./custom-pages.md) |
+| Navigation override system and editor | [navigation.md](./navigation.md) |
+| Changelog | [CHANGES.md](./CHANGES.md) |

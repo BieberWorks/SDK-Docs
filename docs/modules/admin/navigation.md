@@ -1,7 +1,7 @@
 # Navigation Override System
 
 The Admin shell navigation is driven by `IAdminSection` registrations from each module.
-Starting with v0.4.0, the rendering order and item placement can be overridden persistently
+The rendering order and item placement can be overridden persistently
 via the layered override model described below.
 
 ---
@@ -36,7 +36,7 @@ public sealed class MyAdminSection : IAdminSection
 ### `Order`
 
 Determines the **default** sort order. Admins can override this via the navigation editor
-(`/admin/navigation`, available in v0.5.0). Lower values appear first.
+(`/admin/navigation`). Lower values appear first.
 
 ---
 
@@ -140,17 +140,17 @@ The `AdminLayout.razor` filters `IsHidden == true` before rendering.
 
 ---
 
-## Multi-Shell Override Management (v1.1.0)
+## Multi-Shell Override Management
 
 ### Navigation Editor — `/admin/navigation`
 
 The edit button (Tune icon) in the Admin drawer header navigates to `/admin/navigation`.
-This page is implemented in `Admin.UI.MudBlazor` as of v1.1.0.
+This page is implemented in `Admin.UI.MudBlazor`.
 
 The editor discovers all registered `INavOverrideTarget` implementations via
 `IEnumerable<INavOverrideTarget>` and renders one tab per shell (sorted by `ShellKey`).
-In v1.1.0 only the Admin shell is registered; Phase 2 (Account shell) adds a second tab
-automatically without any changes to the editor page.
+Currently only the Admin shell is registered; a Phase 2 Account shell tab appears automatically
+without any changes to the editor page.
 
 Permission gate: `perm:admin:shell:access` (same as the Admin shell itself).
 

@@ -11,14 +11,14 @@ namespace MyModule;
 
 public class MyAdminSection : IAdminSection
 {
+    // Stable lower-kebab-case key — must be unique across all modules.
+    public string Key   => "my-module";
     public string Title => "My Module";
-    
-    public string Icon => Icons.Material.Filled.Settings;
-    
-    public int Order => 100;
-    
-    public IReadOnlyList<AdminNavItem> NavItems => new[]
-    {
+    public string Icon  => Icons.Material.Filled.Settings;
+    public int    Order => 100;
+
+    public IReadOnlyList<AdminNavItem> NavItems =>
+    [
         new AdminNavItem(
             Title: "Overview",
             Href: "/admin/mymodule",
@@ -29,7 +29,7 @@ public class MyAdminSection : IAdminSection
             Href: "/admin/mymodule/settings",
             Icon: Icons.Material.Filled.Tune
         )
-    };
+    ];
     
     public bool IsEnabled(IServiceProvider services)
     {
