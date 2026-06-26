@@ -1,32 +1,14 @@
 # Changelog
 
-## next (unreleased)
+The changelog is **generated automatically** from [Conventional Commits](https://www.conventionalcommits.org/) and published per release — it is **not** maintained by hand in this repository.
 
-### Added
-- `BieberWorks.SDK.Email.UI` — framework-agnostic page base classes: `EmailTemplatesPageBase`, `EmailTemplateEditorPageBase`, `EmailLayoutsPageBase`, `EmailLayoutEditorPageBase`.
-- `IEmailTemplateEditorFactory` + `EmailTemplateEditorContext` in `Email.UI` — swappable editor seam for future Monaco integration.
-- `BieberWorks.SDK.Email.UI.MudBlazor` — MudBlazor Admin UI: Templates list (grouped by Group, "customized" badge), Template editor (locale selector, layout dropdown, variable token validation, live preview via POST endpoint), Layouts CRUD with `{{ content }}` slot validation.
-- `EmailAdminSection` (`IAdminSection`, Order=60) — wires Email into the SDK-Admin shell with Templates and Layouts nav items.
-- `TextareaEmailTemplateEditorFactory` — default editor: MudBlazor-styled monospace `<textarea>`, zero JS dependencies.
-- `EmailUiModule` (`IModule` + `IEndpointModule`) — auto-discovered; registers admin section, editor factory, and the `/admin/email/preview` POST endpoint.
-- `AddEmailUi()` extension method for host `Program.cs` explicit registration.
-- `DualNotification` record — untyped (string variable dictionary) descriptor for dual-recipient submission notifications (customer + optional admin).
-- `DualNotification<TModel>` record — **preferred** strongly-typed variant; model properties are reflected into template placeholders automatically.
-- `ISubmissionNotifier` interface with two overloads (`NotifyAsync(DualNotification)` and `NotifyAsync<TModel>(DualNotification<TModel>)`).
-- `SubmissionNotifier` — default implementation in `BieberWorks.SDK.Email`. Renders both templates via `IEmailTemplateRenderer`, sends via `IEmailSender`. Admin email is skipped when `AdminEmail` is `null`. Send failures are caught and logged (no rethrow); customer and admin sends are independently fault-isolated.
-- All logging via `[LoggerMessage]` source-generated delegates keyed on `LogContext`.
-- Registered automatically by `EmailModule` (`AddScoped<ISubmissionNotifier, SubmissionNotifier>()`).
+👉 **[View the full changelog on the GitHub Releases page →](https://github.com/BieberWorks/SDK-Email/releases)**
 
+## How it works
 
-## v0.9.0 (2026-06-21)
+- Every release is cut from a git tag (`vX.Y.Z`). The version is computed from the commit messages since the previous tag (`feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major) by the release workflow.
+- The same workflow generates the release notes from those commits and attaches them to the GitHub Release. That auto-generated list is the single source of truth.
 
-### Added
-- `EmailRateLimitOptions` — opt-in rate-limit configuration (`Email:RateLimit` section).
-- `EmailRateLimitExceededException` — thrown when a limit is exceeded; carries `EmailRateLimitKind` discriminator (`GlobalPerMinute`, `GlobalPerHour`, `PerRecipientPerHour`).
-- `RateLimitedEmailSender` — decorator for `IEmailSender`, active only when at least one limit is non-zero. Uses `IMemoryCache` for counters. All throttling events are logged via `[LoggerMessage]` delegates without PII.
-- `EmailModule` automatically wraps the registered sender in the decorator when rate-limit options are present; no consumer-side wiring required.
+## What this means for contributors
 
-## v0.0.5 (2026-06-18)
-
-### Added
-- English documentation added to module repository
+There is nothing to edit here. Just write clear **Conventional Commit** messages — the changelog takes care of itself.

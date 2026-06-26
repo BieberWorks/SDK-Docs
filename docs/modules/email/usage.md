@@ -157,8 +157,13 @@ Render("PasswordResetEmail.html")
     ├─ Custom provider (order 0)          → found? → render
     ├─ FileSystemEmailTemplateProvider    → Email:TemplatePath/<name>.html exists? → render
     ├─ EmbeddedEmailTemplateProvider      → Embedded resource exists? → render
+    ├─ DatabaseEmailTemplateProvider      → DB override exists? → render
     └─ no provider has match              → InvalidOperationException
 ```
+
+::: info Prefer IEmailRenderingPipeline for new code
+The providers above back the legacy synchronous `IEmailTemplateRenderer.Render` path. For the full Scriban pipeline with layout support, locale-aware DB overrides, and async branding injection, use `IEmailRenderingPipeline.RenderAsync` directly — or let `IEmailTemplateRenderer.RenderAsync` delegate to it automatically. See [Template Management](template-management.md).
+:::
 
 ## ISubmissionNotifier — Dual-recipient submission notifications
 
