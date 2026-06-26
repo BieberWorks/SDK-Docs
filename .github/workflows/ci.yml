@@ -6,3 +6,5 @@ jobs:
   ci:
     uses: BieberWorks/tooling/.github/workflows/dotnet-ci.yml@v1
     secrets: inherit
+  sdk-deps:
+    uses: BieberWorks/tooling/.github/workflows/check-sdk-deps.yml@v1
