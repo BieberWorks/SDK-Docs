@@ -289,6 +289,101 @@ modelBuilder.Entity<AppConfig>(b =>
 
 The check constraint name follows the convention `CK_{TableName}_SingletonId`.
 
+## IEntity and EntityBase
+
+`IEntity` is the root marker for all domain entities:
+
+```csharp
+public interface IEntity
+{
+    Guid Id { get; set; }
+}
+```
+
+`EntityBase` is the abstract base class for entities. It provides a Version 7 UUID primary key (time-sortable) and a UTC creation timestamp:
+
+```csharp
+public abstract class EntityBase : IEntity
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+```
+
+All SDK module entities derive from `EntityBase`. Do not set `Id` manually — `Guid.CreateVersion7()` produces a time-ordered UUID that is safe for database indexing.
+
+## IRepository&lt;T&gt; and IUnitOfWork
+
+`IRepository<T>` is a generic CRUD abstraction for domain entities. Modules implement their own concrete repositories against this contract:
+
+```csharp
+public interface IRepository<T> where T : IEntity
+{
+    Task<Result> AddAsync(T obj, CancellationToken ct);
+    Task<Result> UpdateAsync(T obj, CancellationToken ct);
+    Task<Result> DeleteAsync(T obj, CancellationToken ct);
+    Task<Result<T>> GetAsync(Guid id, CancellationToken ct);
+    Task<Result<T>> GetByIdAsync(Guid id, CancellationToken ct);
+    Task<Result<IEnumerable<T>>> GetAllAsync(CancellationToken ct);
+}
+```
+
+`IUnitOfWork` is the minimal persistence-flush contract:
+
+```csharp
+public interface IUnitOfWork
+{
+    Task<Result> SaveChangesAsync(CancellationToken ct);
+}
+```
+
+Neither interface has an EF Core dependency. The EF Core implementation is the responsibility of each consuming module's `DbContext`.
+
+## ValidationError
+
+`ValidationError` is a specialisation of `DomainError` that aggregates multiple validation errors into one:
+
+```csharp
+public record ValidationError(IEnumerable<DomainError> Errors)
+    : DomainError("General.Validation", DomainErrorType.Validation,
+                  "One or more validation errors occurred.");
+```
+
+The static factory `ValidationError.FromResults` collects all errors from a sequence of failed `Result` objects:
+
+```csharp
+var combined = ValidationError.FromResults([result1, result2, result3]);
+```
+
+## IDomainErrorLocalizer
+
+`IDomainErrorLocalizer` is the contract for presenting a human-readable message for a given `DomainError`. Modules that expose user-facing error strings implement this interface:
+
+```csharp
+public interface IDomainErrorLocalizer
+{
+    string GetLocalizedMessage(DomainError domainError);
+}
+```
+
+Register your implementation as `Scoped` and inject it wherever error messages must be translated before display.
+
+## ITranslationStore (SharedKernel.Localization)
+
+`ITranslationStore` is the contract between the SharedKernel localization layer and any DB-backed translation module (e.g. SDK-Localization). It is consumed by `LayeredStringLocalizerFactory` in `Core.Web` to override `.resx` strings at runtime:
+
+```csharp
+namespace BieberWorks.SDK.SharedKernel.Localization;
+
+public interface ITranslationStore
+{
+    Task<string?> GetAsync(string resourceType, string key, string culture,
+                           CancellationToken ct = default);
+}
+```
+
+If no implementation is registered, the localization layer falls back transparently to `.resx`. See [localization.md](localization.md) for the full layered setup.
+
 ## GDPR Data-Subject Contracts
 
 `BieberWorks.SDK.SharedKernel` also contains the cross-module interfaces for GDPR data-export and erasure: `IUserDataExporter`, `IUserDataEraser`, `IUserDataErasureImpactProvider`, and the accompanying records and enums (`ErasureMode`, `ErasureImpactSeverity`, `UserAccountDeletionRequestedEvent`).

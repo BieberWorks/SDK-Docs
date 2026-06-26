@@ -67,6 +67,57 @@ public interface IAppMessageRequestHandler<TCommand, TResponse>
 }
 ```
 
+### IAppMessageCommandHandler&lt;TCommand&gt; / IAppMessageCommandHandler&lt;TCommand, TResponse&gt;
+
+Convenience typed aliases over `IAppMessageRequestHandler` for command handlers. Use these instead of the raw `IAppMessageRequestHandler` when implementing command handlers to make the intent explicit:
+
+```csharp
+// Void command (returns Result)
+public sealed class DeleteUserCommandHandler(IUserRepository users)
+    : IAppMessageCommandHandler<DeleteUserCommand>
+{
+    public async Task<Result> HandleAsync(DeleteUserCommand command, CancellationToken ct)
+    {
+        // ...
+        return Result.Success();
+    }
+}
+
+// Value-returning command (returns Result<T>)
+public sealed class CreateOrderCommandHandler(IOrderRepository orders)
+    : IAppMessageCommandHandler<CreateOrderCommand, Guid>
+{
+    public async Task<Result<Guid>> HandleAsync(CreateOrderCommand command, CancellationToken ct)
+    {
+        // ...
+        return Result.Success<Guid>(order.Id);
+    }
+}
+```
+
+### IAppMessageQueryHandler&lt;TQuery, TResponse&gt;
+
+Convenience typed alias over `IAppMessageRequestHandler` for query handlers:
+
+```csharp
+public sealed class GetOrderQueryHandler(IOrderRepository orders)
+    : IAppMessageQueryHandler<GetOrderQuery, OrderDto>
+{
+    public async Task<Result<OrderDto>> HandleAsync(GetOrderQuery query, CancellationToken ct)
+    {
+        // ...
+        return Result.Success(dto);
+    }
+}
+```
+
+Register the same way as any `IAppMessageRequestHandler`:
+
+```csharp
+services.AddScoped<IAppMessageCommandHandler<DeleteUserCommand>, DeleteUserCommandHandler>();
+services.AddScoped<IAppMessageQueryHandler<GetOrderQuery, OrderDto>, GetOrderQueryHandler>();
+```
+
 ### IAppMessageDispatcher
 
 The entry point for callers:

@@ -1,31 +1,14 @@
 # Changelog
 
-## next (unreleased)
+The changelog is **generated automatically** from [Conventional Commits](https://www.conventionalcommits.org/) and published per release — it is **not** maintained by hand in this repository.
 
-### Added
-- `gdpr-data-subject-contracts.md` — documents `IUserDataExporter`, `IUserDataEraser`, `IUserDataErasureImpactProvider`, `ErasureMode`, `ErasureImpactSeverity`, and `UserAccountDeletionRequestedEvent` added to `BieberWorks.SDK.SharedKernel` for the GDPR erasure saga orchestrated by SDK-Legal.
+👉 **[View the full changelog on the GitHub Releases page →](https://github.com/BieberWorks/SDK-Foundation/releases)**
 
-### Changed
-- `OutboxOptions` are now bound as **named options** keyed by `typeof(TContext).FullName`. Each `OutboxDispatcher<TContext>` resolves its own independently configured options via `IOptionsMonitor<OutboxOptions>.Get(name)`. In a modular monolith with multiple modules, every module can set `BatchSize`, `MaxAttempts`, `PollInterval`, and `RetentionPeriod` independently. Consumers that do not pass a `configure` callback receive the built-in defaults — no migration required. `AddBieberWorksOutbox<TContext>` signature is unchanged.
-- `ISingletonEntity` — reduced to a member-less marker interface (removed `int Id` member). The entity's primary key is provided by `EntityBase` (`Guid Id`); declaring an `int Id` on the marker conflicted with the Guid-based key and had zero SDK consumers. The singleton row is now identified by a well-known `Guid` constant in the implementing entity. This is technically a breaking change to the interface signature, but with no existing implementations across the SDK it is safe in practice. The EF Core snippet in `shared-kernel.md` is updated accordingly (Guid-based check constraint instead of `Id = 1`).
+## How it works
 
-### Added (Core.Postgres)
-- Optimistic concurrency (xmin): `IConcurrencyTracked` marker interface, `UseXminConcurrencyToken<TEntity>()` builder extension (explicit, recommended) and opt-in `ApplyXminConvention()` model-builder extension. Removes the per-entity `xmin`/`xid`/`IsRowVersion` mapping boilerplate so `ExecuteWithConcurrencyRetryAsync` works out of the box.
-- Design-time support: `BieberWorksDesignTimeFactory<TContext>` base class and `MigrateModuleAsync<TContext>()` service-provider extension. Connection-string resolution is shared with the runtime registration so design-time configuration cannot drift from runtime.
-- Transactional outbox: `IOutbox.Enqueue`, `ExecuteWithOutboxAsync` DbContext extension, `OutboxMessage` entity with per-module-DbContext registration (`AddOutbox()`), and a hosted `IOutboxDispatcher` (`AddBieberWorksOutbox`) that publishes stored domain events at-least-once after commit (`FOR UPDATE SKIP LOCKED` claim, retry/backoff, dead-letter, retention). Handlers must be idempotent. Documented as not a distributed-transaction substitute.
+- Every release is cut from a git tag (`vX.Y.Z`). The version is computed from the commit messages since the previous tag (`feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major) by the release workflow.
+- The same workflow generates the release notes from those commits and attaches them to the GitHub Release. That auto-generated list is the single source of truth.
 
-### Added (previous unreleased)
-- `LocalizedText` — immutable, culture-open in-memory value object in `BieberWorks.SDK.SharedKernel.Localization`. Three-tier fallback (exact → language-only → prefix-scan → first available). No EF Core dependency; persistence strategy is the consumer's responsibility.
-- `ISingletonEntity` — introduced as POCO marker interface in `BieberWorks.SDK.SharedKernel` for the singleton-entity pattern. EF Core check-constraint snippet documented in `shared-kernel.md`.
+## What this means for contributors
 
-## v0.3.0 (2026-06-18)
-
-### Changed
-- Translated documentation to English
-
-## v0.3.0 — Foundation docs (2026-06-18)
-
-### Added
-- index.md — module overview
-- shared-kernel.md — SharedKernel types reference
-- messaging.md — Messaging system guide
+There is nothing to edit here. Just write clear **Conventional Commit** messages — the changelog takes care of itself.
