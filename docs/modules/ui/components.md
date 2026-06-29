@@ -25,7 +25,7 @@ public interface ILayoutThemeContext
 {
     string? CurrentLayoutKey { get; }
     void Set(string? key);
-    event Action? OnChanged;
+    event Action<LayoutThemeChangedArgs>? OnChanged;
 }
 ```
 
@@ -96,7 +96,7 @@ Dropdown menu for culture switching. Injects `ILanguageService` (from SDK-Locali
 
 ## IAppBarWidget
 
-Contract for Blazor components that modules plug into the AppBar. Rendered via DI enumeration (`IEnumerable<IAppBarWidget>`) by `AdminLayout` and `AccountLayout`.
+Contract for Blazor components that modules plug into the AppBar. Rendered via DI enumeration (`IEnumerable<IAppBarWidget>`) by `BwShellLayout` (sorted by `Order` property).
 
 ```csharp
 public interface IAppBarWidget

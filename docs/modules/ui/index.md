@@ -6,7 +6,7 @@ The module `SDK-UI` provides shared UI infrastructure for all BieberWorks shells
 
 | Package | Contents |
 |---|---|
-| `BieberWorks.SDK.UI.Contracts` | Interfaces without MudBlazor dependency: `IThemeService`, `ILayoutThemeContext`, `ILayoutThemeProvider`, `LayoutThemeData`, `IAppBarWidget`, `ICookieConsentService`, `ICookieRegistrationSource`, `IComponentOverrideRegistry`, `IUserTimeZoneAccessor`, `TimeZoneDisplayMode`, `BwViewportInfo` |
+| `BieberWorks.SDK.UI.Contracts` | Interfaces without MudBlazor dependency: `IThemeService`, `ILayoutThemeContext`, `ILayoutThemeProvider`, `LayoutThemeData`, `IAppBarWidget`, `ICookieConsentService`, `ICookieRegistrationSource`, `IComponentOverrideRegistry`, `IUserTimeZoneAccessor`, `TimeZoneDisplayMode`, `BwViewportInfo`, `BwIcon`, `IShellIconResolver` |
 | `BieberWorks.SDK.UI.MudBlazor` | Implementations and Razor components: `BwThemeProvider`, `DarkModeToggle`, `LanguageSwitcher`, `BwAppBar`, `BwShellLayout`, `BwViewport`, `BwTime`, `CookieBanner`, `BwDataView<TItem>` (responsive declarative data view) |
 
 ## When to use this module?
