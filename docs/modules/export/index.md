@@ -28,7 +28,7 @@ All packages are released together and share one version, computed from Conventi
 
 | Scenario | Required packages |
 |---|---|
-| Another module needs `ExportFormat`, `ExportRequest`, or `IExportService` | `Export.Contracts` |
+| Another module needs `ExportFormatId`, `ExportRequest`, or `IExportService` | `Export.Contracts` |
 | Host performs exports (any format) | `Export` |
 | Host shows download buttons or an inline PDF viewer | `Export` + `Export.UI.MudBlazor` |
 | Custom PDF layout for a specific record type | `Export` + implement `IPdfDocumentBuilder<T>` |
