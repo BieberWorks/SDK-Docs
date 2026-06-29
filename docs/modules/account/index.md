@@ -7,7 +7,10 @@ The module `SDK-Account` provides a self-service shell for logged-in users ("My 
 | Package | Contents |
 |---|---|
 | `BieberWorks.SDK.Account.Contracts` | `IAccountPage`, `IAccountSection`, `AccountNavItem`, `IAccountNavigationService` and related navigation types |
-| `BieberWorks.SDK.Account.UI.MudBlazor` | `AccountLayout`, `AccountShell`, `AccountModule` (`IModule` + `IEndpointModule`), `AddBieberWorksAccount()` |
+| `BieberWorks.SDK.Account` | `AccountModule` (`IModule` + `IEndpointModule` + `IModuleInitializer`), `AccountDbContext` (schema `"account"`), `IAccountNavigationService` impl, `AddBieberWorksAccount()`. Requires `DefaultConnection`. |
+| `BieberWorks.SDK.Account.UI.Blazor.MudBlazor` | `AccountLayout`, `AccountShell`, `AccountUiMudBlazorModule`. UI skin only. `AddBieberWorksAccountUi()` registers MudBlazor services. |
+
+The host must reference **both** `BieberWorks.SDK.Account` and `BieberWorks.SDK.Account.UI.Blazor.MudBlazor`. `AddBieberWorksModules(config)` discovers `AccountModule` from the impl package and `AccountUiMudBlazorModule` from the skin automatically.
 
 ## AccountShell concept
 

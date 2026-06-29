@@ -3,48 +3,59 @@
 ## NuGet packages
 
 ```xml
-<PackageReference Include="BieberWorks.SDK.Account.Contracts"    Version="0.*-*" />
-<PackageReference Include="BieberWorks.SDK.Account.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Account.Contracts"           Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Account"                     Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Account.UI.Blazor.MudBlazor" Version="0.*-*" />
 ```
 
 ::: tip Contracts only
-Domain modules that only implement `IAccountSection` need only `BieberWorks.SDK.Account.Contracts`. `BieberWorks.SDK.Account.UI.MudBlazor` is referenced only by the host.
+Domain modules that only implement `IAccountSection` need only `BieberWorks.SDK.Account.Contracts`. `BieberWorks.SDK.Account` and `BieberWorks.SDK.Account.UI.Blazor.MudBlazor` are referenced only by the host.
 :::
+
+`BieberWorks.SDK.Account` is the implementation package. It contains `AccountModule`, `AccountDbContext`, `IAccountNavigationService`, and `AddBieberWorksAccount()`. The skin package (`UI.Blazor.MudBlazor`) contains only layouts, Razor components, and `AddBieberWorksAccountUi()`.
 
 ## Prerequisites
 
-SDK-Account requires SDK-UI. Ensure `AddBieberWorksUi()` is called before `AddBieberWorksAccount()`.
+1. **SDK-UI** must be registered (`AddBieberWorksUi()`) before the Account skin is used.
+2. A **`DefaultConnection`** connection string must be present in configuration — `AddBieberWorksAccount()` registers `AccountDbContext` via `AddBieberWorksNpgsql` using it (schema `account`). Migrations are applied automatically at startup.
 
 ```xml
 <!-- Also in the host -->
-<PackageReference Include="BieberWorks.SDK.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.UI.Blazor.MudBlazor" Version="2.*-*" />
 ```
 
 ## Program.cs
 
 ```csharp
-using BieberWorks.SDK.Account.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Account.Extensions;
+using BieberWorks.SDK.Account.UI.Blazor.MudBlazor.Extensions;
 using BieberWorks.SDK.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Core.Web.Modularity;
 
-// Order matters: UI first
+// Discovers and registers all IModule implementations (including AccountModule and
+// AccountUiMudBlazorModule) from the dependency graph. Call once — covers all modules.
+builder.Services.AddBieberWorksModules(builder.Configuration);
+
+// SDK-UI must come before the Account skin (Account depends on it).
 builder.Services.AddBieberWorksUi();
-builder.Services.AddBieberWorksAccount();
 
 // Razor components: register account UI assembly
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Account.UI.MudBlazor.AccountModule).Assembly,
+        typeof(BieberWorks.SDK.Account.UI.Blazor.MudBlazor.AccountUiMudBlazorModule).Assembly,
         typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly
     );
 ```
+
+When using `AddBieberWorksModules`, `AccountModule` is discovered automatically and calls `AddBieberWorksAccount(configuration)` internally, including `AccountDbContext` registration and migration.
 
 `AddBieberWorksAccount()` registers:
 
 | Service | Lifetime | Description |
 |---|---|---|
-| MudBlazor services | — | via `AddMudServices()` |
+| `AccountDbContext` | — | via `AddBieberWorksNpgsql` (schema `"account"`, `DefaultConnection`) |
 | `IAccountNavigationService` | Scoped | Resolves the final nav tree with overrides applied |
 | `INavOverrideTarget` | Scoped | Exposes the account shell to the Admin navigation editor |
 
@@ -67,7 +78,7 @@ The `IAccountSection` collection is not populated by `AddBieberWorksAccount()` �
 @code {
     private static readonly Assembly[] _moduleAssemblies =
     [
-        typeof(BieberWorks.SDK.Account.UI.MudBlazor.AccountModule).Assembly,
+        typeof(BieberWorks.SDK.Account.UI.Blazor.MudBlazor.AccountUiMudBlazorModule).Assembly,
         typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly,
         // other modules...
     ];
@@ -78,14 +89,21 @@ The `IAccountSection` collection is not populated by `AddBieberWorksAccount()` �
 `BwThemeProvider` must be in `Routes.razor`, not inside `AccountLayout`. See [SDK-UI Setup](../ui/setup.md).
 :::
 
-## IModule-based approach (alternative)
+## AccountDbContext and Migrations
+
+`AccountDbContext` uses schema `"account"` and is registered by `AddBieberWorksAccount()` via `AddBieberWorksNpgsql`. Migrations are applied idempotently at startup via `InitializeBieberWorksModulesAsync()`. No manual migration steps are required after deployment.
+
+## IModule-based approach (alternative explicit registration)
 
 ```csharp
-// Program.cs
-builder.Services.AddBieberWorksModules(builder.Configuration);
+// Impl: DbContext, navigation service
+services.AddBieberWorksAccount(builder.Configuration);
+
+// Skin: MudBlazor services
+services.AddBieberWorksAccountUi();
 
 app.MapBieberWorksModules();
 await app.InitializeBieberWorksModulesAsync();
 ```
 
-`AccountModule` implements `IModule` and `IEndpointModule` (without own endpoints) and calls `AddBieberWorksAccount()` internally.
+`AccountModule` (in `BieberWorks.SDK.Account`) implements `IModule`, `IEndpointModule`, and `IModuleInitializer` and calls `AddBieberWorksAccount(configuration)` internally.
