@@ -20,7 +20,7 @@ All permissions belong to module `"Pages"`, group `"Seiten"`.
 
 | `IPageAdminService` method | Required permission |
 |---|---|
-| `GetAllAsync` / `GetByIdAsync` | `PagesRead` |
+| `GetAllAsync` / `GetPagedAsync` / `GetByIdAsync` | `PagesRead` |
 | `SlugExistsAsync` | `PagesRead` |
 | `CreateAsync` | `PagesCreate` |
 | `UpdateAsync` | `PagesEdit` |

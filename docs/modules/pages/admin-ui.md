@@ -1,6 +1,6 @@
 # Admin UI — SDK-Pages
 
-The admin UI is provided by the `BieberWorks.SDK.Pages.UI.MudBlazor` package. It integrates into the Admin Shell via `IAdminSection`.
+The admin UI is provided by the `BieberWorks.SDK.Pages.UI.Blazor.MudBlazor` package. It integrates into the Admin Shell via `IAdminSection`.
 
 ## Routes
 

@@ -5,7 +5,7 @@
 ```xml
 <!-- Host .csproj -->
 <PackageReference Include="BieberWorks.SDK.Pages" Version="0.*-*" />
-<PackageReference Include="BieberWorks.SDK.Pages.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Pages.UI.Blazor.MudBlazor" Version="0.*-*" />
 ```
 
 Other modules that only need to register an `IPageProvider` or inject `IPageService`:
@@ -20,7 +20,7 @@ Other modules that only need to register an `IPageProvider` or inject `IPageServ
 
 ```csharp
 using BieberWorks.SDK.Pages.Extensions;
-using BieberWorks.SDK.Pages.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Pages.UI.Blazor.MudBlazor.Extensions;
 
 // Option A — default route prefix /p/{slug}
 builder.Services.AddBieberWorksModules(builder.Configuration);
@@ -58,7 +58,7 @@ Both `MapRazorComponents` and `Routes.razor` need the Pages assembly:
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Pages.UI.MudBlazor.Pages.PagesListPage).Assembly);
+        typeof(BieberWorks.SDK.Pages.UI.Blazor.MudBlazor.Pages.PagesListPage).Assembly);
 ```
 
 ```razor
@@ -66,7 +66,7 @@ app.MapRazorComponents<App>()
 <Router AppAssembly="typeof(App).Assembly"
         AdditionalAssemblies="new[]
         {
-            typeof(BieberWorks.SDK.Pages.UI.MudBlazor.Pages.PagesListPage).Assembly
+            typeof(BieberWorks.SDK.Pages.UI.Blazor.MudBlazor.Pages.PagesListPage).Assembly
         }">
 ```
 

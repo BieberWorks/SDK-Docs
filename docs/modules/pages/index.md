@@ -20,8 +20,8 @@ SDK-Pages is a modular CMS component for static content pages (Imprint, About, F
 |---|---|---|
 | `BieberWorks.SDK.Pages.Contracts` | Interfaces, DTOs, domain events, permissions, `IPageProvider`, `IRoleProvider`, `PagesOptions` | When another module registers an `IPageProvider` or injects `IPageService` |
 | `BieberWorks.SDK.Pages` | EF entity, `PagesDbContext`, migrations, services, `PagesModule` | In the host that owns the pages database |
-| `BieberWorks.SDK.Pages.UI` | Framework-agnostic `ComponentBase` base classes | Transitively — referenced by `.UI.MudBlazor` |
-| `BieberWorks.SDK.Pages.UI.MudBlazor` | Razor components, admin section registration, localization resources | When using the built-in admin and public page UI |
+| `BieberWorks.SDK.Pages.UI.Blazor` | Framework-agnostic `ComponentBase` base classes | Transitively — referenced by `.UI.Blazor.MudBlazor` |
+| `BieberWorks.SDK.Pages.UI.Blazor.MudBlazor` | Razor components, admin section registration, localization resources | When using the built-in admin and public page UI |
 
 ## When to use which package
 
@@ -30,7 +30,7 @@ SDK-Pages is a modular CMS component for static content pages (Imprint, About, F
 | Another module seeds static pages via `IPageProvider` | `Pages.Contracts` |
 | Another module reads published pages via `IPageService` | `Pages.Contracts` |
 | Host owns the pages database and admin API | `Pages` |
-| Host with built-in Blazor admin UI and public page rendering | `Pages` + `Pages.UI.MudBlazor` |
+| Host with built-in Blazor admin UI and public page rendering | `Pages` + `Pages.UI.Blazor.MudBlazor` |
 
 ## Documentation
 

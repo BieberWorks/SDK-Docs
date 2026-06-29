@@ -82,7 +82,7 @@ In create/edit forms, the Visibility field is rendered as:
 
 ## PagesAccessDenied Component
 
-`PagesAccessDenied.razor` is a simple alert component in `Pages.UI.MudBlazor/Components/`:
+`PagesAccessDenied.razor` is a simple alert component in `Pages.UI.Blazor.MudBlazor/Components/`:
 
 ```razor
 @inject IStringLocalizer<PagesResources> L

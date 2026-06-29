@@ -36,6 +36,7 @@ Admin write API. All mutating methods enforce permissions via `IPermissionServic
 public interface IPageAdminService
 {
     Task<IReadOnlyList<PageSummaryDto>> GetAllAsync(string? culture = null, CancellationToken ct = default);
+    Task<PagedResult<PageSummaryDto>> GetPagedAsync(int page = 1, int pageSize = 50, string? culture = null, CancellationToken ct = default);
     Task<PageDto?> GetByIdAsync(Guid id, string? culture = null, CancellationToken ct = default);
     Task<Result<PageDto>> CreateAsync(CreatePageRequest request, string? createdBy = null, CancellationToken ct = default);
     Task<Result<PageDto>> UpdateAsync(UpdatePageRequest request, string? updatedBy = null, CancellationToken ct = default);

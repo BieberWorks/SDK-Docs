@@ -4,7 +4,7 @@ SDK-Pages ships with built-in German (default/fallback) and English translations
 
 ## Resource Files
 
-Located in `src/BieberWorks.SDK.Pages.UI.MudBlazor/Resources/`:
+Located in `src/BieberWorks.SDK.Pages.UI.Blazor.MudBlazor/Resources/`:
 
 | File | Language |
 |---|---|

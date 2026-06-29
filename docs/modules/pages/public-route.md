@@ -49,7 +49,7 @@ The check is performed in `PublicPageBase.OnParametersSetAsync` using `ClaimsPri
 <MudAlert Severity="Severity.Error">@L["Pages.AccessDenied"]</MudAlert>
 ```
 
-Located in `src/BieberWorks.SDK.Pages.UI.MudBlazor/Components/PagesAccessDenied.razor`.
+Located in `src/BieberWorks.SDK.Pages.UI.Blazor.MudBlazor/Components/PagesAccessDenied.razor`.
 
 ## PagesOptions Configuration
 
