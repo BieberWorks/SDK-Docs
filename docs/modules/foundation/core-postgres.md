@@ -206,6 +206,23 @@ await db.ExecuteWithOutboxAsync(async (outbox, ct) =>
 
 The `IOutbox.Enqueue` method serializes the event to JSON and adds an `OutboxMessage` row to the change tracker. The row is committed (or rolled back) with the rest of the transaction.
 
+### Event type identity (rename-safe)
+
+The outbox stores each event's type discriminator in the `EventType` column so the dispatcher can deserialize pending and processed messages. By default, this discriminator is `Type.FullName` — which is invariant across assembly versions but sensitive to namespace or type renames.
+
+For events whose fully-qualified name may change (e.g., domain restructuring), opt-in to a stable, permanently-fixed discriminator using the `[EventType("…")]` attribute from `BieberWorks.SDK.SharedKernel`:
+
+```csharp
+using BieberWorks.SDK.SharedKernel;
+
+[EventType("wallet:funds:debited")]
+public sealed record FundsDebitedEvent(Guid WalletId, decimal Amount) : IDomainEvent;
+```
+
+The format is a recommendation: lowercase, dot- or colon-separated domain slug (e.g. `"auth:user:registered"`, `"wallet:funds:held"`), globally unique within the outbox. This string is written once and never changes, so the event remains deserializable even after namespace reorganization, type renames, or assembly splits.
+
+Existing persisted rows that carry the legacy assembly-qualified name are still deserialized transparently — no migration is required.
+
 ### Registering the dispatcher
 
 Call `AddBieberWorksOutbox<TContext>()` in the module's `RegisterServices` (after `AddBieberWorksNpgsql`):

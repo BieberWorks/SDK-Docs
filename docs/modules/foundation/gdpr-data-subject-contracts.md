@@ -31,7 +31,12 @@ public interface IUserDataExporter
     Task<UserDataExport> ExportAsync(string userId, CancellationToken ct = default);
 }
 
-public sealed record UserDataExport(string ModuleName, string Json);
+public sealed record UserDataExport
+{
+    public required string ModuleName { get; init; }
+    public required string Json { get; init; }
+    public string? ContentType { get; init; } = "application/json";
+};
 ```
 
 `ExportAsync` must return a serialised JSON object whose shape is defined by the module. The orchestrator aggregates all `UserDataExport` payloads into a single archive.
@@ -53,11 +58,13 @@ public interface IUserDataEraser
         CancellationToken ct = default);
 }
 
-public sealed record UserErasureResult(
-    string  ModuleName,
-    int     Affected,
-    int     Retained,
-    string? RetainedReason);
+public sealed record UserErasureResult
+{
+    public required string  ModuleName    { get; init; }
+    public required int     Affected      { get; init; }
+    public required int     Retained      { get; init; }
+    public          string? RetainedReason { get; init; }
+};
 ```
 
 ### ErasureMode
@@ -116,7 +123,11 @@ public sealed record UserErasureImpact(
     string ModuleName,
     IReadOnlyList<ErasureImpactItem> Items);
 
-public sealed record ErasureImpactItem(string Message, ErasureImpactSeverity Severity);
+public sealed record ErasureImpactItem
+{
+    public required string               Message  { get; init; }
+    public required ErasureImpactSeverity Severity { get; init; }
+};
 
 public enum ErasureImpactSeverity
 {
@@ -202,7 +213,7 @@ internal sealed class WalletDataEraser(WalletDbContext db) : IUserDataEraser
             .ToListAsync(ct);
 
         if (wallets.Count == 0)
-            return new UserErasureResult(ModuleName, 0, 0, null);
+            return new UserErasureResult { ModuleName = ModuleName, Affected = 0, Retained = 0 };
 
         int retained = 0;
         string? retainedReason = null;
@@ -227,11 +238,13 @@ internal sealed class WalletDataEraser(WalletDbContext db) : IUserDataEraser
 
         await db.SaveChangesAsync(ct);
 
-        return new UserErasureResult(
-            ModuleName,
-            Affected: wallets.Count - retained,
-            Retained: retained,
-            RetainedReason: retainedReason);
+        return new UserErasureResult
+        {
+            ModuleName     = ModuleName,
+            Affected       = wallets.Count - retained,
+            Retained       = retained,
+            RetainedReason = retainedReason,
+        };
     }
 }
 ```

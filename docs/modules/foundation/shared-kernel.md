@@ -52,18 +52,19 @@ public record UserRegistered(Guid UserId, string Email)
 ## Result / Result&lt;T&gt;
 
 ```csharp
-public record Result(
-    bool Success,
-    IEnumerable<DomainError>? Errors = default,
-    IEnumerable<IDomainEvent>? DomainEvents = default);
+public record Result
+{
+    public bool Success { get; init; }
+    public IEnumerable<DomainError>? Errors { get; init; }
+}
 
-public record Result<TValue>(
-    TValue? Value,
-    bool Success,
-    IEnumerable<DomainError>? Errors = default,
-    IEnumerable<IDomainEvent>? DomainEvents = default)
-    : Result(Success, Errors, DomainEvents);
+public record Result<TValue> : Result
+{
+    public TValue? Value { get; init; }
+}
 ```
+
+Domain events are **not** carried on `Result`. Use `IDomainEventCollector` in handlers to enqueue events — see [messaging.md](messaging.md).
 
 ### Factory Methods (C# 14 Extension Members)
 
@@ -71,8 +72,8 @@ The static factory methods are defined as C# 14 extension members on `Result`:
 
 | Method | Returns | Description |
 |---|---|---|
-| `Result.Success(domainEvents?)` | `Result` | Success without value |
-| `Result.Success<T>(value, domainEvents?)` | `Result<T>` | Success with value |
+| `Result.Success()` | `Result` | Success without value |
+| `Result.Success<T>(value)` | `Result<T>` | Success with value |
 | `Result.Failure(error)` | `Result` | Error without value |
 | `Result.Failure<T>(error)` | `Result<T>` | Error with type parameter |
 
@@ -87,14 +88,6 @@ Result<User> result = user;
 
 // DomainError → Result<T> (error case)
 Result<User> result = DomainError.Unauthorized("User.Unauthorized");
-```
-
-### DomainEvents in Result
-
-Handlers return domain events directly in the result. `InternalDispatcher` reads the `DomainEvents` property after the handler call and publishes them automatically.
-
-```csharp
-return Result.Success(domainEvents: [new UserRegistered(user.Id, user.Email)]);
 ```
 
 ### Bind / BindAsync
@@ -115,10 +108,12 @@ Result<Profile> profileResult = await userResultTask
 ## DomainError
 
 ```csharp
-public record DomainError(
-    string Code,
-    DomainErrorType Type = DomainErrorType.Failure,
-    string? Message = null);
+public record DomainError
+{
+    public required string Code { get; init; }
+    public DomainErrorType Type { get; init; } = DomainErrorType.Failure;
+    public string? Message { get; init; }
+}
 ```
 
 ### Predefined Static Instances
@@ -161,19 +156,6 @@ public enum DomainErrorType
 ```
 
 The `Type` is used by the presentation layer to derive the HTTP status code (e.g., `NotFound` → 404, `Validation` → 422).
-
-### IDomainError
-
-`IDomainError` is the interface behind `DomainError` and can be used for abstractions:
-
-```csharp
-public interface IDomainError
-{
-    string Code { get; }
-    string? Message { get; }
-    DomainErrorType Type { get; }
-}
-```
 
 ## LocalizedText
 
@@ -322,7 +304,6 @@ public interface IRepository<T> where T : IEntity
     Task<Result> AddAsync(T obj, CancellationToken ct);
     Task<Result> UpdateAsync(T obj, CancellationToken ct);
     Task<Result> DeleteAsync(T obj, CancellationToken ct);
-    Task<Result<T>> GetAsync(Guid id, CancellationToken ct);
     Task<Result<T>> GetByIdAsync(Guid id, CancellationToken ct);
     Task<Result<IEnumerable<T>>> GetAllAsync(CancellationToken ct);
 }
@@ -338,6 +319,32 @@ public interface IUnitOfWork
 ```
 
 Neither interface has an EF Core dependency. The EF Core implementation is the responsibility of each consuming module's `DbContext`.
+
+## PagedResult&lt;T&gt;
+
+Canonical paged-result envelope returned by paginated queries across SDK modules.
+
+```csharp
+public sealed record PagedResult<T>
+{
+    public required IReadOnlyList<T> Items { get; init; }
+    public required int Total { get; init; }
+    public required int Page { get; init; }
+    public required int PageSize { get; init; }
+}
+```
+
+Use object-initializer syntax to construct:
+
+```csharp
+return new PagedResult<OrderDto>
+{
+    Items    = dtoList,
+    Total    = totalCount,
+    Page     = query.Page,
+    PageSize = query.PageSize,
+};
+```
 
 ## ValidationError
 

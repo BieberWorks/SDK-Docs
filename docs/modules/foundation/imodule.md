@@ -24,13 +24,19 @@ public interface IModule
 ```csharp
 public interface IModuleInitializer
 {
+    /// <summary>
+    /// Determines the execution order relative to other IModuleInitializer implementations.
+    /// Lower values run first. Defaults to 0.
+    /// </summary>
+    int Order => 0;
+
     Task InitializeAsync(
         IServiceProvider serviceProvider,
         CancellationToken cancellationToken = default);
 }
 ```
 
-Optional supplementary interface to `IModule`. Implementations can run EF Core migrations or seed data here. `InitializeAsync` is called by `InitializeBieberWorksModulesAsync` in its own DI scope, ensuring scoped services (e.g., `DbContext`) are available.
+Optional supplementary interface to `IModule`. Implementations can run EF Core migrations or seed data here. `InitializeBieberWorksModulesAsync` calls each initializer in its own dedicated DI scope (scoped services such as `DbContext` are therefore available), ordered ascending by `Order`.
 
 ## IEndpointModule
 
@@ -147,7 +153,7 @@ await app.RunAsync();
 
 | Method | Package | Description |
 |---|---|---|
-| `host.InitializeBieberWorksModulesAsync(ct?)` | `Core` | Calls `InitializeAsync` for all `IModuleInitializer` modules in a scope |
+| `host.InitializeBieberWorksModulesAsync(ct?)` | `Core` | Calls `InitializeAsync` for all `IModuleInitializer` modules, each in its own DI scope, ordered by `Order` ascending |
 | `endpoints.MapBieberWorksModules()` | `Core.Web` | Calls `MapEndpoints` for all `IEndpointModule` modules |
 
 ::: info Discovery Mechanism

@@ -1,6 +1,6 @@
 # Messaging
 
-The messaging system decouples business logic from its callers. A caller sends a command or query to the `IAppMessageDispatcher`. The dispatcher forwards the message to the registered handler. The handler returns a `Result` that optionally contains domain events. The dispatcher publishes these events automatically via the `IDomainEventPublisher`, which calls all `IDomainEventProcessor<T>` implementations.
+The messaging system decouples business logic from its callers. A caller sends a command or query to the `IAppMessageDispatcher`. The dispatcher forwards the message to the registered handler. The handler enqueues domain events via the injected `IDomainEventCollector`. After the handler returns, the dispatcher drains the collector and publishes those events via `IDomainEventPublisher`, which calls all `IDomainEventProcessor<T>` implementations.
 
 ## Concept
 
@@ -14,8 +14,11 @@ IAppMessageDispatcher (InternalDispatcher)
   │  handler.HandleAsync(command)
   ▼
 IAppMessageRequestHandler<TCommand, TResult>
+  │  (injects IDomainEventCollector, calls collector.Add(event))
+  │  return Result.Success(...)
+  ▼
+InternalDispatcher drains IDomainEventCollector
   │
-  │  return Result.Success(domainEvents: [...])
   ▼
 IDomainEventPublisher
   │
@@ -118,6 +121,20 @@ services.AddScoped<IAppMessageCommandHandler<DeleteUserCommand>, DeleteUserComma
 services.AddScoped<IAppMessageQueryHandler<GetOrderQuery, OrderDto>, GetOrderQueryHandler>();
 ```
 
+### IDomainEventCollector
+
+A scoped service that handlers use to enqueue domain events for publication after the handler completes. The dispatcher drains it automatically and forwards the events to `IDomainEventPublisher`. Handlers must never publish events themselves — only via this collector.
+
+```csharp
+public interface IDomainEventCollector
+{
+    void Add(IDomainEvent domainEvent);
+    void AddRange(IEnumerable<IDomainEvent> domainEvents);
+}
+```
+
+Register `IDomainEventCollector` is registered automatically by `AddBieberWorksMessaging()`. Inject it into any handler that needs to raise domain events.
+
 ### IAppMessageDispatcher
 
 The entry point for callers:
@@ -202,7 +219,9 @@ public record UserRegistered(Guid UserId, string Email)
 using BieberWorks.SDK.Core.Messaging;
 using BieberWorks.SDK.SharedKernel.Results;
 
-public sealed class RegisterUserCommandHandler(IUserRepository users)
+public sealed class RegisterUserCommandHandler(
+    IUserRepository users,
+    IDomainEventCollector collector)
     : IAppMessageRequestHandler<RegisterUserCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> HandleAsync(
@@ -215,12 +234,14 @@ public sealed class RegisterUserCommandHandler(IUserRepository users)
         var user = User.Create(command.Email, command.Password);
         await users.AddAsync(user, ct);
 
-        return Result.Success<Guid>(
-            user.Id,
-            domainEvents: [new UserRegistered(user.Id, command.Email)]);
+        collector.Add(new UserRegistered(user.Id, command.Email));
+
+        return Result.Success<Guid>(user.Id);
     }
 }
 ```
+
+Domain events are **not** passed to `Result.Success`. Instead, enqueue them on the injected `IDomainEventCollector` before returning. The dispatcher drains all collected events after the handler completes and publishes them via `IDomainEventPublisher`.
 
 ### 4. Register the Handler in Module.cs
 
