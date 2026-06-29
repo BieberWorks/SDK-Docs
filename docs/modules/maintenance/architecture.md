@@ -110,8 +110,7 @@ These keys are **internal** — consumers interact with `IMaintenanceModeService
 
 ```
 BieberWorks.SDK.Maintenance.Contracts
-  ├── BieberWorks.SDK.SharedKernel
-  └── BieberWorks.SDK.Settings.Contracts
+  └── BieberWorks.SDK.SharedKernel
 
 BieberWorks.SDK.Maintenance
   ├── BieberWorks.SDK.Maintenance.Contracts
