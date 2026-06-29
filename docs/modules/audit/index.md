@@ -23,7 +23,7 @@ All SDK-Audit packages are released together. See the [GitHub Releases page](htt
 
 | Package | Description |
 |---|---|
-| `BieberWorks.SDK.Audit.Contracts` | `IAuditService`, `AuditEntry`, `AuditEntryDto`, `AuditFilter`, `AuditFacets`, `PagedResult<T>`, `AuditPermissions` |
+| `BieberWorks.SDK.Audit.Contracts` | `IAuditService` (+ segregated `IAuditWriter` / `IAuditReader` / `IAuditAdmin`), `AuditEntry`, `AuditEntryDto`, `AuditFilter`, `AuditFacets` |
 | `BieberWorks.SDK.Audit` | Implementation: `AuditModule`, `AuditService`, `AuditableEventHandler<T>`, `AuditDbContext`, migrations, endpoints, GDPR providers |
 | `BieberWorks.SDK.Audit.UI` | Framework-agnostic base class `AuditLogPageBase` |
 | `BieberWorks.SDK.Audit.UI.MudBlazor` | MudBlazor admin pages + `AddAuditUi()` |
@@ -31,15 +31,14 @@ All SDK-Audit packages are released together. See the [GitHub Releases page](htt
 ## Dependencies
 
 ```
-BieberWorks.SDK.Audit
+BieberWorks.SDK.Audit                    (impl — references Auth.Contracts for AuditPermissions)
   └─ BieberWorks.SDK.Audit.Contracts
-       └─ BieberWorks.SDK.SharedKernel   (IAuditableEvent, IDomainEvent)
-       └─ BieberWorks.SDK.Core           (IDomainEventProcessor<T>)
-       └─ BieberWorks.SDK.Auth.Contracts (IPermissionContributor — only for AuditPermissions)
+       └─ BieberWorks.SDK.SharedKernel    (IAuditableEvent, IDomainEvent, PagedResult<T>)
+       └─ BieberWorks.SDK.Core            (IDomainEventProcessor<T>)
 ```
 
-::: warning AuditPermissions and Auth.Contracts
-`AuditPermissions` in `Audit.Contracts` implements `IPermissionContributor` from `Auth.Contracts`. This makes `Auth.Contracts` a transitive dependency of `Audit.Contracts`. The actual audit core logic (`AuditableEventHandler`, `AuditService`) is unaffected.
+::: info Contracts has no Auth dependency
+`Audit.Contracts` depends only on SDK-Foundation. `AuditPermissions` (the `IPermissionContributor` that pulls in `Auth.Contracts`) lives in the `BieberWorks.SDK.Audit` **implementation** assembly, so modules that reference `Audit.Contracts` to consume `IAuditService` do not transitively pull in `Auth.Contracts`.
 :::
 
 ## Documentation
