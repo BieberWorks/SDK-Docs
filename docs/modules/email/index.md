@@ -6,8 +6,8 @@ The module **BieberWorks.SDK.Email** provides a MailKit-based SMTP send facility
 
 | NuGet package | Contents | When needed |
 |---|---|---|
-| `BieberWorks.SDK.Email.Contracts` | `IEmailSender`, `IEmailTemplateProvider`, `IEmailTemplateRenderer`, `IEmailRenderingPipeline`, `IEmailTemplateAdminService`, `IEmailTemplateDescriptor`, `ISubmissionNotifier`, `EmailMessage`, `EmailAttachment`, `EmailSettings`, `EmailRateLimitOptions`, `EmailRateLimitExceededException`, `DualNotification`, `EmbeddedEmailTemplateProvider`, `EmailTemplateProviderOrder`, `EmailPermissions` | Other modules that inject email services or register descriptors |
-| `BieberWorks.SDK.Email` | `EmailModule`, `SmtpEmailSender`, `LoggingEmailSender`, `RateLimitedEmailSender`, `FileSystemEmailTemplateProvider`, `DatabaseEmailTemplateProvider`, `EmailTemplateRenderer`, `EmailTemplateAdminService`, `CachedEmailTemplateStore`, `SubmissionNotifier` | Host application |
+| `BieberWorks.SDK.Email.Contracts` | `IEmailSender`, `IEmailTemplateProvider`, `IEmailTemplateRenderer`, `IEmailRenderingPipeline`, `IEmailTemplateAdminService`, `IEmailTemplateDescriptor`, `ISubmissionNotifier`, `EmailMessage`, `EmailAttachment`, `EmailSettings`, `EmailRateLimitOptions`, `EmailRateLimitExceededException`, `DualNotification`, `IEmailGlobalVariableProvider`, `EmailTemplateProviderOrder`, `EmailPermissions` | Other modules that inject email services or register descriptors |
+| `BieberWorks.SDK.Email` | `EmailModule`, `SmtpEmailSender`, `LoggingEmailSender`, `RateLimitedEmailSender`, `FileSystemEmailTemplateProvider`, `DatabaseEmailTemplateProvider`, `EmbeddedEmailTemplateProvider` (+ `AddEmbeddedEmailTemplates`), `EmailTemplateRenderer`, `EmailTemplateAdminService`, `CachedEmailTemplateStore`, `SubmissionNotifier` | Host application |
 | `BieberWorks.SDK.Email.UI` | Framework-agnostic Blazor base classes: `EmailTemplatesPageBase`, `EmailTemplateEditorPageBase`, `EmailLayoutsPageBase`, `EmailLayoutEditorPageBase`; `IEmailTemplateEditorFactory` | Transitively — referenced by `.UI.MudBlazor` |
 | `BieberWorks.SDK.Email.UI.MudBlazor` | `EmailUiModule` (auto-discovered), `EmailAdminSection`, `TextareaEmailTemplateEditorFactory`, live-preview POST endpoint `/admin/email/preview` | Host with the built-in Email Admin pages |
 
@@ -22,14 +22,14 @@ All packages are released together and share one version, computed from Conventi
 | `IEmailSender` | Scoped | Send an email (`SendAsync`) |
 | `IEmailTemplateRenderer` | Scoped | Render a template by key with variable substitution; `RenderAsync` also injects branding |
 | `IEmailRenderingPipeline` | Singleton | Core pipeline: resolves DB override → layout → Scriban; returns `RenderedEmail` (HTML + plain text) |
-| `IEmailTemplateProvider` | Singleton, multiple | Supply raw template HTML (`TryGetTemplate`); used by the legacy sync path |
+| `IEmailTemplateProvider` | Singleton, multiple | Supply raw template HTML (`TryGetTemplateAsync`) |
 | `IEmailTemplateAdminService` | Scoped | Admin CRUD: list/get/save/reset template overrides, manage layouts, render preview |
 | `IEmailTemplateDescriptor` | Singleton, multiple | Describe a transactional email (key, display name, variables, default HTML) for Admin UI discovery |
 | `ISubmissionNotifier` | Scoped | Render + send customer and admin emails in one call; faults are caught and logged |
 
-## Template Provider priority (legacy sync path)
+## Template Provider priority
 
-Multiple `IEmailTemplateProvider` registrations are tried in ascending `Order` value. The first non-null result wins.
+Multiple `IEmailTemplateProvider` registrations are tried (via `TryGetTemplateAsync`) in ascending `Order` value. The first non-null result wins.
 
 | Provider | Order | Activation |
 |---|---|---|

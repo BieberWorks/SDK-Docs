@@ -52,7 +52,7 @@ await emailSender.SendAsync(message, ct);
 
 ## IEmailTemplateRenderer — Use templates
 
-`IEmailTemplateRenderer.Render` replaces `{{Key}}` placeholders in an HTML template file:
+`IEmailTemplateRenderer.RenderAsync` replaces `{{Key}}` placeholders in an HTML template file. Use the async variant to avoid deadlock risks under Blazor Server (the synchronous `Render` overload is **deprecated** — see below):
 
 ```csharp
 using BieberWorks.SDK.Email.Contracts;
@@ -63,11 +63,11 @@ public class PasswordResetService(
 {
     public async Task SendResetEmailAsync(string to, string resetLink, CancellationToken ct = default)
     {
-        var html = renderer.Render("PasswordResetEmail.html", new Dictionary<string, string>
+        var html = await renderer.RenderAsync("PasswordResetEmail.html", new Dictionary<string, string>
         {
             ["ResetLink"] = resetLink,
             ["UserEmail"] = to,
-        });
+        }, ct);
 
         var message = new EmailMessage(to, "Reset password", html);
         await emailSender.SendAsync(message, ct);
@@ -105,22 +105,23 @@ var html = await renderer.RenderAsync("PasswordResetEmail.html", new Dictionary<
 }, ct);
 ```
 
-This is the preferred method for production use. `Render` (sync) remains available for test stubs or contexts where branding is not needed.
+This is the preferred method for production use. The synchronous `Render` overload is **deprecated** (sync-over-async deadlock risk under Blazor Server) and remains available only for legacy code or test stubs where branding is not needed — prefer `RenderAsync` for all new code.
 
 ## IEmailTemplateProvider — Register custom providers
 
 ### Embedded resources from own assembly
 
 ```csharp
-using BieberWorks.SDK.Email.Contracts;
+using BieberWorks.SDK.Email;
 
 // In Program.cs or an IModule:
-services.AddSingleton<IEmailTemplateProvider>(
-    new EmbeddedEmailTemplateProvider(
-        assembly:          typeof(MyModuleMarker).Assembly,
-        resourceNamespace: "MyApp.Templates.Email",
-        order:             EmailTemplateProviderOrder.Embedded));
+services.AddEmbeddedEmailTemplates(
+    assembly:       typeof(MyModuleMarker).Assembly,
+    resourcePrefix: "MyApp.Templates.Email");
 ```
+
+`AddEmbeddedEmailTemplates` registers the embedded-resource provider (which lives in the
+`BieberWorks.SDK.Email` implementation package, not in `Email.Contracts`).
 
 The resource file `PasswordResetEmail.html` must exist as `EmbeddedResource` in the project:
 
@@ -138,10 +139,13 @@ public sealed class DatabaseEmailTemplateProvider : IEmailTemplateProvider
 {
     public int Order => EmailTemplateProviderOrder.Custom; // 0 = highest priority
 
-    public string? TryGetTemplate(string templateName)
+    public async ValueTask<string?> TryGetTemplateAsync(string templateName, CancellationToken ct = default)
     {
         // Load from DB, return null if not found
-        return _db.EmailTemplates.FirstOrDefault(t => t.Name == templateName)?.HtmlContent;
+        return await _db.EmailTemplates
+            .Where(t => t.Name == templateName)
+            .Select(t => t.HtmlContent)
+            .FirstOrDefaultAsync(ct);
     }
 }
 
@@ -162,7 +166,7 @@ Render("PasswordResetEmail.html")
 ```
 
 ::: info Prefer IEmailRenderingPipeline for new code
-The providers above back the legacy synchronous `IEmailTemplateRenderer.Render` path. For the full Scriban pipeline with layout support, locale-aware DB overrides, and async branding injection, use `IEmailRenderingPipeline.RenderAsync` directly — or let `IEmailTemplateRenderer.RenderAsync` delegate to it automatically. See [Template Management](template-management.md).
+The providers above back the legacy deprecated synchronous `IEmailTemplateRenderer.Render` path. For the full Scriban pipeline with layout support, locale-aware DB overrides, and async branding injection, use `IEmailRenderingPipeline.RenderAsync` directly — or let `IEmailTemplateRenderer.RenderAsync` delegate to it automatically. See [Template Management](template-management.md).
 :::
 
 ## ISubmissionNotifier — Dual-recipient submission notifications
