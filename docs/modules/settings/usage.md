@@ -2,7 +2,7 @@
 
 ## ISettingsService
 
-`ISettingsService` is registered as a singleton. `GetValue` and `IsEnabled` are synchronous — no `await` needed.
+`ISettingsService` is registered as a singleton. `GetValue` and `IsEnabled` are synchronous and read the in-memory cache — no `await` needed. For callers that prefer to await the store (and tolerate the cache-miss load), `GetValueAsync(key, ct)` and `IsEnabledAsync(key, ct)` return `ValueTask` equivalents (no `defaultValue` parameter — compose with `?? fallback`).
 
 ```csharp
 using BieberWorks.SDK.Settings.Contracts;
@@ -55,7 +55,7 @@ IReadOnlyList<AppSettingDto> all        = await settings.GetAllAsync();
 | `DefaultValue` | `string?` | Default from definition |
 | `Section` | `string` | Grouping |
 | `Description` | `string?` | Description text |
-| `Type` | `AppSettingType` | String / Boolean / Integer / Json |
+| `Type` | `AppSettingType` | String / Boolean / Integer / Json / Custom |
 | `LastModifiedAt` | `DateTimeOffset?` | Last modification time |
 | `LastModifiedBy` | `string?` | Username of last modifier |
 

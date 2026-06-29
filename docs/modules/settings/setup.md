@@ -29,7 +29,10 @@ builder.Services.AddBieberWorksModules(builder.Configuration);
 // Register settings admin UI in the admin shell
 builder.Services.AddSettingsUi();
 
-// Declare setting definitions (idempotently seeded to DB on startup)
+// Declare setting definitions (idempotently seeded to DB on startup).
+// AddSettingDefinition fails fast with InvalidOperationException if the same Key is
+// registered twice. Prefix keys with your module name (e.g. "ui:", "feature:") to
+// avoid cross-module collisions.
 builder.Services.AddSettingDefinition(new AppSettingDefinition(
     Key:          "ui:items-per-page",
     Section:      "ui",

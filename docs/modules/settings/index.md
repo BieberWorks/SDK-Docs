@@ -41,6 +41,7 @@ Each setting has a **definition** (key, section, type, description, default valu
 | `Boolean` (1) | true/false | Toggle |
 | `Integer` (2) | Whole number | Number field |
 | `Json` (3) | JSON blob | Multi-line editor |
+| `Custom` (99) | Unknown/extension type | Fallback to text field |
 
 ## Feature flags
 
