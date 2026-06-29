@@ -42,21 +42,24 @@ Add the following link to your `App.razor` (Blazor Server) or `index.html` (WASM
 
 ## Program.cs
 
-### Step 1: Add BieberWorks modules (automatic)
+### Step 1: Register both modules explicitly
 
 ```csharp
-builder.Services.AddBieberWorksModules(builder.Configuration);
+// Implementation layer — Markdig, HtmlSanitizer, AngleSharp
+builder.Services.AddModule<ComponentsModule>(builder.Configuration);
+
+// MudBlazor UI layer — base classes and Razor components
+builder.Services.AddModule<ComponentsUiMudBlazorModule>(builder.Configuration);
 ```
 
-This automatically:
-1. Registers `ComponentsModule` (via module discovery)
-2. Registers all service abstractions:
-   - `IMarkdownParser` (default: `MarkdigParser`)
-   - `ICodeHighlighter` (default: `ColorCodeHighlighter`)
-   - `IRichTextSerializer` (default: `PassthroughRichTextSerializer`)
-3. **If MudBlazor UI is referenced:** automatically registers `ComponentsUiModule`, which registers the component factory and event handlers
+`ComponentsUiMudBlazorModule` no longer auto-wires `ComponentsModule`. Both must be registered
+explicitly so that WASM hosts and other non-server scenarios can omit the implementation
+package (and its Markdig/HtmlSanitizer/AngleSharp weight) when they do not need it.
 
-No additional `AddComponentsUi()` call is needed.
+The two registrations provide:
+- `IMarkdownParser` (default: `MarkdigParser`)
+- `ICodeHighlighter` (default: `ColorCodeHighlighter`)
+- `IRichTextSerializer` (default: `PassthroughRichTextSerializer`)
 
 ### Step 2: Map Razor assemblies (if using MudBlazor UI)
 
