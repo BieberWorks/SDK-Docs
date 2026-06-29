@@ -1,52 +1,81 @@
 # SDK-Notifications
 
-The **SDK-Notifications** module provides In-App and Email notifications for BieberWorks SDK applications. Domain events implement `INotifiableEvent` to trigger the notification pipeline. Delivery channels (in-app via SignalR, email via SDK-Email) are configurable per event type through the admin UI without redeployment.
+The **SDK-Notifications** module provides In-App and Email notifications for BieberWorks SDK applications. Domain events implement `INotifiableEvent` to trigger the notification pipeline automatically. Delivery channels (in-app via SignalR, email via SDK-Email) are configurable per event type through the admin UI without redeployment.
 
-## Architecture
+## What the module offers
 
-| Component | Role |
-|---|---|
-| `INotifiableEvent` | Domain events implement this interface to trigger the notification pipeline. |
-| `INotificationChannel` | Pluggable delivery channel abstraction. Built-in: `InAppChannel`, `EmailChannel`. |
-| `INotificationTargetResolver<TEvent>` | Resolves target user IDs from an event instance. |
-| `INotificationEventRegistry` | Registers event key → display name and default channels. |
-| `NotifiableEventHandler<T>` | Generic `IDomainEventProcessor<T>` that runs the full pipeline for any `INotifiableEvent`. |
-| `NotificationRetentionService` | Background `IHostedService` that purges notification rows older than `RetentionDays`. |
+- **In-App notifications** — persisted in PostgreSQL, pushed in real-time to the authenticated user via SignalR hub at `/hubs/notifications`
+- **Email notifications** — routed through `SDK-Email`; all user-supplied fields are HTML-encoded before dispatch
+- **Open-generic event handler** — any domain event implementing `INotifiableEvent` is handled automatically by `NotifiableEventHandler<TEvent>` without per-event wiring in the host
+- **Pluggable channels** — register additional `INotificationChannel` implementations in DI; the dispatcher picks them up by `ChannelKey`
+- **Per-event channel config** — stored in the `notifications` schema; editable in the Admin UI at `/admin/notifications` without restart
+- **Target groups** — `INotificationTargetResolver` resolves named groups (e.g. `"AllAdmins"`) to user IDs; capped by `MaxTargetGroupSize` (default 500) to prevent accidental mass-notification
+- **Retention** — `NotificationRetentionService` purges rows older than `RetentionDays` (default 90) on startup and once daily
+- **Bell widget** — MudBlazor `NotificationBell` AppBar component with live unread-count badge and summary drawer; hidden for anonymous users
+- **User inbox** — `/account/notifications` (requires SDK-Account)
+- **Admin page** — `/admin/notifications` with server-side pagination, filters, and channel-config tab (requires SDK-Admin and `notifications:notification:admin-view` permission)
+- **Localization** — English and German `.resx` built in; individual strings overridable via SDK-Localization DB layer
+- **GDPR** — export, erasure, and impact-assessment providers registered automatically; see [GDPR / Privacy](gdpr-privacy.md)
 
-## Packages
+## Package overview
 
-| Package | Purpose | Version |
+| Package | Description | When needed |
 |---|---|---|
-| `BieberWorks.SDK.Notifications.Contracts` | Interfaces, DTOs, Permissions, `INotifiableEvent` | v0.5.0 |
-| `BieberWorks.SDK.Notifications` | EF + SignalR backend, REST endpoints, retention service | v0.5.0 |
-| `BieberWorks.SDK.Notifications.UI` | Framework-agnostic Blazor base classes (`NotificationBellBase`, `NotificationsInboxPageBase`, `NotificationsAdminPageBase`) | v0.5.0 |
-| `BieberWorks.SDK.Notifications.UI.MudBlazor` | MudBlazor components: `NotificationBell` (AppBar widget), `NotificationsInboxPage`, `NotificationsAdminPage` | v0.5.0 |
+| `BieberWorks.SDK.Notifications.Contracts` | Interfaces, DTOs, permissions, `INotifiableEvent`, `INotificationsClient`, `INotificationsHubTokenProvider` | Always when another module raises or consumes notifications |
+| `BieberWorks.SDK.Notifications` | EF Core + SignalR backend, REST endpoints, retention service, `InProcNotificationsClient`, `CookieNotificationsHubTokenProvider` | In the host providing the Notifications API |
+| `BieberWorks.SDK.Notifications.UI` | Framework-agnostic Blazor base classes (`NotificationBellBase`, `NotificationsInboxPageBase`, `NotificationsAdminPageBase`) | Transitively — referenced by `.UI.MudBlazor` |
+| `BieberWorks.SDK.Notifications.UI.MudBlazor` | Ready-made MudBlazor components: `NotificationBell`, `NotificationsInboxPage`, `NotificationsAdminPage` | When using the built-in UI in the host |
+| `BieberWorks.SDK.Notifications.Client` | HTTP `INotificationsClient` for Blazor WASM and remote consumers; `NullNotificationsHubTokenProvider` for graceful Bell degradation | WASM / standalone API consumers |
 
-::: tip Current version
-All packages are released together. Current stable version: **v0.5.0**.
+::: tip Versioning
+All packages are released together and share one version, computed from Conventional Commits. The latest release and full history live on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Notifications/releases) (see [Changelog](CHANGES.md)).
 :::
+
+## When to use which package
+
+| Scenario | Required packages |
+|---|---|
+| Another module raises a notification via `INotifiableEvent` | `Notifications.Contracts` |
+| Host provides the Notifications API and in-app storage | `Notifications` |
+| Host with ready-made Blazor UI (Bell + Inbox + Admin) | `Notifications` + `Notifications.UI.MudBlazor` |
+| Blazor WASM / external API consumer | `Notifications.Client` + `Notifications.UI.MudBlazor` |
 
 ## Database
 
 - Schema: `notifications`
 - One `DbContext`: `NotificationsDbContext`
-- Table: `notification_items` — `Id`, `UserId`, `EventKey`, `Title`, `Body`, `ActionUrl`, `IsRead`, `ReadAt`, `CreatedAt`
+- Tables: `notification_items` (`Id`, `UserId`, `EventKey`, `Title`, `Body`, `ActionUrl`, `IsRead`, `ReadAt`, `CreatedAt`), `notification_event_settings` (per-event channel config)
 - Migrations are managed inside `BieberWorks.SDK.Notifications` and applied automatically via `InitializeBieberWorksModulesAsync()`.
 
-## SignalR
+## SignalR hub
 
-Hub path: `/hubs/notifications`.
-Server pushes `NotificationSummaryDto` to connected clients via `INotificationHubService.PushSummaryAsync`.
-The client (`NotificationBell`) subscribes after connect by invoking `SubscribeToUser(userId)` on the hub.
+- Hub path: `/hubs/notifications`
+- Hub is `[Authorize]`; the connection is placed into the user's group automatically on `OnConnectedAsync` using `Context.UserIdentifier` (mapped from `ClaimTypes.NameIdentifier`)
+- No client-side `SubscribeToUser` call is needed or accepted
+- Server pushes `NotificationSummaryDto` to the group via `INotificationHubService.PushSummaryAsync`
+- Client method name: `"ReceiveSummary"`
 
-## Localization
+## REST API
 
-All UI strings are served via `IStringLocalizer<NotificationsResources>` with `.resx` fallback.
-German translations are in `NotificationsResources.de.resx`.
-Individual strings can be overridden at runtime via `SDK-Localization` (DB override layer).
+All endpoints are under `/api/notifications` and require authentication. Permission strings are defined in `NotificationPermissions`:
 
-## Further Reading
+| Endpoint | Method | Permission |
+|---|---|---|
+| `/api/notifications/summary` | GET | `notifications:notification:view-own` |
+| `/api/notifications/` | GET | `notifications:notification:view-own` (admins with `notifications:notification:admin-view` may pass `userId`) |
+| `/api/notifications/{id}/read` | PATCH | `notifications:notification:mark-read` |
+| `/api/notifications/read-all` | PATCH | `notifications:notification:mark-read` |
+| `/api/notifications/` | POST | `notifications:notification:admin-create` |
+| `/api/notifications/{id}` | DELETE | `notifications:notification:admin-delete` |
+| `/api/notifications/event-settings` | GET | `notifications:notification:admin-config` |
+| `/api/notifications/event-settings/{eventKey}` | PUT | `notifications:notification:admin-config` |
 
-- [Installation & Setup](./installation.md)
-- [Usage — Events, Channels, Resolvers](./usage.md)
-- [GDPR / Privacy](./gdpr-privacy.md)
+## Documentation
+
+| Topic | Document |
+|---|---|
+| NuGet feed, `Program.cs`, `Routes.razor`, AppBar widget, WASM setup | [Installation & Setup](installation.md) |
+| Raising notifications from domain events, channel config, retention, localization | [Usage](usage.md) |
+| IDOR protection, transaction guarantees, email safety, target-group cap | [Security](security.md) |
+| GDPR data export, erasure, impact assessment | [GDPR / Privacy](gdpr-privacy.md) |
+| Release history | [Changelog](CHANGES.md) |

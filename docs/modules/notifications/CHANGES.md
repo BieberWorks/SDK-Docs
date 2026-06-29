@@ -1,27 +1,14 @@
 # Changelog
 
-## next (unreleased)
+The changelog is **generated automatically** from [Conventional Commits](https://www.conventionalcommits.org/) and published per release — it is **not** maintained by hand in this repository.
 
-### Added
+👉 **[View the full changelog on the GitHub Releases page →](https://github.com/BieberWorks/SDK-Notifications/releases)**
 
-- `docs/gdpr-privacy.md` — documents the GDPR privacy implementations: `NotificationsUserDataExporter` (notification items as JSON), `NotificationsUserDataEraser` (hard-delete strategy, no retention), and `NotificationsErasureImpactProvider` (Warning with row count).
+## How it works
 
-## v0.5.0 (2026-06-19)
+- Every release is cut from a git tag (`vX.Y.Z`). The version is computed from the commit messages since the previous tag (`feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major) by the release workflow.
+- The same workflow generates the release notes from those commits and attaches them to the GitHub Release. That auto-generated list is the single source of truth.
 
-### Added
+## What this means for contributors
 
-- `INotifiableEvent` interface in `Notifications.Contracts` — domain events implement this to enter the notification pipeline
-- `NotifiableEventHandler<T>` open-generic `IDomainEventProcessor<T>` — auto-registered; fires the full pipeline for any `INotifiableEvent` published through Foundation messaging
-- `INotificationChannel` abstraction with two built-in implementations: `InAppChannel` (persists rows + SignalR push) and `EmailChannel` (delegates to SDK-Email)
-- `INotificationTargetResolver<TEvent>` — per-event resolver that returns the list of target user IDs
-- `INotificationEventRegistry` — maps event keys to display names and default channels
-- `NotificationsDbContext` with PostgreSQL schema `notifications`; table `notification_items`
-- EF Core migrations; applied automatically via `IModuleInitializer` / `InitializeBieberWorksModulesAsync()`
-- SignalR hub at `/hubs/notifications`; server pushes `NotificationSummaryDto` on new notification
-- `NotificationBell` MudBlazor AppBar widget — connects to hub, shows unread count badge, opens summary drawer
-- `NotificationsInboxPage` — user-facing inbox at `/account/notifications` (requires SDK-Account)
-- `NotificationsAdminPage` — admin management at `/admin/notifications` with channel config and event registry overview (requires SDK-Admin and `notifications:admin:view` permission)
-- `NotificationRetentionService` — background `IHostedService`; purges rows older than `RetentionDays` (default: 90 days) on startup and once daily
-- Per-event channel configuration persisted in `notifications` schema; effective immediately without restart
-- English and German localization via `.resx`; strings overridable at runtime via SDK-Localization DB layer
-- `AddNotificationsUi()` extension method for registering all Notifications UI services
+There is nothing to edit here. Just write clear **Conventional Commit** messages — the changelog takes care of itself.
