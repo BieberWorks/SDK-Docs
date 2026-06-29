@@ -9,7 +9,7 @@ optional server-side mirror for authenticated users.
 
 `LegalModule.RegisterServices` registers a singleton `LegalCookieRegistrationSource`
 (which implements `ICookieRegistrationSource` from `BieberWorks.SDK.UI.Contracts.Cookies`).
-`CookieConsentService` (in `BieberWorks.SDK.UI.MudBlazor`) resolves all registered
+`CookieConsentService` (in `BieberWorks.SDK.UI.Blazor.MudBlazor`) resolves all registered
 `ICookieRegistrationSource` implementations at construction time, deduplicates by cookie name,
 and makes the combined list available to the banner and settings page.
 
@@ -60,7 +60,7 @@ when at least one non-Necessary cookie is registered.
 `CookieBanner` must be mounted **once** in your host layout (e.g. `MainLayout.razor`):
 
 ```razor
-@using BieberWorks.SDK.UI.MudBlazor
+@using BieberWorks.SDK.UI.Blazor.MudBlazor
 
 <CookieBanner />
 ```
@@ -74,7 +74,7 @@ This provides a server-side audit trail for GDPR compliance.
 Mount it **once** in the same layout as `CookieBanner`:
 
 ```razor
-@using BieberWorks.SDK.Legal.UI.MudBlazor
+@using BieberWorks.SDK.Legal.UI.Blazor.MudBlazor
 
 <CookieConsentMirror />
 ```
@@ -120,17 +120,17 @@ correct and intentional.
 ## Router registration
 
 Add the assembly to your host's `Program.cs` and `Routes.razor` (required for all
-`Legal.UI.MudBlazor` pages):
+`Legal.UI.Blazor.MudBlazor` pages):
 
 **Program.cs:**
 ```csharp
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(typeof(BieberWorks.SDK.Legal.UI.MudBlazor.LegalUiMudBlazorModule).Assembly);
+    .AddAdditionalAssemblies(typeof(BieberWorks.SDK.Legal.UI.Blazor.MudBlazor.LegalUiMudBlazorModule).Assembly);
 ```
 
 **Routes.razor:**
 ```razor
 <Router AppAssembly="@typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Legal.UI.MudBlazor.LegalUiMudBlazorModule).Assembly }">
+        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Legal.UI.Blazor.MudBlazor.LegalUiMudBlazorModule).Assembly }">
 ```

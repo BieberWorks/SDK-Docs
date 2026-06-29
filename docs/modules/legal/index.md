@@ -19,7 +19,7 @@ SDK-Legal provides versioned legal documents with consent tracking, cookie-conse
 |---|---|---|
 | `BieberWorks.SDK.Legal.Contracts` | Interfaces, DTOs, domain events, `LegalOptions`, `LegalDocumentKeys`, `LegalPermissions` — no EF Core | Always when another module or host references Legal services |
 | `BieberWorks.SDK.Legal` | EF Core implementation (schema `legal`), services, migrations, GDPR orchestrator | In the host that provides the Legal data layer |
-| `BieberWorks.SDK.Legal.UI.MudBlazor` | MudBlazor public pages, admin pages, `LegalConsentGuard`, `CookieConsentMirror` | When using the built-in Legal pages in the host |
+| `BieberWorks.SDK.Legal.UI.Blazor.MudBlazor` | MudBlazor public pages, admin pages, `LegalConsentGuard`, `CookieConsentMirror` | When using the built-in Legal pages in the host |
 
 ## When to use which package
 
@@ -27,7 +27,7 @@ SDK-Legal provides versioned legal documents with consent tracking, cookie-conse
 |---|---|
 | Another module consumes `IUserConsentService` or `ILegalDocumentService` | `Legal.Contracts` |
 | Host provides the full legal data store + GDPR orchestration | `Legal` |
-| Host with ready-made Blazor legal pages, cookie banner wiring, and admin UI | `Legal` + `Legal.UI.MudBlazor` |
+| Host with ready-made Blazor legal pages, cookie banner wiring, and admin UI | `Legal` + `Legal.UI.Blazor.MudBlazor` |
 | Module registers its own `IUserDataEraser` / `IUserDataExporter` | SharedKernel only (no Legal dependency) |
 
 ## Documentation

@@ -24,13 +24,13 @@ builder.Services.AddLegalUi();
 // Program.cs (MapRazorComponents)
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(typeof(BieberWorks.SDK.Legal.UI.MudBlazor.LegalUiMudBlazorModule).Assembly);
+    .AddAdditionalAssemblies(typeof(BieberWorks.SDK.Legal.UI.Blazor.MudBlazor.LegalUiMudBlazorModule).Assembly);
 ```
 
 ```razor
 // Routes.razor (Router tag)
 <Router AppAssembly="@typeof(App).Assembly"
-        AdditionalAssemblies="@(new[] { typeof(BieberWorks.SDK.Legal.UI.MudBlazor.LegalUiMudBlazorModule).Assembly })">
+        AdditionalAssemblies="@(new[] { typeof(BieberWorks.SDK.Legal.UI.Blazor.MudBlazor.LegalUiMudBlazorModule).Assembly })">
 ```
 
 ## 3. Initialize (migrations + seeding)

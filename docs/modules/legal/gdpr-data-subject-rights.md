@@ -185,7 +185,7 @@ via the UI (see below) is independent and can also be used for standalone GDPR r
 
 **Route:** `/admin/legal/gdpr`  
 **Permission:** `perm:legal:admin`  
-**Package:** `BieberWorks.SDK.Legal.UI.MudBlazor`
+**Package:** `BieberWorks.SDK.Legal.UI.Blazor.MudBlazor`
 
 The page is registered as an `IAdminPage` and appears under the Legal admin section.
 

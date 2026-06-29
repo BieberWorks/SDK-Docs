@@ -39,7 +39,7 @@ granted consent. The first stale document triggers a redirect result.
 Consumers can also call `IConsentEnforcementService` directly — e.g. to consolidate the
 consumer middleware with the SDK service and avoid duplicate DB queries.
 
-### `LegalConsentGuard` (in `Legal.UI.MudBlazor`)
+### `LegalConsentGuard` (in `Legal.UI.Blazor.MudBlazor`)
 
 Headless Blazor component. Mount **once** in the host layout alongside `<CookieConsentMirror />`.
 

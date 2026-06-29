@@ -2,7 +2,7 @@
 
 ## UI strings
 
-The `Legal.UI.MudBlazor` package ships three resource files:
+The `Legal.UI.Blazor.MudBlazor` package ships three resource files:
 
 | File | Coverage |
 |---|---|
