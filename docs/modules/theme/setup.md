@@ -28,8 +28,8 @@ Add the packages that match your host type:
 builder.Services.AddThemePreset(new ThemePreset(
     Id: "my-brand",
     DisplayName: "My Brand",
-    LightPalette: new ThemePalette(Primary: "#E63946", /* … */),
-    DarkPalette:  new ThemePalette(Primary: "#F4A261", /* … */)));
+    LightPalette: new ThemePalette { Primary = "#E63946", /* … */ },
+    DarkPalette:  new ThemePalette { Primary = "#F4A261", /* … */ }));
 
 // 2. (Optional) register a host-defined layout so it appears in the Preset admin page
 builder.Services.AddThemeableLayout<MyMainLayout>();

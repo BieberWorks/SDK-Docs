@@ -119,13 +119,15 @@ The built-in **Branding** layout target (`LayoutKey = "branding"`) is registered
 builder.Services.AddThemePreset(new ThemePreset(
     Id:           "my-brand",
     DisplayName:  "My Brand",
-    LightPalette: new ThemePalette(
-        Primary: "#E63946", Secondary: "#457B9D", Tertiary: "#1D3557",
-        Error: "#D62828", Success: "#2D6A4F", Warning: "#E9C46A", Info: "#264653",
-        Background: "#F1FAEE", Surface: "#FFFFFF",
-        AppbarBackground: "#E63946", DrawerBackground: "#FFFFFF",
-        TextPrimary: "#1D3557", TextSecondary: "#457B9D"),
-    DarkPalette: new ThemePalette(/* … */)));
+    LightPalette: new ThemePalette
+    {
+        Primary = "#E63946", Secondary = "#457B9D", Tertiary = "#1D3557",
+        Error = "#D62828", Success = "#2D6A4F", Warning = "#E9C46A", Info = "#264653",
+        Background = "#F1FAEE", Surface = "#FFFFFF",
+        AppbarBackground = "#E63946", DrawerBackground = "#FFFFFF",
+        TextPrimary = "#1D3557", TextSecondary = "#457B9D",
+    },
+    DarkPalette: new ThemePalette { /* … */ }));
 ```
 
 Host-registered presets appear alongside the built-in presets in the Admin UI and are selectable for any layout assignment.
