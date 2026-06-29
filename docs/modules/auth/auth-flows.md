@@ -111,7 +111,7 @@ Content-Type: application/json
 }
 ```
 
-After successful registration, the `UserRegisteredEvent` is published. If an `IAuthEmailSender` is registered, `EmailConfirmationRequestedEventHandler` sends a confirmation email. The user can only fully log in after email confirmation (if email confirmation is enforced).
+After successful registration, the `UserRegisteredEvent` is published. `EmailConfirmationRequestedEventHandler` sends a confirmation email through the transactional-email pipeline (see [Transactional emails](#transactional-emails)). The user can only fully log in after email confirmation (if email confirmation is enforced).
 
 ## Email Confirmation
 
@@ -152,7 +152,7 @@ Content-Type: application/json
 { "email": "user@example.com" }
 ```
 
-Always responds with `200 OK` (no disclosure whether the email address exists). The `PasswordResetRequestedEventHandler` sends a reset link via `IAuthEmailSender`.
+Always responds with `200 OK` (no disclosure whether the email address exists). The `PasswordResetRequestedEventHandler` sends a reset link through the transactional-email pipeline.
 
 ### Reset password
 
@@ -253,25 +253,15 @@ lockout. Both limits are enforced server-side by `ITwoFactorRateLimitService`.
 > TOTP authenticator apps and WebAuthn/passkeys are intentionally out of scope for this
 > email-OTP factor; they are tracked as separate follow-up work.
 
-## IAuthEmailSender
+## Transactional emails
 
-The module uses `IAuthEmailSender` (from `Auth.Contracts`) for all email notifications:
+Auth sends its transactional mails (password reset, e-mail confirmation, two-factor code) through the generic `IEmailSender` and the email-template-descriptor pipeline. It does **not** expose a dedicated email interface on its contract surface — an internal adapter bridges to `IEmailSender` and renders the bodies by template key.
 
-```csharp
-public interface IAuthEmailSender
-{
-    Task SendPasswordResetEmailAsync(string email, string customerName, string resetLink);
-    Task SendEmailConfirmationAsync(string email, string customerName, string confirmationLink);
-    Task SendTwoFactorCodeAsync(string email, string customerName, string code);
-}
-```
+- If `SDK-Email` is installed and an `IEmailSender` is registered, the bodies are rendered through `SDK-Email`'s template pipeline (keyed by `AuthEmailTemplateKeys`) and sent via `IEmailSender`.
+- If no `IEmailSender` is registered, the module falls back to logging the links only (suitable for development).
 
-If no concrete `IAuthEmailSender` is registered in the DI container, the module falls back to `LoggingAuthEmailSender` — this only writes the links to the log (suitable for development).
-
-If `SDK-Email` is installed and an `IEmailSender` is registered, `AuthEmailSenderAdapter` renders the bodies through `SDK-Email`'s rendering pipeline and sends them via `IEmailSender`.
-
-::: tip Custom email implementation
-Simply register your own `IAuthEmailSender` implementation **before** `AddBieberWorksModules`. The module uses `TryAdd` semantics and does not override already registered implementations.
+::: tip Customizing auth emails
+Override the Auth email **templates**, not the sending code. Each transactional mail is registered as an `IEmailTemplateDescriptor` keyed by `AuthEmailTemplateKeys` (see the next section) and can be edited per locale in the Email admin UI without touching code.
 :::
 
 ## Email templates in the Email admin UI

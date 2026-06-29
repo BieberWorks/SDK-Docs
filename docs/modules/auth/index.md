@@ -9,7 +9,7 @@ The Auth module provides complete authentication and authorization infrastructur
 - **Permission System** — cross-module permissions assigned to roles; fine-grained protection via `[RequiresPermission]` or `.RequirePermission()`
 - **Role Management** — CRUD for roles including permission assignment via `IRoleManagementService`
 - **User Management** — Admin endpoints for locking/unlocking users, role assignment, and account deletion (`UserManagementModule`); self-service account deletion with password reauth and cross-module impact gate
-- **Email Flows** — confirmation email and password reset via `IAuthEmailSender`; optional integration with `SDK-Email`
+- **Email Flows** — confirmation email and password reset via the email-template pipeline; optional integration with `SDK-Email`
 - **Two-Factor Authentication** — email OTP second factor with single-use recovery codes (enable / disable / verify / regenerate)
 - **Profile Self-Service** — users can change their username, display name, and resend their confirmation email
 - **Self-Registration Control** — registration can be disabled via host config (hard lock) and/or a runtime admin toggle, gated by the `auth:registration:manage` permission
