@@ -127,6 +127,15 @@ foreach (var key in keys)
 }
 ```
 
+For paginated retrieval, use `GetKeysPagedAsync`:
+
+```csharp
+PagedResult<TranslationKeyView> paged = await adminService.GetKeysPagedAsync(
+    module: "Auth",
+    page: 1,
+    pageSize: 50);
+```
+
 `TranslationKeyView` is a `record` with properties:
 
 | Property | Type | Meaning |
