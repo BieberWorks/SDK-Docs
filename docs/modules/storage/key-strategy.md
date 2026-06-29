@@ -133,7 +133,7 @@ The host can restrict which modes the upload UI offers — without changing enfo
 
 ### Behavior
 
-- Each user has at most one avatar: a file with `FileName == "avatar"` and `ContentType` starting with `"image/"`, `OwnerUserId` = user GUID.
+- Each user has at most one avatar: a file tagged `Tag == "avatar"` with `OwnerUserId` = user GUID. Discovery filters on the indexed `Tag` column (not the file name), so it stays query-safe regardless of naming.
 - Visibility: always `AppResource` — avatar download is available at `/storage/files/{fileId}/download`, but it doesn't appear in normal file lists.
 - A new upload deletes the previous avatar automatically (overwrite semantics).
 - `GetAvatarUrlAsync` returns the relative download path or `null` if no avatar exists.

@@ -1,6 +1,6 @@
 # UI Components
 
-Package: `BieberWorks.SDK.Storage.UI.MudBlazor`
+Package: `BieberWorks.SDK.Storage.UI.Blazor.MudBlazor`
 
 The UI package provides ready-made MudBlazor pages for admin and users. It requires `SDK-Admin` (for `IAdminSection`/`IAdminPage`) and `SDK-Account` (for `IAccountSection`/`IAccountPage`).
 
@@ -27,7 +27,7 @@ Without the `configure` parameter, `UserLinkTemplate` and `UserLinkPermission` d
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Storage.UI.MudBlazor.Pages.Admin.AllFilesPage).Assembly
+        typeof(BieberWorks.SDK.Storage.UI.Blazor.MudBlazor.Pages.Admin.AllFilesPage).Assembly
     );
 ```
 
@@ -37,7 +37,7 @@ app.MapRazorComponents<App>()
 <Router AppAssembly="typeof(App).Assembly"
         AdditionalAssemblies="new[]
         {
-            typeof(BieberWorks.SDK.Storage.UI.MudBlazor.Pages.Admin.AllFilesPage).Assembly
+            typeof(BieberWorks.SDK.Storage.UI.Blazor.MudBlazor.Pages.Admin.AllFilesPage).Assembly
         }">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
@@ -140,7 +140,7 @@ Styled upload button (MudBlazor) that wraps the native `<input type="file">` —
 Add the script tag once in `App.razor` or `index.html`:
 
 ```html
-<script src="_content/BieberWorks.SDK.Storage.UI.MudBlazor/bw-file-upload.js"></script>
+<script src="_content/BieberWorks.SDK.Storage.UI.Blazor.MudBlazor/bw-file-upload.js"></script>
 ```
 
 #### Parameters
@@ -245,17 +245,17 @@ Reusable detail view for a single file. Used by admin and account detail pages.
 
 ## Uploading from feature modules
 
-### The rule: do not reference `Storage.UI.MudBlazor` from a feature module
+### The rule: do not reference `Storage.UI.Blazor.MudBlazor` from a feature module
 
-Feature modules (e.g. `Experience`, `Projects`, or any other domain module) **must not** take a `PackageReference` on `BieberWorks.SDK.Storage.UI.MudBlazor`. The governing rule is SDK UI-Dependency **Rule 2** (the layering rule), not Rule 3:
+Feature modules (e.g. `Experience`, `Projects`, or any other domain module) **must not** take a `PackageReference` on `BieberWorks.SDK.Storage.UI.Blazor.MudBlazor`. The governing rule is SDK UI-Dependency **Rule 2** (the layering rule), not Rule 3:
 
-> Only `SDK-UI` is the shared UI layer. Feature modules may take a shared-UI dependency **only** on `BieberWorks.SDK.UI.Contracts` and/or `BieberWorks.SDK.UI.MudBlazor`. A feature module must not reference the `.UI.MudBlazor` package of another feature module.
+> Only `SDK-UI` is the shared UI layer. Feature modules may take a shared-UI dependency **only** on `BieberWorks.SDK.UI.Contracts` and/or `BieberWorks.SDK.UI.Blazor.MudBlazor`. A feature module must not reference the `.UI.Blazor.MudBlazor` package of another feature module.
 
-This is a **layering** rule, not a transitive-dependency-hygiene rule. It holds even though `Storage.UI.MudBlazor`'s nuspec is clean (it depends only on `*.Contracts` packages + `MudBlazor` + `Markdig`, and pulls in **no** implementation package). The point is not "it drags foreign implementation in" — it does not. The point is that `Storage.UI.MudBlazor` is **not** the shared UI layer (`SDK-UI` is), so referencing it from `Projects`/`Experience` couples one feature module to another feature module's UI. That coupling also pins those modules to Storage's MudBlazor version and ties their static web assets together across module boundaries.
+This is a **layering** rule, not a transitive-dependency-hygiene rule. It holds even though `Storage.UI.Blazor.MudBlazor`'s nuspec is clean (it depends only on `*.Contracts` packages + `MudBlazor` + `Markdig`, and pulls in **no** implementation package). The point is not "it drags foreign implementation in" — it does not. The point is that `Storage.UI.Blazor.MudBlazor` is **not** the shared UI layer (`SDK-UI` is), so referencing it from `Projects`/`Experience` couples one feature module to another feature module's UI. That coupling also pins those modules to Storage's MudBlazor version and ties their static web assets together across module boundaries.
 
-(Rule 3 — "no `*.UI.MudBlazor → *.UI.MudBlazor`" — is a separate, package-graph hygiene rule. A feature module is not itself a `.UI.MudBlazor` package, so Rule 3 alone would not catch this case. Rule 2 is what makes the reference off-pattern.)
+(Rule 3 — "no `*.UI.Blazor.MudBlazor → *.UI.Blazor.MudBlazor`" — is a separate, package-graph hygiene rule. A feature module is not itself a `.UI.Blazor.MudBlazor` package, so Rule 3 alone would not catch this case. Rule 2 is what makes the reference off-pattern.)
 
-`BwFileUploadButton` is a MudBlazor UI component that lives inside `Storage.UI.MudBlazor`. It is intended exclusively for the host and for Storage's own built-in admin/account pages.
+`BwFileUploadButton` is a MudBlazor UI component that lives inside `Storage.UI.Blazor.MudBlazor`. It is intended exclusively for the host and for Storage's own built-in admin/account pages.
 
 `FileReference` and `StorageFileVisibility` are already in `BieberWorks.SDK.Storage.Contracts` — that package is safe to reference from any module. The restriction covers the _component_, not the types.
 
@@ -263,7 +263,7 @@ This is a **layering** rule, not a transitive-dependency-hygiene rule. It holds 
 
 #### Pattern A — Feature module builds its own upload UI (recommended)
 
-The feature module references only `BieberWorks.SDK.Storage.Contracts`, injects `IStorageService`, and uses MudBlazor primitives it already has access to (`MudFileUpload` or plain `InputFile`). No reference to `Storage.UI.MudBlazor` is required.
+The feature module references only `BieberWorks.SDK.Storage.Contracts`, injects `IStorageService`, and uses MudBlazor primitives it already has access to (`MudFileUpload` or plain `InputFile`). No reference to `Storage.UI.Blazor.MudBlazor` is required.
 
 `.csproj` — the only storage reference needed:
 
@@ -274,7 +274,7 @@ The feature module references only `BieberWorks.SDK.Storage.Contracts`, injects 
 Razor page — using `MudFileUpload` (preferred for feature modules that already use MudBlazor):
 
 ```razor
-@* ProjectsAdminPage.razor — feature module Razor page, no Storage.UI.MudBlazor reference *@
+@* ProjectsAdminPage.razor — feature module Razor page, no Storage.UI.Blazor.MudBlazor reference *@
 @inject IStorageService StorageService
 @inject ISnackbar Snackbar
 
@@ -355,7 +355,7 @@ Feature module page — declares a slot (only `Storage.Contracts` referenced):
 }
 ```
 
-Host wrapper — composes `BwFileUploadButton` into the slot (host references `Storage.UI.MudBlazor`):
+Host wrapper — composes `BwFileUploadButton` into the slot (host references `Storage.UI.Blazor.MudBlazor`):
 
 ```razor
 @* Host wrapper page — fills the feature module's upload slot *@

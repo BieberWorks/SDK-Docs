@@ -24,7 +24,7 @@ Current versions are published on the [GitHub Releases page](https://github.com/
 | `BieberWorks.SDK.Storage` | Core implementation: FileSystem provider, DB-Blob provider, `StorageModule`, migrations (schema `storage`) |
 | `BieberWorks.SDK.Storage.Aws` | AWS S3 / S3-compatible provider (`S3FileStorage`) |
 | `BieberWorks.SDK.Storage.Azure` | Azure Blob Storage provider (`AzureBlobFileStorage`) |
-| `BieberWorks.SDK.Storage.UI.MudBlazor` | Admin pages, user pages, shared components (MudBlazor RCL) |
+| `BieberWorks.SDK.Storage.UI.Blazor.MudBlazor` | Admin pages, user pages, shared components (MudBlazor RCL) |
 
 ::: tip Contracts-First
 Other modules reference only `BieberWorks.SDK.Storage.Contracts`. Implementation packages are known only to the host.

@@ -12,7 +12,7 @@ dotnet add package BieberWorks.SDK.Storage
 ### With UI (MudBlazor)
 
 ```bash
-dotnet add package BieberWorks.SDK.Storage.UI.MudBlazor
+dotnet add package BieberWorks.SDK.Storage.UI.Blazor.MudBlazor
 ```
 
 ### With AWS S3
@@ -96,7 +96,7 @@ await app.InitializeBieberWorksModulesAsync(); // runs StorageDbContext.MigrateA
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Storage.UI.MudBlazor.Pages.Admin.AllFilesPage).Assembly
+        typeof(BieberWorks.SDK.Storage.UI.Blazor.MudBlazor.Pages.Admin.AllFilesPage).Assembly
     );
 ```
 
@@ -104,7 +104,7 @@ And in `Routes.razor`:
 
 ```razor
 <Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Storage.UI.MudBlazor.Pages.Admin.AllFilesPage).Assembly }">
+        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Storage.UI.Blazor.MudBlazor.Pages.Admin.AllFilesPage).Assembly }">
 ```
 
 ## appsettings.json
