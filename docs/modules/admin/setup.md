@@ -4,32 +4,34 @@
 
 ```xml
 <ItemGroup>
-    <PackageReference Include="BieberWorks.SDK.Admin.Contracts" Version="0.*-*" />
-    <PackageReference Include="BieberWorks.SDK.Admin.UI.MudBlazor" Version="0.*-*" />
+    <PackageReference Include="BieberWorks.SDK.Admin.Contracts"           Version="0.*-*" />
+    <PackageReference Include="BieberWorks.SDK.Admin"                     Version="0.*-*" />
+    <PackageReference Include="BieberWorks.SDK.Admin.UI.Blazor.MudBlazor" Version="0.*-*" />
 </ItemGroup>
 ```
 
+`BieberWorks.SDK.Admin` is the implementation package. It contains `AdminModule`, `AdminDbContext`, `IAdminNavigationService`, and `AddBieberWorksAdmin()`. The skin package (`UI.Blazor.MudBlazor`) contains only layouts, Razor components, and `AddBieberWorksAdminUi()`.
+
 ## Prerequisites
 
-1. **SDK-UI** must be registered (required by Admin.UI.MudBlazor).
-2. **SDK-Settings** is optional, but **recommended** for persistence of navigation structure. Without settings, the admin shell functions (order resets on each reload).
+1. **SDK-UI** must be registered (`AddBieberWorksUi()`) before the Admin skin is used.
+2. A **`DefaultConnection`** connection string must be present in configuration — `AddBieberWorksAdmin()` registers `AdminDbContext` via `AddBieberWorksNpgsql` using it (schema `admin`). Migrations are applied automatically at startup.
+3. **SDK-Settings** is optional, but **recommended** for persistence of navigation overrides. Without it, the admin shell functions but order resets on each reload.
 
 ## Program.cs
 
 ```csharp
-using BieberWorks.SDK.Admin.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Admin.Extensions;
+using BieberWorks.SDK.Admin.UI.Blazor.MudBlazor.Extensions;
 using BieberWorks.SDK.UI.MudBlazor.Extensions;
 using BieberWorks.SDK.Core.Web.Modularity;
 
-// Discovers and registers all IModule implementations (including AdminModule)
-// from the dependency graph. Call once — covers all modules.
+// Discovers and registers all IModule implementations (including AdminModule and
+// AdminUiMudBlazorModule) from the dependency graph. Call once — covers all modules.
 builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// SDK-UI must come before SDK-Admin (Admin depends on it)
+// SDK-UI must come before the Admin skin (Admin depends on it).
 builder.Services.AddBieberWorksUi();
-
-// SDK-Admin shell registration
-builder.Services.AddBieberWorksAdmin();
 
 // Blazor Server with interactive render mode
 builder.Services.AddRazorComponents()
@@ -39,13 +41,13 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
-// Apply EF migrations for all IModuleInitializer modules
+// Apply EF migrations for all IModuleInitializer modules (including AdminDbContext).
 await app.InitializeBieberWorksModulesAsync();
 
-// Map Minimal API routes for all IEndpointModule modules (including Admin REST endpoints)
+// Map Minimal API routes for all IEndpointModule modules.
 app.MapBieberWorksModules();
 
-// Auto-discovers all BieberWorks.SDK.*.MudBlazor assemblies including Admin.UI.MudBlazor
+// Auto-discovers all BieberWorks.SDK.*.MudBlazor assemblies including Admin.UI.Blazor.MudBlazor.
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddBwModuleAssemblies(typeof(Program).Assembly);
@@ -55,7 +57,7 @@ app.MapRazorComponents<App>()
 
 ```razor
 @using BieberWorks.SDK.Admin.Contracts
-@using BieberWorks.SDK.Admin.UI.MudBlazor.Layout
+@using BieberWorks.SDK.Admin.UI.Blazor.MudBlazor.Layout
 @using BieberWorks.SDK.UI.MudBlazor.Components
 @using BieberWorks.SDK.UI.MudBlazor.Routing
 
@@ -78,23 +80,27 @@ app.MapRazorComponents<App>()
 
 ## IModule-based Approach
 
-`AdminModule` already implements `IModule`. When you call `builder.Services.AddBieberWorksModules(builder.Configuration)`, `AdminModule` is discovered automatically and calls `AddBieberWorksAdmin()` internally.
+`AdminModule` (in `BieberWorks.SDK.Admin`) implements `IModule`, `IEndpointModule`, and `IModuleInitializer`. When you call `builder.Services.AddBieberWorksModules(builder.Configuration)`, `AdminModule` is discovered automatically and calls `AddBieberWorksAdmin(configuration)` internally, including `AdminDbContext` registration and migration.
 
-If you want to call `AddBieberWorksAdmin()` explicitly in your own module (e.g. to ensure ordering), you can do so inside your module's `RegisterServices`:
+`AdminUiMudBlazorModule` (in `BieberWorks.SDK.Admin.UI.Blazor.MudBlazor`) is also discovered automatically and calls `AddBieberWorksAdminUi()` (MudBlazor services only).
+
+If you prefer explicit registration instead of `AddBieberWorksModules`, call both manually:
 
 ```csharp
-public IServiceCollection RegisterServices(IServiceCollection services, IConfiguration config)
-{
-    services.AddBieberWorksUi();
-    services.AddBieberWorksAdmin();
-    // ... additional module services
-    return services;
-}
+// Impl: DbContext, navigation service, permission contributor
+services.AddBieberWorksAdmin(builder.Configuration);
+
+// Skin: MudBlazor services
+services.AddBieberWorksAdminUi();
 ```
+
+## AdminDbContext and Migrations
+
+`AdminDbContext` uses schema `"admin"` and is registered by `AddBieberWorksAdmin()` via `AddBieberWorksNpgsql`. Migrations are applied idempotently at startup via `InitializeBieberWorksModulesAsync()`. No manual migration steps are required after deployment.
 
 ## Permission `admin:shell:access`
 
-The admin shell is protected by `admin:shell:access` permission. It is automatically registered by SDK-Admin (via `AdminPermissionContributor`). Users need this permission to:
+The admin shell is protected by `admin:shell:access` permission. It is automatically registered by `BieberWorks.SDK.Admin` (via `AdminPermissionContributor`). Users need this permission to:
 
 - Enter the admin area
 - Enable edit mode
@@ -115,4 +121,4 @@ The module uses `.resx` resources for localization (English/German). Standard st
 - `Nav_FolderNamePlaceholder` — Input placeholder
 - `Nav_MoveOut` — "Move out of folder"
 
-See `Admin.UI.MudBlazor/Resources/AdminResources.resx` for complete translations.
+See `Admin.UI.Blazor.MudBlazor/Resources/AdminResources.resx` for complete translations.

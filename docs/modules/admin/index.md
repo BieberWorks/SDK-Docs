@@ -4,8 +4,13 @@ The admin shell module for the BieberWorks SDK. Provides central navigation and 
 
 ## Packages
 
-- **`BieberWorks.SDK.Admin.Contracts`** — `IAdminSection`, `IAdminPage`, `AdminNavItem`, `IAdminNavigationService`, `INavOverrideTarget`. Dependency-free; implemented by other modules.
-- **`BieberWorks.SDK.Admin.UI.MudBlazor`** — AdminLayout, AdminShell, navigation engine, override editor. Base UI for the admin shell.
+| Package | Contents |
+|---|---|
+| `BieberWorks.SDK.Admin.Contracts` | `IAdminSection`, `IAdminPage`, `AdminNavItem`, `IAdminNavigationService`, `INavOverrideTarget`. Dependency-free; implemented by other modules. |
+| `BieberWorks.SDK.Admin` | `AdminModule` (`IModule` + `IEndpointModule` + `IModuleInitializer`), `AdminDbContext` (schema `"admin"`), `IAdminNavigationService` impl, `AdminPermissionContributor`, `AddBieberWorksAdmin()`. Requires `DefaultConnection`. |
+| `BieberWorks.SDK.Admin.UI.Blazor.MudBlazor` | `AdminLayout`, `AdminShell`, `AdminUiMudBlazorModule`, navigation editor pages. UI skin only. `AddBieberWorksAdminUi()` registers MudBlazor services. |
+
+The host must reference **both** `BieberWorks.SDK.Admin` and `BieberWorks.SDK.Admin.UI.Blazor.MudBlazor`. `AddBieberWorksModules(config)` discovers `AdminModule` from the impl package and `AdminUiMudBlazorModule` from the skin automatically.
 
 ## Version
 
