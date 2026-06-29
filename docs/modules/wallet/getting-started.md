@@ -9,7 +9,7 @@ Add the packages to your host project:
 <PackageReference Include="BieberWorks.SDK.Wallet" Version="1.*-*" />
 
 <!-- Optional: Admin + Account UI (MudBlazor) -->
-<PackageReference Include="BieberWorks.SDK.Wallet.UI.MudBlazor" Version="1.*-*" />
+<PackageReference Include="BieberWorks.SDK.Wallet.UI.Blazor.MudBlazor" Version="1.*-*" />
 
 <!-- Consumer modules reference ONLY contracts, never the implementation -->
 <PackageReference Include="BieberWorks.SDK.Wallet.Contracts" Version="1.*-*" />
@@ -28,13 +28,13 @@ builder.Services.AddSingleton<IAccountSection, WalletAccountSection>();
 // Add assembly to Razor component router:
 app.MapRazorComponents<App>()
    .AddAdditionalAssemblies(
-       typeof(BieberWorks.SDK.Wallet.UI.MudBlazor._Imports).Assembly);
+       typeof(BieberWorks.SDK.Wallet.UI.Blazor.MudBlazor._Imports).Assembly);
 ```
 
 ```razor
 <!-- Routes.razor -->
 <Router AppAssembly="@typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Wallet.UI.MudBlazor._Imports).Assembly }">
+        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Wallet.UI.Blazor.MudBlazor._Imports).Assembly }">
 ```
 
 ## Connection String

@@ -21,14 +21,14 @@ The Wallet module provides a multi-currency, permission-gated balance system for
 |---|---|---|
 | `BieberWorks.SDK.Wallet.Contracts` | Interfaces, DTOs, domain events, permission constants, `Iso4217Catalog`, `NullWalletService` | Always when another module consumes Wallet services |
 | `BieberWorks.SDK.Wallet` | Complete implementation: EF Core (`WalletDbContext`, schema `wallet`), service layer, Minimal API endpoints, GDPR handlers, `ExpiredHoldsSweeper` | In the host providing the Wallet feature |
-| `BieberWorks.SDK.Wallet.UI.MudBlazor` | Ready-made MudBlazor Razor components and pages for admin and account areas | When using the built-in Wallet pages |
+| `BieberWorks.SDK.Wallet.UI.Blazor.MudBlazor` | Ready-made MudBlazor Razor components and pages for admin and account areas | When using the built-in Wallet pages |
 
 ## When to use which package
 
 | Scenario | Required packages |
 |---|---|
 | Another module calls `IWalletService` or `IWalletCurrencyService` | `Wallet.Contracts` |
-| Host provides the Wallet feature | `Wallet` + optional `Wallet.UI.MudBlazor` |
+| Host provides the Wallet feature | `Wallet` + optional `Wallet.UI.Blazor.MudBlazor` |
 | Host without Wallet (optional dependency) | Register `NullWalletService` via `TryAddScoped<IWalletService, NullWalletService>()` |
 | Host with external payment top-up flow | Implement and register `IWalletTopUpProvider` in the host |
 
