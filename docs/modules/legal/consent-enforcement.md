@@ -61,13 +61,15 @@ The guard:
 
 #### Exempt paths
 
-| Prefix | Reason |
+| Path / Pattern | Reason |
 |---|---|
-| `/legal/` | Acceptance page itself + other legal routes — prevents redirect loops |
-| `/auth/` | Login / logout flows |
-| `/_blazor` | Blazor SignalR hub |
-| `/_framework` | Blazor framework assets |
-| `/api/` | API routes |
+| `/legal/` (prefix) | Acceptance page itself + other legal routes — prevents redirect loops |
+| `/auth/` (prefix) | Login / logout flows |
+| `/_blazor` (prefix) | Blazor SignalR hub |
+| `/_framework` (prefix) | Blazor framework assets |
+| `/api/` (prefix) | API routes |
+| `/{doc.DefaultRoute}` (per document) | Direct speaking-route for each legal document (e.g. `/imprint`, `/terms`) — users must be able to read documents even with stale consent |
+| `/{doc.Key}` (per document) | Literal SDK route fallback when `DefaultRoute` is unset |
 
 ---
 
