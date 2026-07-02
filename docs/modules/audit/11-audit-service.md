@@ -29,10 +29,31 @@ public interface IAuditAdmin
 {
     /// <summary>Deletes the audit entry with the specified ID. Returns false if not found.</summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Retention/archival status (partitions + lifecycle state). Additive, default-implemented.</summary>
+    Task<AuditRetentionStatus> GetRetentionStatusAsync(CancellationToken ct = default);
+
+    /// <summary>Triggers an out-of-band retention/archival run. Additive, default-implemented.</summary>
+    Task RunRetentionNowAsync(CancellationToken ct = default);
+
+    /// <summary>DSGVO erasure-remediation queue. Additive, default-implemented (empty list).</summary>
+    Task<IReadOnlyList<ErasureRemediationDto>> GetRemediationQueueAsync(
+        bool includeResolved = false, CancellationToken ct = default);
+
+    /// <summary>Marks a remediation-queue entry resolved (idempotent). Additive, default-implemented (returns false).</summary>
+    Task<bool> ResolveRemediationAsync(Guid id, string? note = null, CancellationToken ct = default);
 }
 
 public interface IAuditService : IAuditWriter, IAuditReader, IAuditAdmin;
 ```
+
+::: info Additive default members
+`GetRetentionStatusAsync`, `RunRetentionNowAsync`, `GetRemediationQueueAsync` and
+`ResolveRemediationAsync` were added in minor releases as C# default interface members with safe
+fallbacks (a "disabled" status, a `NotSupportedException`, an empty queue, and `false`
+respectively) — existing `IAuditAdmin` implementers compile unchanged. See
+[Retention & Archival Lifecycle](./12-retention-lifecycle.md) for details.
+:::
 
 ## AuditEntry (input for LogAsync)
 
@@ -46,13 +67,21 @@ public sealed record AuditEntry
     public required string Action     { get; init; }  // Verb, e.g. "auth:user:registered"
     public required string Resource   { get; init; }  // Resource type, e.g. "User"
     public string?         ResourceId { get; init; }  // ID of the resource instance
-    public string?         Details    { get; init; }  // JSON or free text
+    public string?         Details    { get; init; }  // JSON or free text — PII-free, see below
     public DateTimeOffset? Timestamp  { get; init; }  // UTC; default: DateTimeOffset.UtcNow
 
     /// <summary>Maps an <c>IAuditableEvent</c> onto an audit entry.</summary>
     public static AuditEntry From(IAuditableEvent e);
 }
 ```
+
+::: warning `Details` and `ResourceId` must be PII-free
+`Details` (and `ResourceId`, when it could itself be personal data such as an email address used
+as a natural key) must never contain personal data. GDPR erasure only scrubs rows keyed by
+`UserId` on the entry itself — it cannot find or remove personal data embedded in the `Details`
+blob of a *different* user's row. Use structured, PII-free operational context only (field
+names, correlation ids, previous/new enum values).
+:::
 
 ## AuditEntryDto (output from GetAsync)
 
@@ -178,13 +207,18 @@ var deleteResult = await auditService.GetAsync(new AuditFilter(
 
 ## REST endpoints
 
-The module registers three endpoints under `/api/audit`. All require authorization.
+The module registers these endpoints under `/api/audit`. All require authorization.
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
 | `GET` | `/api/audit` | `audit:logs:read` | Paginated, filtered list |
 | `GET` | `/api/audit/facets` | `audit:logs:read` | Distinct actions and resources |
 | `DELETE` | `/api/audit/{id}` | `audit:logs:delete` | Delete single entry |
+| `GET` | `/api/audit/retention` | `audit:retention:read` | Retention status (partitions + pending remediation count) |
+| `POST` | `/api/audit/retention/run` | `audit:retention:manage` | Trigger an out-of-band retention run |
+| `GET` | `/api/audit/remediation` | `audit:retention:manage` | DSGVO erasure-remediation queue |
+| `POST` | `/api/audit/remediation/{id}/resolve` | `audit:retention:manage` | Mark a remediation entry resolved |
+| `GET` | `/api/audit/archive/{*archiveKey}` | `audit:retention:read` | Stream a partition's cold-storage archive blob (JSONL.gz) |
 
 ### GET /api/audit — query parameters
 
@@ -196,12 +230,14 @@ GET /api/audit?page=1&pageSize=50&userId=user-123&resource=User,Role&action=crea
 
 ## Permissions
 
-SDK-Audit declares two permissions, identified by these stable string keys:
+SDK-Audit declares four permissions, identified by these stable string keys:
 
 | Key | Purpose |
 |---|---|
 | `audit:logs:read` | Read and filter audit log entries |
 | `audit:logs:delete` | Delete individual audit log entries |
+| `audit:retention:read` | View the retention/archival status and the cold-archive index |
+| `audit:retention:manage` | Trigger retention runs and resolve DSGVO erasure-remediation entries |
 
 They are contributed by an internal `AuditPermissions : IPermissionContributor` in the
 `BieberWorks.SDK.Audit` implementation assembly (not part of the contract surface) and are
@@ -215,8 +251,15 @@ SDK-Audit registers two GDPR providers automatically (no additional setup requir
 | Provider | Interface | Behaviour |
 |---|---|---|
 | `AuditUserDataExporter` | `IUserDataExporter` | Returns all audit entries for the requested user as a JSON array, ordered by timestamp. |
-| `AuditUserDataEraser` | `IUserDataEraser` | Replaces the `UserId` column with the tombstone value `"ERASED"` for all matching rows. The rows themselves are **never deleted** — audit records are forensic evidence. The operation is idempotent. |
+| `AuditUserDataEraser` | `IUserDataEraser` | Replaces `UserId` and `ResourceId` with the tombstone value `"ERASED"` and clears `Details` to `null` for all matching rows. The rows themselves are **never deleted** — audit records are forensic evidence. The operation is idempotent. |
 
 ::: info Erasure mode is ignored
 `AuditUserDataEraser` always anonymises regardless of the `ErasureMode` requested (hard delete vs. anonymise). This is intentional: audit trails must be retained for compliance.
+:::
+
+::: warning Already-archived partitions
+If the retention/archival lifecycle (see [Retention & Archival Lifecycle](./12-retention-lifecycle.md))
+has already exported and dropped the partition containing a user's rows, the live erasure above
+cannot reach that data — it detects this and raises an entry in
+`audit.erasure_remediation_queue` for manual operator follow-up instead of silently missing it.
 :::
