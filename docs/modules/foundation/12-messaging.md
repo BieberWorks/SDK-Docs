@@ -229,7 +229,7 @@ public sealed class RegisterUserCommandHandler(
         CancellationToken ct)
     {
         if (await users.ExistsByEmailAsync(command.Email, ct))
-            return DomainError.Conflict("User.EmailTaken", "Email already taken.");
+            return DomainError.Conflict("User.EmailTaken");
 
         var user = User.Create(command.Email, command.Password);
         await users.AddAsync(user, ct);

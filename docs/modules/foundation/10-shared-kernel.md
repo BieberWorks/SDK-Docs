@@ -112,9 +112,12 @@ public record DomainError
 {
     public required string Code { get; init; }
     public DomainErrorType Type { get; init; } = DomainErrorType.Failure;
-    public string? Message { get; init; }
 }
 ```
+
+::: warning No Message Field
+`DomainError` carries only `Code` and `Type` — there is no `Message`/free-text field. Detail text belongs in structured logging, never on the `DomainError` itself, since `DomainError` may end up on a user-facing `Result`. User-facing messages are produced separately via `IErrorLocalizer` (see below).
+:::
 
 ### Predefined Static Instances
 
@@ -128,8 +131,8 @@ public record DomainError
 ### Factory Methods
 
 ```csharp
-DomainError.NotFound("User.NotFound", "The user was not found.")
-DomainError.Validation("User.EmailInvalid", "Invalid email address.")
+DomainError.NotFound("User.NotFound")
+DomainError.Validation("User.EmailInvalid")
 DomainError.Failure("User.SaveFailed")
 DomainError.Conflict("User.EmailTaken")
 DomainError.Forbidden("User.NoPermission")
@@ -137,6 +140,10 @@ DomainError.Unauthorized("User.NotLoggedIn")
 DomainError.BadRequest("Request.MalformedBody")
 DomainError.TooManyRequests("Auth.RateLimited")
 ```
+
+::: tip Code-Only Factories
+All factory extensions take a single `code` argument — no free-text message parameter. The code is later translated to a user-safe string via `IErrorLocalizer.Localize(error)`.
+:::
 
 ### DomainErrorType
 
@@ -352,8 +359,7 @@ return new PagedResult<OrderDto>
 
 ```csharp
 public record ValidationError(IEnumerable<DomainError> Errors)
-    : DomainError("General.Validation", DomainErrorType.Validation,
-                  "One or more validation errors occurred.");
+    : DomainError("General.Validation", DomainErrorType.Validation);
 ```
 
 The static factory `ValidationError.FromResults` collects all errors from a sequence of failed `Result` objects:
@@ -362,18 +368,34 @@ The static factory `ValidationError.FromResults` collects all errors from a sequ
 var combined = ValidationError.FromResults([result1, result2, result3]);
 ```
 
-## IDomainErrorLocalizer
+## IErrorLocalizer
 
-`IDomainErrorLocalizer` is the contract for presenting a human-readable message for a given `DomainError`. Modules that expose user-facing error strings implement this interface:
+`IErrorLocalizer` (namespace `BieberWorks.SDK.SharedKernel.Results`) is the contract for presenting a human-readable, user-safe message for a given `DomainError`:
 
 ```csharp
-public interface IDomainErrorLocalizer
+namespace BieberWorks.SDK.SharedKernel.Results;
+
+public interface IErrorLocalizer
 {
-    string GetLocalizedMessage(DomainError domainError);
+    string Localize(DomainError error);   // localized, user-safe message for a known error code
+    string LocalizeUnexpected();          // generic fallback message (raw catch); never leaks exception details
 }
 ```
 
-Register your implementation as `Scoped` and inject it wherever error messages must be translated before display.
+### Default Implementation — LayeredErrorLocalizer
+
+`Core.Web` ships the default implementation `LayeredErrorLocalizer`, which translates `DomainError.Code` through the layered string localizer using the resx key schema `"Error_" + Code.Replace('.', '_')` (e.g. code `User.NotFound` → key `Error_User_NotFound`). If no translation is found, it falls back to a generic message. `LocalizeUnexpected()` always returns a generic, exception-detail-free message — it must never surface raw exception text to the client.
+
+### Registration
+
+`LayeredErrorLocalizer` is registered via `AddBieberWorksLocalization()` using `TryAddScoped`, so hosts get a working default automatically and can override it by registering their own `IErrorLocalizer` before calling `AddBieberWorksLocalization()`.
+
+```csharp
+// Program.cs
+builder.Services.AddBieberWorksLocalization();
+```
+
+Inject `IErrorLocalizer` wherever `DomainError` values must be translated before display (e.g. in UI error banners or API problem-detail mapping).
 
 ## ITranslationStore (SharedKernel.Localization)
 
