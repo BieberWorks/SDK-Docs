@@ -24,10 +24,17 @@ The key of a permission follows the format `{module}:{resource}:{action}`, e.g. 
 
 ### Defining Permissions (IPermissionContributor)
 
-Each module that wants to provide custom permissions implements `IPermissionContributor` and registers itself as a singleton:
+`IPermissionContributor`, `PermissionDefinition`, and `IPermissionService` live in the Tier-0
+package `BieberWorks.SDK.Core.Authorization`, namespace `BieberWorks.SDK.Core.Authorization`
+(not in `Auth.Contracts`; `Auth.Contracts` only holds the `AuthPermissions` constants).
+
+Each module that wants to provide custom permissions implements `IPermissionContributor` and
+registers itself via the `AddPermissionContributor<T>()` extension:
 
 ```csharp
 // In your own module:
+using BieberWorks.SDK.Core.Authorization;
+
 public sealed class MyModulePermissionContributor : IPermissionContributor
 {
     public IEnumerable<PermissionDefinition> GetPermissions()
@@ -48,7 +55,7 @@ public sealed class MyModulePermissionContributor : IPermissionContributor
 }
 
 // In module registration:
-services.AddSingleton<IPermissionContributor, MyModulePermissionContributor>();
+services.AddPermissionContributor<MyModulePermissionContributor>();
 ```
 
 `IPermissionService.GetCatalog()` returns all registered permissions of all modules.
@@ -106,6 +113,8 @@ public class MyService(IPermissionService permissionService)
 ```
 
 ### IPermissionService
+
+`IPermissionService` is also defined in `BieberWorks.SDK.Core.Authorization`:
 
 ```csharp
 public interface IPermissionService

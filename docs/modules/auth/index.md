@@ -36,7 +36,7 @@ All packages are released together and share one version, computed from Conventi
 | Scenario | Required packages |
 |---|---|
 | Another module consumes `ICurrentUserProvider` or `IPermissionService` | `Auth.Contracts` |
-| Module registers custom permissions in the catalog | `Auth.Contracts` (implements `IPermissionContributor`) |
+| Module registers custom permissions in the catalog | `Core.Authorization` (implements `IPermissionContributor`) |
 | Host provides Auth API | `Auth` + optional `Auth.Management` |
 | Host with ready-made Blazor interface | `Auth` + `Auth.UI.MudBlazor` |
 | External WASM/MAUI app communicates via HTTP | `Auth.Client` |
