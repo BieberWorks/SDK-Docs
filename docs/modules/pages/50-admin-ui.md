@@ -1,6 +1,6 @@
 # Admin UI
 
-The admin UI is provided by the `BieberWorks.SDK.Pages.UI.Blazor.MudBlazor` package. It integrates into the Admin Shell via `IAdminSection`.
+The admin UI is provided by the `BieberWorks.SDK.Pages.UI.Blazor.MudBlazor` package. It integrates into the Admin Shell by implementing `IAdminSection` (Admin.Contracts, backed by `IShellSection` from SDK-Shell).
 
 ## Routes
 
@@ -71,9 +71,9 @@ public sealed class PagesAdminSection : IAdminSection
     public string Icon  => Icons.Material.Filled.Article;
     public int    Order => 50;
 
-    public IReadOnlyList<AdminNavItem> NavItems =>
+    public IReadOnlyList<ShellNavItem> NavItems =>
     [
-        new AdminNavItem("Alle Seiten", "/admin/pages", Icons.Material.Filled.List),
+        new ShellNavItem { Title = "Alle Seiten", Href = "/admin/pages", Icon = Icons.Material.Filled.List },
     ];
 }
 ```

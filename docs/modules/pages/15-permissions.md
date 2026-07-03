@@ -1,6 +1,6 @@
 # Permissions
 
-SDK-Pages registers five permissions via `PagesPermissionContributor` (implements `IPermissionContributor`). They are automatically discovered and seeded into SDK-Auth's permission store on module startup — no manual setup required in the host.
+SDK-Pages registers five permissions via `PagesPermissionContributor` (implements `IPermissionContributor` from `BieberWorks.SDK.Core.Authorization`). They are automatically discovered and seeded into SDK-Auth's permission store on module startup — no manual setup required in the host.
 
 ## Permission Keys
 
