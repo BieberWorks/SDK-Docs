@@ -2,7 +2,7 @@
 
 Package: `BieberWorks.SDK.Storage.UI.Blazor.MudBlazor`
 
-The UI package provides ready-made MudBlazor pages for admin and users. It requires `SDK-Admin` (for `IAdminSection`/`IAdminPage`) and `SDK-Account` (for `IAccountSection`/`IAccountPage`).
+The UI package provides ready-made MudBlazor pages for admin and users. It requires `SDK-Admin` (for `IAdminSection`/`IAdminPage`, backed by `IShellSection` from `SDK-Shell`) and `SDK-Account` (for `IAccountSection`/`IAccountPage`).
 
 ## Adding to host
 
@@ -133,15 +133,16 @@ Detail view of a shared file (read-only).
 
 ### BwFileUploadButton
 
-Styled upload button (MudBlazor) that wraps the native `<input type="file">` — no need for `IJSRuntime` in the consumer.
+Styled upload button (MudBlazor) that wraps the native `<input type="file">`. The
+button renders as a `<label for>` tied to the hidden file input, so tapping it
+opens the file picker as a native user gesture — this works on mobile browsers
+(iOS Safari / mobile Chrome) and requires **no JavaScript** and no `IJSRuntime`.
 
 #### Setup
 
-Add the script tag once in `App.razor` or `index.html`:
-
-```html
-<script src="_content/BieberWorks.SDK.Storage.UI.Blazor.MudBlazor/bw-file-upload.js"></script>
-```
+No setup needed — just place the component. (Earlier versions required a
+`bw-file-upload.js` script tag; that is obsolete and can be removed from your
+`App.razor` / `index.html`.)
 
 #### Parameters
 
@@ -403,7 +404,7 @@ Host wrapper — composes `BwFileUploadButton` into the slot (host references `S
 | `StoragePermissions.FileAdmin` | `storage:file:admin` | Manage all files (admin) |
 | `StoragePermissions.FileSettingsManage` | `storage:settings:manage` | Manage module settings |
 
-Permissions are automatically registered in the Auth permissions catalog via `StoragePermissionContributor` (implements `IPermissionContributor`). Roles can be assigned these permissions in the SDK-Auth admin UI.
+Permissions are automatically registered in the Auth permissions catalog via `StoragePermissionContributor` (implements `IPermissionContributor` from `BieberWorks.SDK.Core.Authorization`). Roles can be assigned these permissions in the SDK-Auth admin UI.
 
 ::: tip Policy prefix
 All `[Authorize(Policy = "...")]` attributes in Razor pages use the prefix `perm:` (e.g. `perm:storage:file:admin`). This follows the SDK-Auth module convention.

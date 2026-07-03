@@ -49,7 +49,7 @@ builder.Services.AddBieberWorksModules(builder.Configuration);
 - `IStorageService`
 - `IStorageSettingsService`
 - `IAvatarProvider` (`StorageAvatarProvider`)
-- `IPermissionContributor` (`StoragePermissionContributor`)
+- `IPermissionContributor` (`StoragePermissionContributor`, from `BieberWorks.SDK.Core.Authorization`)
 
 ### Step 2: Choose provider (optional)
 
