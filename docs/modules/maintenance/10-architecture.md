@@ -121,7 +121,8 @@ BieberWorks.SDK.Maintenance
 BieberWorks.SDK.Maintenance.UI.MudBlazor
   ├── BieberWorks.SDK.Maintenance.Contracts
   ├── BieberWorks.SDK.Core               (IModule)
-  ├── BieberWorks.SDK.Admin.Contracts    (IAdminSection, AdminNavItem)
+  ├── BieberWorks.SDK.Admin.Contracts     (IAdminSection, backed by IShellSection from SDK-Shell)
+  ├── BieberWorks.SDK.Shell.Contracts     (ShellNavItem)
   ├── BieberWorks.SDK.Settings.Contracts (ISettingsAdminService for writes)
   ├── BieberWorks.SDK.Theme.Contracts    (IBrandingService for logo/branding in preview)
   └── MudBlazor 9.*
@@ -130,8 +131,8 @@ BieberWorks.SDK.Maintenance.UI.MudBlazor
 **No circular or cross-UI dependencies:**
 - Contracts package is MudBlazor-free and lightweight.
 - Core package has no Admin dependency (pure middleware/service).
-- UI package only references Admin.Contracts and Settings.Contracts (not UI packages).
-- `IAdminSection.Key = "maintenance"` is set (mandatory since Admin 1.0.0).
+- UI package only references Admin.Contracts, Shell.Contracts, and Settings.Contracts (not UI packages).
+- `IAdminSection.Key = "maintenance"` is set (mandatory).
 - Double-registration guarded via `TryAddEnumerable` in `MaintenanceUiModule`.
 
 ---
