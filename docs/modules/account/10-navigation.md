@@ -1,14 +1,18 @@
 # Account Navigation
 
 The Account shell navigation is driven by `IAccountSection` registrations and an admin-managed
-override layer. From v1.0.0 the layout no longer iterates `IEnumerable<IAccountSection>` directly;
-all rendering goes through `IAccountNavigationService`.
+override layer. `IAccountSection` (in `Account.Contracts`) is an empty marker interface over
+`BieberWorks.SDK.Shell.Contracts.IShellSection` — all navigation machinery (resolve pipeline,
+override store, editor) is implemented once, generically, in the standalone **SDK-Shell**
+module and shared with the Admin shell (and any future shell). The layout never iterates
+`IEnumerable<IAccountSection>` directly; all rendering goes through
+`IShellNavigationService<IAccountSection>`.
 
 ---
 
-## `IAccountSection.Key` (v1.0.0 — breaking)
+## `IAccountSection.Key`
 
-Every `IAccountSection` implementation must now provide a `Key` property:
+Every `IAccountSection` implementation provides a `Key` property (inherited from `IShellSection`):
 
 ```csharp
 public string Key => "storage"; // stable, lower-kebab-case, globally unique
@@ -20,29 +24,32 @@ first deployment (changing a key loses any admin-configured overrides for that s
 
 ---
 
-## `IAccountNavigationService`
+## `IShellNavigationService<IAccountSection>`
 
-Located in `BieberWorks.SDK.Account.Contracts.Navigation`.
+Located in `BieberWorks.SDK.Shell.Contracts.Navigation`, generic over the shell marker type.
+The Account shell registers it via `AddBwShell<IAccountSection>(...)` inside
+`AddBieberWorksAccount()`:
 
 ```csharp
-public interface IAccountNavigationService
+public interface IShellNavigationService<TMarker> where TMarker : IShellSection
 {
-    IReadOnlyList<ResolvedAccountSection> GetResolvedNav(IServiceProvider services);
-    AccountNavOverrideStore GetStore();
-    Task SaveStoreAsync(AccountNavOverrideStore store);
+    IReadOnlyList<ResolvedShellSection> GetResolvedNav(IServiceProvider services);
+    ShellNavOverrideStore GetStore();
+    Task SaveStoreAsync(ShellNavOverrideStore store);
 }
 ```
 
 `GetResolvedNav` applies the persisted override store on top of the code-registered sections and
-returns a sorted, deduped list of `ResolvedAccountSection` records. The `AccountLayout` uses this
-exclusively from v1.0.0 onwards.
+returns a sorted, deduped list of `ResolvedShellSection` records. `AccountLayout` uses this
+exclusively.
 
 ---
 
 ## Settings Key
 
 The override store is persisted as JSON under the settings key **`account.nav.overrides`**
-via `ISettingsAdminService`. An empty or missing value is treated as no overrides (code defaults).
+(derived from the shell's `Key`, `"account"`, via `ShellDefinition`), via SDK-Settings.
+An empty or missing value is treated as no overrides (code defaults).
 
 ### JSON schema
 
@@ -63,10 +70,10 @@ via `ISettingsAdminService`. An empty or missing value is treated as no override
 
 ---
 
-## `ResolvedAccountSection`
+## `ResolvedShellSection`
 
 ```csharp
-public sealed record ResolvedAccountSection(
+public sealed record ResolvedShellSection(
     string Key,
     string Title,
     string Icon,
@@ -74,21 +81,24 @@ public sealed record ResolvedAccountSection(
     bool IsHidden,
     bool IsAdminCreated,
     string? RequiredPermission,
-    IReadOnlyList<ResolvedAccountNavItem> Items);
+    IReadOnlyList<ResolvedShellNavItem> Items);
 ```
 
 `RequiredPermission` is carried through the resolve pipeline unchanged from the original
-`IAccountSection.RequiredPermission`. The `AccountLayout` still wraps permission-gated sections
+`IAccountSection.RequiredPermission` (inherited from `IShellSection.RequiredPermission`).
+`AccountLayout` (via `BwShellLayoutBase<IAccountSection>`) wraps permission-gated sections
 in `<AuthorizeView Policy="perm:{RequiredPermission}">`.
 
 ---
 
 ## Admin Navigation Override Editor
 
-`AccountNavigationService` implements `INavOverrideTarget` (from `BieberWorks.SDK.Admin.Contracts`)
-and registers itself as such. The Admin editor at `/admin/navigation` discovers it automatically
-and renders an "Account" tab alongside the "Admin" tab. No changes to `Admin.UI.MudBlazor` are
-needed when the Account module is added to a host.
+The Account shell's `IShellNavigationService<IAccountSection>` is additionally exposed as
+`INavOverrideTarget` (registered automatically by `AddBwShell<IAccountSection>()`, from
+`BieberWorks.SDK.Shell.Contracts.Navigation`). The generic `BwShellNavEditor` component,
+hosted by SDK-Admin at `/admin/navigation`, discovers it automatically and renders an
+"Account" tab alongside the "Admin" tab. No changes to `Admin.UI.Blazor.MudBlazor` or
+`Shell.UI.Blazor.MudBlazor` are needed when the Account module is added to a host.
 
 ---
 
@@ -99,5 +109,9 @@ needed when the Account module is added to a host.
 3. Build default Href→section-key map.
 4. Apply `ItemOverrides` (redirect items to other sections).
 5. Apply `SectionOverrides` (title, icon, order, hidden).
-6. Append `AdminCreatedSections` (no RequiredPermission).
+6. Append `AdminCreatedSections` (no `RequiredPermission`).
 7. Sort by effective `Order`.
+
+For the full JSON schema, override semantics, and editor capabilities, see the SDK-Shell
+module's navigation documentation (shared kernel) and SDK-Admin's `11-navigation.md`
+(Admin-flavored write-up of the same mechanism).

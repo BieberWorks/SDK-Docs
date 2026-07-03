@@ -14,16 +14,29 @@ This interface allows tools or filters to identify all account pages in an assem
 
 ## IAccountSection
 
-Groups multiple `AccountNavItem` links under a drawer entry.
+`IAccountSection` (in `Account.Contracts`) is an empty marker interface deriving from
+`BieberWorks.SDK.Shell.Contracts.IShellSection` (the generic navigation kernel provided by
+the standalone **SDK-Shell** module). It scopes section registrations to the Account shell —
+implement `IAccountSection` (not the base `IShellSection` directly) so the Account shell's
+`IShellNavigationService<IAccountSection>` picks it up, keeping it separate from Admin
+sections.
 
 ```csharp
-public interface IAccountSection
+public interface IAccountSection : BieberWorks.SDK.Shell.Contracts.IShellSection
+{
+}
+```
+
+All members are inherited from `IShellSection`:
+
+```csharp
+public interface IShellSection
 {
     string Key   { get; }  // stable, lower-kebab-case, globally unique
     string Title { get; }
     string Icon  { get; }
     int    Order { get; }
-    IReadOnlyList<AccountNavItem> NavItems { get; }
+    IReadOnlyList<ShellNavItem> NavItems { get; }
 
     // Optional: permission key (null = always visible)
     string? RequiredPermission => null;
@@ -39,25 +52,36 @@ public interface IAccountSection
 | `Title` | Display name in the drawer (e.g. `"My Files"`) |
 | `Icon` | MudBlazor icon constant (e.g. `Icons.Material.Filled.Folder`) |
 | `Order` | Sorting; lower values appear higher |
-| `NavItems` | List of navigation links in this section |
+| `NavItems` | List of `ShellNavItem` navigation links in this section |
 | `RequiredPermission` | Optional permission key in format `{module}:{resource}:{action}`; `null` = always visible |
 | `IsEnabled` | Optional runtime condition; default `true` |
 
 ::: info Difference from IAdminSection
-`IAccountSection` has `RequiredPermission` — a section can be hidden for certain users without protecting the entire account area. `IAdminSection` only uses `IsEnabled` and protects the entire body globally via `perm:admin:shell:access`.
+`IAdminSection` (SDK-Admin) is the equivalent marker over `IShellSection` for the Admin shell —
+both are thin markers with identical inherited members. The behavioral difference is at the
+layout level: `AccountLayout` gates individual sections via `RequiredPermission` while leaving
+the rest of the area visible, whereas `AdminLayout` additionally protects the entire body via
+one shell-level policy (`perm:admin:shell:access`, set on the Admin `ShellDefinition`).
 :::
 
-## AccountNavItem
+## ShellNavItem
 
 ```csharp
-public sealed record AccountNavItem(string Title, string Href, string Icon);
+public sealed record ShellNavItem
+{
+    public required string Title { get; init; }
+    public required string Href { get; init; }
+    public required string Icon { get; init; }
+}
 ```
 
-| Parameter | Description |
+| Property | Description |
 |---|---|
 | `Title` | Link label in the drawer |
 | `Href` | Route URL (e.g. `"/account/files"`) |
 | `Icon` | MudBlazor icon constant |
+
+`ShellNavItem` lives in `BieberWorks.SDK.Shell.Contracts`, not in `Account.Contracts`.
 
 ## Complete example
 
@@ -66,6 +90,7 @@ public sealed record AccountNavItem(string Title, string Href, string Icon);
 ```csharp
 // MyModule/Account/MyAccountSection.cs
 using BieberWorks.SDK.Account.Contracts;
+using BieberWorks.SDK.Shell.Contracts;
 using MudBlazor;
 
 public sealed class MyAccountSection : IAccountSection
@@ -75,10 +100,10 @@ public sealed class MyAccountSection : IAccountSection
     public string Icon  => Icons.Material.Filled.Folder;
     public int    Order => 100;
 
-    public IReadOnlyList<AccountNavItem> NavItems =>
+    public IReadOnlyList<ShellNavItem> NavItems =>
     [
-        new AccountNavItem("Overview",  "/account/files",        Icons.Material.Filled.FolderOpen),
-        new AccountNavItem("Uploads",   "/account/files/upload", Icons.Material.Filled.Upload),
+        new ShellNavItem { Title = "Overview", Href = "/account/files",        Icon = Icons.Material.Filled.FolderOpen },
+        new ShellNavItem { Title = "Uploads",  Href = "/account/files/upload", Icon = Icons.Material.Filled.Upload },
     ];
 
     // Only visible if permission is present
@@ -171,4 +196,4 @@ public bool IsEnabled(IServiceProvider services)
 }
 ```
 
-`AccountLayout` evaluates `IsEnabled` via `IAccountNavigationService.GetResolvedNav()` and skips disabled sections.
+`AccountLayout` evaluates `IsEnabled` via `IShellNavigationService<IAccountSection>.GetResolvedNav()` and skips disabled sections.

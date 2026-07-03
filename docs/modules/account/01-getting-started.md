@@ -12,12 +12,13 @@
 Domain modules that only implement `IAccountSection` need only `BieberWorks.SDK.Account.Contracts`. `BieberWorks.SDK.Account` and `BieberWorks.SDK.Account.UI.Blazor.MudBlazor` are referenced only by the host.
 :::
 
-`BieberWorks.SDK.Account` is the implementation package. It contains `AccountModule`, `AccountDbContext`, `IAccountNavigationService`, and `AddBieberWorksAccount()`. The skin package (`UI.Blazor.MudBlazor`) contains only layouts, Razor components, and `AddBieberWorksAccountUi()`.
+`BieberWorks.SDK.Account` is the implementation package. It contains `AccountModule`, `AccountDbContext`, and `AddBieberWorksAccount()` (which registers the Account shell against the generic **SDK-Shell** kernel via `AddBwShell<IAccountSection>()`). The skin package (`UI.Blazor.MudBlazor`) contains only layouts, Razor components, and `AddBieberWorksAccountUi()`.
 
 ## Prerequisites
 
 1. **SDK-UI** must be registered (`AddBieberWorksUi()`) before the Account skin is used.
 2. A **`DefaultConnection`** connection string must be present in configuration — `AddBieberWorksAccount()` registers `AccountDbContext` via `AddBieberWorksNpgsql` using it (schema `account`). Migrations are applied automatically at startup.
+3. **SDK-Shell** is a transitive dependency of `BieberWorks.SDK.Account` — it supplies `IShellSection`, `ShellNavItem`, the navigation override kernel, and `BwShellLayoutBase<TMarker>`. No separate host setup is required.
 
 ```xml
 <!-- Also in the host -->
@@ -56,8 +57,8 @@ When using `AddBieberWorksModules`, `AccountModule` is discovered automatically 
 | Service | Lifetime | Description |
 |---|---|---|
 | `AccountDbContext` | — | via `AddBieberWorksNpgsql` (schema `"account"`, `DefaultConnection`) |
-| `IAccountNavigationService` | Scoped | Resolves the final nav tree with overrides applied |
-| `INavOverrideTarget` | Scoped | Exposes the account shell to the Admin navigation editor |
+| `IShellNavigationService<IAccountSection>` | Scoped | Resolves the final nav tree with overrides applied (from SDK-Shell, via `AddBwShell<IAccountSection>()`) |
+| `INavOverrideTarget` | Scoped | Exposes the account shell to the generic `BwShellNavEditor` (hosted by SDK-Admin at `/admin/navigation`) |
 
 The `IAccountSection` collection is not populated by `AddBieberWorksAccount()` — domain modules do that by registering their sections via `services.AddSingleton<IAccountSection, MySection>()`.
 
@@ -96,7 +97,7 @@ The `IAccountSection` collection is not populated by `AddBieberWorksAccount()` �
 ## IModule-based approach (alternative explicit registration)
 
 ```csharp
-// Impl: DbContext, navigation service
+// Impl: DbContext, shell registration (AddBwShell<IAccountSection>)
 services.AddBieberWorksAccount(builder.Configuration);
 
 // Skin: MudBlazor services
