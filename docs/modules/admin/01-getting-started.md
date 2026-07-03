@@ -10,13 +10,14 @@
 </ItemGroup>
 ```
 
-`BieberWorks.SDK.Admin` is the implementation package. It contains `AdminModule`, `AdminDbContext`, `IAdminNavigationService`, and `AddBieberWorksAdmin()`. The skin package (`UI.Blazor.MudBlazor`) contains only layouts, Razor components, and `AddBieberWorksAdminUi()`.
+`BieberWorks.SDK.Admin` is the implementation package. It contains `AdminModule`, `AdminDbContext`, `AdminPermissionContributor`, and `AddBieberWorksAdmin()` (which registers the Admin shell against the generic **SDK-Shell** kernel via `AddBwShell<IAdminSection>()`). The skin package (`UI.Blazor.MudBlazor`) contains only layouts, Razor components, and `AddBieberWorksAdminUi()`.
 
 ## Prerequisites
 
 1. **SDK-UI** must be registered (`AddBieberWorksUi()`) before the Admin skin is used.
 2. A **`DefaultConnection`** connection string must be present in configuration — `AddBieberWorksAdmin()` registers `AdminDbContext` via `AddBieberWorksNpgsql` using it (schema `admin`). Migrations are applied automatically at startup.
 3. **SDK-Settings** is optional, but **recommended** for persistence of navigation overrides. Without it, the admin shell functions but order resets on each reload.
+4. **SDK-Shell** is a transitive dependency of `BieberWorks.SDK.Admin` — it supplies `IShellSection`, `ShellNavItem`, the navigation override kernel, and the `BwShellNavEditor` component. No separate host setup is required.
 
 ## Program.cs
 

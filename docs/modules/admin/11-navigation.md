@@ -1,31 +1,50 @@
 # Navigation Override System
 
 The Admin shell navigation is driven by `IAdminSection` registrations from each module.
-The rendering order and item placement can be overridden persistently
-via the layered override model described below.
+`IAdminSection` (in `Admin.Contracts`) is an empty marker interface over
+`BieberWorks.SDK.Shell.Contracts.IShellSection` — all navigation machinery (the resolve
+pipeline, the override store, the editor) is implemented once, generically, in the
+**SDK-Shell** module and shared across every shell (Admin, Account, and future shells).
+This page summarizes the Admin-specific wiring. See the SDK-Shell docs for the full
+navigation/override reference.
 
 ---
 
 ## Implementing `IAdminSection`
 
+`IShellSection` and `ShellNavItem` live in `BieberWorks.SDK.Shell.Contracts`.
+`IAdminSection` lives in `BieberWorks.SDK.Admin.Contracts` and scopes registrations to the
+Admin shell:
+
+```csharp
+public interface IAdminSection : BieberWorks.SDK.Shell.Contracts.IShellSection
+{
+}
+```
+
 Every module that wants a navigation group in the Admin shell implements `IAdminSection`:
 
 ```csharp
+using BieberWorks.SDK.Admin.Contracts;
+using BieberWorks.SDK.Shell.Contracts;
+
 public sealed class MyAdminSection : IAdminSection
 {
-    // Stable lower-kebab-case key — MUST be unique across all modules.
+    // Stable lower-kebab-case key — MUST be unique across all modules registered in this shell.
     public string Key   => "my-module";
     public string Title => "My Module";
     public string Icon  => Icons.Material.Filled.Extension;
     public int    Order => 50;
 
-    public IReadOnlyList<AdminNavItem> NavItems =>
+    public IReadOnlyList<ShellNavItem> NavItems =>
     [
-        new("Overview",  "/admin/my-module",          Icons.Material.Filled.Dashboard),
-        new("Settings",  "/admin/my-module/settings", Icons.Material.Filled.Settings),
+        new ShellNavItem { Title = "Overview", Href = "/admin/my-module",          Icon = Icons.Material.Filled.Dashboard },
+        new ShellNavItem { Title = "Settings", Href = "/admin/my-module/settings", Icon = Icons.Material.Filled.Settings },
     ];
 }
 ```
+
+Registration: `services.AddSingleton<IAdminSection, MyAdminSection>()`.
 
 ### `Key` convention
 
@@ -40,9 +59,10 @@ Determines the **default** sort order. Admins can override this via the navigati
 
 ---
 
-## Override Model
+## Override Model (implemented in SDK-Shell)
 
-The override store is persisted as JSON under the SDK-Settings key `admin.nav.overrides`.
+The override store is persisted as JSON under the SDK-Settings key `admin.nav.overrides`
+(derived from the shell's `Key`, `"admin"`, via `ShellDefinition`).
 
 ### JSON schema
 
@@ -83,7 +103,7 @@ The override store is persisted as JSON under the SDK-Settings key `admin.nav.ov
 
 | Field | Effect |
 |---|---|
-| `key` | Matches `IAdminSection.Key` |
+| `key` | Matches `IAdminSection.Key` (inherited from `IShellSection.Key`) |
 | `displayTitle` | Replaces the section title in the drawer |
 | `displayIcon` | Replaces the section icon |
 | `order` | Overrides the sort order |
@@ -95,7 +115,7 @@ Reassigns a nav item (identified by `href`) to a different section and/or sort p
 
 | Field | Effect |
 |---|---|
-| `href` | Stable route path — matches `AdminNavItem.Href` |
+| `href` | Stable route path — matches `ShellNavItem.Href` |
 | `targetSectionKey` | Destination section `Key` (code section or admin-created) |
 | `order` | Item sort position within the target section (`null` = list position) |
 
@@ -109,20 +129,20 @@ for reassigned items.
 
 ---
 
-## `IAdminNavigationService`
+## `IShellNavigationService<IAdminSection>`
 
-`Admin.Contracts` exposes `IAdminNavigationService` for reading and writing the override store:
+The Admin shell resolves navigation via the generic
+`IShellNavigationService<TMarker>` (SDK-Shell), registered by
+`services.AddBwShell<IAdminSection>(...)` inside `AddBieberWorksAdmin()`:
 
 ```csharp
-public interface IAdminNavigationService
+public interface IShellNavigationService<TMarker> where TMarker : IShellSection
 {
-    IReadOnlyList<ResolvedAdminSection> GetResolvedNav(IServiceProvider services);
-    NavOverrideStore GetStore();
-    Task SaveStoreAsync(NavOverrideStore store);
+    IReadOnlyList<ResolvedShellSection> GetResolvedNav(IServiceProvider services);
+    ShellNavOverrideStore GetStore();
+    Task SaveStoreAsync(ShellNavOverrideStore store);
 }
 ```
-
-The service is registered as `Scoped` by `AddBieberWorksAdmin()`.
 
 `GetResolvedNav` applies the full pipeline:
 
@@ -136,7 +156,8 @@ The service is registered as `Scoped` by `AddBieberWorksAdmin()`.
 8. Detect orphan items (unknown target section) — fall back + warn.
 
 `GetResolvedNav` returns **all** sections including hidden ones.
-The `AdminLayout.razor` filters `IsHidden == true` before rendering.
+`BwShellLayoutBase<IAdminSection>` (which `AdminLayout` builds on) filters `IsHidden == true`
+before rendering.
 
 ---
 
@@ -145,12 +166,13 @@ The `AdminLayout.razor` filters `IsHidden == true` before rendering.
 ### Navigation Editor — `/admin/navigation`
 
 The edit button (Tune icon) in the Admin drawer header navigates to `/admin/navigation`.
-This page is implemented in `Admin.UI.MudBlazor`.
+This page hosts the generic **`BwShellNavEditor`** component from
+`BieberWorks.SDK.Shell.UI.Blazor.MudBlazor`.
 
-The editor discovers all registered `INavOverrideTarget` implementations via
-`IEnumerable<INavOverrideTarget>` and renders one tab per shell (sorted by `ShellKey`).
-Currently only the Admin shell is registered; a Phase 2 Account shell tab appears automatically
-without any changes to the editor page.
+`BwShellNavEditor` discovers all registered `INavOverrideTarget` implementations via
+`IEnumerable<INavOverrideTarget>` (SDK-Shell) and renders one tab per shell (sorted by
+`ShellKey`). Every shell registered via `AddBwShell<TMarker>()` — Admin, Account, and any
+future shell — automatically gets a tab here, with zero changes to this page.
 
 Permission gate: `perm:admin:shell:access` (same as the Admin shell itself).
 
@@ -168,7 +190,7 @@ Permission gate: `perm:admin:shell:access` (same as the Admin shell itself).
 
 ### `INavOverrideTarget`
 
-Defined in `Admin.Contracts`:
+Defined in `BieberWorks.SDK.Shell.Contracts.Navigation`:
 
 ```csharp
 public interface INavOverrideTarget
@@ -182,34 +204,37 @@ public interface INavOverrideTarget
 }
 ```
 
-`AdminNavigationService` implements both `IAdminNavigationService` and `INavOverrideTarget`.
-The factory registration avoids double instantiation:
+`AddBwShell<TMarker>()` registers the concrete `IShellNavigationService<TMarker>` and
+additionally exposes it as `INavOverrideTarget` — no manual wiring needed in Admin or any
+other shell module:
 
 ```csharp
-services.TryAddScoped<IAdminNavigationService, AdminNavigationService>();
-services.TryAddScoped<INavOverrideTarget>(sp =>
-    (INavOverrideTarget)sp.GetRequiredService<IAdminNavigationService>());
+services.TryAddScoped<IShellNavigationService<TMarker>>(sp => /* ... */);
+services.AddScoped<INavOverrideTarget>(sp =>
+    (INavOverrideTarget)sp.GetRequiredService<IShellNavigationService<TMarker>>());
 ```
 
-### Generic Shell DTOs (`Admin.Contracts/Navigation/`)
+### Generic Shell DTOs (`BieberWorks.SDK.Shell.Contracts.Navigation`)
 
 | Type | Purpose |
 |---|---|
 | `ShellNavSection` | Resolved section as shown to the editor (shell-agnostic) |
-| `ShellNavItem` | Resolved nav item inside a `ShellNavSection` |
+| `ShellNavItem` (Navigation namespace) | Resolved nav item inside a `ShellNavSection` |
 | `ShellNavOverrideStore` | Generic store passed between editor and `INavOverrideTarget` |
-| `ShellNavSectionOverride` | Per-section override delta (title / icon / order / hidden) |
-| `ShellNavItemOverride` | Item reassignment and order delta |
+| `NavSectionOverride` | Per-section override delta (title / icon / order / hidden) |
+| `NavItemOverride` | Item reassignment and order delta |
 | `ShellCreatedSection` | Admin-created section with no code backing |
 
 `ShellNavSection.Metadata` is an optional informational field (e.g. `"perm:storage:file:read"`)
 displayed as a tooltip in the editor. It is not enforced.
 
-### Adding a new shell (Phase 2+)
+### Adding a new shell
 
-1. Implement `INavOverrideTarget` on your shell navigation service.
-2. Register it: `services.TryAddScoped<INavOverrideTarget>(sp => ...)`.
-3. The `/admin/navigation` editor tab appears automatically.
+1. Call `services.AddBwShell<TMarker>(new ShellDefinition(key, routePrefix, displayName), permissionChecker)`
+   in the new module's registration extension, where `TMarker` is a fresh marker interface
+   deriving from `IShellSection` (mirroring `IAdminSection`/`IAccountSection`).
+2. `AddBwShell` registers `IShellNavigationService<TMarker>` and `INavOverrideTarget` automatically.
+3. The `/admin/navigation` editor (`BwShellNavEditor`) shows a new tab for the shell automatically.
 
 ---
 

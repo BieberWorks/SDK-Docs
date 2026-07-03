@@ -2,10 +2,13 @@
 
 ## Implement IAdminSection
 
-Each domain module offers one or more admin pages through `IAdminSection`:
+Each domain module offers one or more admin pages through `IAdminSection` — an empty marker
+interface (in `Admin.Contracts`) over `BieberWorks.SDK.Shell.Contracts.IShellSection`, the
+generic navigation kernel provided by the **SDK-Shell** module:
 
 ```csharp
 using BieberWorks.SDK.Admin.Contracts;
+using BieberWorks.SDK.Shell.Contracts;
 
 namespace MyModule;
 
@@ -17,18 +20,20 @@ public class MyAdminSection : IAdminSection
     public string Icon  => Icons.Material.Filled.Settings;
     public int    Order => 100;
 
-    public IReadOnlyList<AdminNavItem> NavItems =>
+    public IReadOnlyList<ShellNavItem> NavItems =>
     [
-        new AdminNavItem(
-            Title: "Overview",
-            Href: "/admin/mymodule",
-            Icon: Icons.Material.Filled.Dashboard
-        ),
-        new AdminNavItem(
-            Title: "Settings",
-            Href: "/admin/mymodule/settings",
-            Icon: Icons.Material.Filled.Tune
-        )
+        new ShellNavItem
+        {
+            Title = "Overview",
+            Href = "/admin/mymodule",
+            Icon = Icons.Material.Filled.Dashboard
+        },
+        new ShellNavItem
+        {
+            Title = "Settings",
+            Href = "/admin/mymodule/settings",
+            Icon = Icons.Material.Filled.Tune
+        }
     ];
     
     public bool IsEnabled(IServiceProvider services)
@@ -39,16 +44,16 @@ public class MyAdminSection : IAdminSection
 }
 ```
 
-### AdminNavItem
+### ShellNavItem
 
-A record with three properties:
+An init-record with three required properties:
 
 - **`Title`** — Link label
 - **`Href`** — Route (e.g., `/admin/dashboard`, `/admin/users`)
 - **`Icon`** — MudBlazor icon
 
 ```csharp
-new AdminNavItem("Users", "/admin/users", Icons.Material.Filled.Person)
+new ShellNavItem { Title = "Users", Href = "/admin/users", Icon = Icons.Material.Filled.Person }
 ```
 
 ## DI Registration
