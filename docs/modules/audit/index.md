@@ -48,7 +48,7 @@ concrete backend) at compile time; a concrete `IFileStorage` implementation (e.g
 :::
 
 ::: info Contracts has no Auth dependency
-`Audit.Contracts` depends only on SDK-Foundation. `AuditPermissions` (the `IPermissionContributor` that pulls in `Auth.Contracts`) lives in the `BieberWorks.SDK.Audit` **implementation** assembly, so modules that reference `Audit.Contracts` to consume `IAuditService` do not transitively pull in `Auth.Contracts`.
+`Audit.Contracts` depends only on SDK-Foundation. `AuditPermissions` (an `IPermissionContributor` from `BieberWorks.SDK.Core.Authorization`) lives in the `BieberWorks.SDK.Audit` **implementation** assembly, so modules that reference `Audit.Contracts` to consume `IAuditService` do not transitively pull in `Auth.Contracts`.
 :::
 
 ## Documentation

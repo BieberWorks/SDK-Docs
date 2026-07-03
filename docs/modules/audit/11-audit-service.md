@@ -239,10 +239,10 @@ SDK-Audit declares four permissions, identified by these stable string keys:
 | `audit:retention:read` | View the retention/archival status and the cold-archive index |
 | `audit:retention:manage` | Trigger retention runs and resolve DSGVO erasure-remediation entries |
 
-They are contributed by an internal `AuditPermissions : IPermissionContributor` in the
-`BieberWorks.SDK.Audit` implementation assembly (not part of the contract surface) and are
-automatically registered on startup. The Auth permission catalogue picks them up when SDK-Auth
-and SDK-Audit are used together.
+They are contributed by an internal `AuditPermissions : IPermissionContributor` (from
+`BieberWorks.SDK.Core.Authorization`) in the `BieberWorks.SDK.Audit` implementation assembly
+(not part of the contract surface) and are automatically registered on startup. The Auth
+permission catalogue picks them up when SDK-Auth and SDK-Audit are used together.
 
 ## GDPR / Personal-Data Handling
 
