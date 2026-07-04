@@ -23,26 +23,66 @@ jobs:
         run: sleep 120
 
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Fetch latest release versions from GitHub
+        env:
+          GH_TOKEN: ${{ secrets.ORG_REPO_TOKEN }}
+        run: |
+          # Derive the module list dynamically so newly added modules never
+          # drift out of the version table. Map each checked-out module dir to
+          # its real repo name (via the org repo list) to preserve exact casing
+          # such as SDK-UI; fall back to SDK-<Module> if not found.
+          declare -A REPO_BY_MODULE
+          while IFS= read -r name; do
+            key=$(echo "$name" | tr '[:upper:]' '[:lower:]' | sed 's/^sdk-//')
+            REPO_BY_MODULE["$key"]="$name"
+          done < <(gh repo list BieberWorks --limit 200 --json name --jq '.[].name | select(startswith("SDK-"))')
 
-      - name: Build
-        run: npm run build
+          echo "{" > docs/modules-versions.json
+          FIRST=true
+          for dir in docs/modules/*/; do
+            MODULE=$(basename "$dir")
+            REPO="${REPO_BY_MODULE[$MODULE]:-SDK-$MODULE}"
+            VERSION=$(gh release list --repo "BieberWorks/$REPO" --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "–")
+            [ -z "$VERSION" ] && VERSION="–"
+            if [ "$FIRST" = true ]; then FIRST=false; else echo "," >> docs/modules-versions.json; fi
+            printf '  "%s": "%s"' "$MODULE" "$VERSION" >> docs/modules-versions.json
+          done
+          echo "" >> docs/modules-versions.json
+          echo "}" >> docs/modules-versions.json
+          cat docs/modules-versions.json
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/setup-node@v4
         with:
-          path: ./dist
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run docs:build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
 
-      - name: Deploy to GitHub Pages
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/deploy-pages@v4
         id: deployment
-        uses: actions/deploy-pages@v4
+
+      - name: Clean up cancelled deploy runs
+        env:
+          GH_TOKEN: ${{ secrets.ORG_REPO_TOKEN }}
+        run: |
+          gh run list --repo BieberWorks/SDK-Docs \
+            --workflow deploy.yml \
+            --status cancelled \
+            --limit 100 \
+            --json databaseId \
+            --jq '.[].databaseId' \
+          | xargs -I{} gh run delete {} --repo BieberWorks/SDK-Docs
+          echo "Cancelled deploy runs cleaned up"
