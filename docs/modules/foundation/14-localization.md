@@ -60,6 +60,48 @@ This registers a `GET /bw/set-culture` endpoint that writes a persistent culture
 Nav.NavigateTo($"/bw/set-culture?culture=de&redirectUri=/", forceLoad: true);
 ```
 
+### Persisting the choice for authenticated users — IUserCultureSyncHook
+
+The endpoint only writes the culture cookie itself; it has no notion of a per-user
+language preference stored in a domain module (e.g. Auth). To bridge that gap without
+Foundation depending on any domain module, `MapBieberWorksCultureEndpoint()` resolves an
+optional `IUserCultureSyncHook` from the request's `IServiceProvider` and invokes it
+whenever the request is authenticated:
+
+```csharp
+namespace BieberWorks.SDK.SharedKernel.Localization;
+
+public interface IUserCultureSyncHook
+{
+    Task OnCultureChangedAsync(string userId, string culture, CancellationToken ct = default);
+}
+```
+
+Behavior:
+
+- **Optional** — resolved via `IServiceProvider.GetService<T>()`. If no implementation is
+  registered, the endpoint remains a no-op beyond writing the cookie (unchanged behavior).
+- **Authenticated only** — invoked only when `HttpContext.User.Identity.IsAuthenticated` is
+  `true`. The user id is read from the `ClaimTypes.NameIdentifier` claim (falling back to
+  `sub`); if neither claim is present, the hook is skipped.
+- **Fire-and-forget** — the call runs on `Task.Run(...)` and is **not** awaited before the
+  redirect is returned. It uses `CancellationToken.None` because the originating request
+  scope may already be disposed by the time the background task runs.
+- **Must not throw across the boundary** — implementations are expected to catch and log
+  their own exceptions. `MapBieberWorksCultureEndpoint` also wraps the call in a try/catch
+  and logs a warning (`IUserCultureSyncHook failed to persist culture '{Culture}' for user
+  '{UserId}'.`) if an implementation lets an exception escape, but implementations should
+  not rely on that as their primary error handling.
+
+A domain module registers an implementation to persist the preference, for example:
+
+```csharp
+services.AddScoped<IUserCultureSyncHook, MyModuleUserCultureSyncHook>();
+```
+
+See the Auth module's documentation for a concrete implementation
+(`AuthUserCultureSyncHook`) that writes the culture onto the Auth user record.
+
 ## ILanguageService
 
 `ILanguageService` (in `BieberWorks.SDK.SharedKernel.Localization`) exposes the current request culture. Inject it wherever you need the active culture outside of a standard `IStringLocalizer` flow:
