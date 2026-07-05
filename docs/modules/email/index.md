@@ -57,7 +57,7 @@ The module depends on no other domain module (no Auth, no Audit). It requires `B
 | Topic | Document |
 |---|---|
 | Installation, `Program.cs`, `appsettings.json`, SMTP, rate limiting, UI packages setup | [Setup & Configuration](01-getting-started.md) |
-| `IEmailSender`, `IEmailTemplateRenderer`, `IEmailTemplateProvider`, `ISubmissionNotifier` | [Usage](10-usage.md) |
+| `IEmailSender`, `IEmailTemplateRenderer` (incl. `locale` parameter — **breaking change**), `IEmailTemplateProvider`, `ISubmissionNotifier` (incl. `DualNotification.Locale`) | [Usage](10-usage.md) |
 | DB-backed template overrides, layouts, `IEmailTemplateDescriptor`, Admin UI, live preview, Scriban | [Template Management](11-template-management.md) |
 | Auto-injected branding variables (`LogoUrl`, `BrandColor`, …), caching, cache invalidation | [Branding Integration](12-branding-integration.md) |
 | Release history | [Changelog](90-changelog.md) |

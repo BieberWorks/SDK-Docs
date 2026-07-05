@@ -67,13 +67,55 @@ public class PasswordResetService(
         {
             ["ResetLink"] = resetLink,
             ["UserEmail"] = to,
-        }, ct);
+        }, ct: ct);
 
         var message = new EmailMessage(to, "Reset password", html);
         await emailSender.SendAsync(message, ct);
     }
 }
 ```
+
+::: danger BREAKING CHANGE (major): new `locale` parameter on RenderAsync
+`IEmailTemplateRenderer.RenderAsync` gained a new `string? locale = null` parameter,
+inserted **between** `variables` and `ct`:
+
+```csharp
+Task<string> RenderAsync(
+    string templateName,
+    IReadOnlyDictionary<string, string> variables,
+    string? locale = null,
+    CancellationToken ct = default);
+```
+
+**Who is affected:**
+
+- **Positional callers** that pass `ct` as the third positional argument (e.g.
+  `RenderAsync(name, vars, ct)`) now bind that value to `locale` instead of `ct` — this
+  compiles but silently breaks cancellation and mis-selects the template variant. Update
+  such call sites to pass `ct` by name: `RenderAsync(name, vars, ct: ct)`.
+- **Custom implementations** of `IEmailTemplateRenderer` must add the new `locale`
+  parameter to their method signature to keep implementing the interface.
+
+**Migration:**
+
+```csharp
+// Before (positional ct — now silently wrong):
+await renderer.RenderAsync(templateName, variables, ct);
+
+// After (named ct — correct with the new signature):
+await renderer.RenderAsync(templateName, variables, ct: ct);
+
+// Or, if you also need an explicit recipient locale:
+await renderer.RenderAsync(templateName, variables, locale: user.PreferredCulture, ct: ct);
+```
+
+When `locale` is `null` (the default), behavior is unchanged: the current ambient culture
+(`CultureInfo.CurrentUICulture`) selects the template variant, exactly as before this
+release. Pass an explicit `locale` for time-shifted or externally-triggered sends (webhook
+handlers, admin-triggered resends, background jobs) where there is no ambient culture that
+represents the recipient — e.g. a persisted per-user language preference such as Auth's
+`PreferredCulture`.
+:::
 
 The template `PasswordResetEmail.html` contains placeholders in double curly braces:
 
@@ -242,6 +284,32 @@ var notification = new DualNotification(
 
 await notifier.NotifyAsync(notification, ct);
 ```
+
+### Locale-aware customer email — Locale
+
+Both `DualNotification` and `DualNotification<TModel>` accept an optional `string? Locale`
+record parameter (default `null`):
+
+```csharp
+var notification = new DualNotification<ContactFormModel>(
+    CustomerEmail:    form.Email,
+    CustomerTemplate: "ContactConfirmation.html",
+    CustomerSubject:  "Thank you for your message",
+    AdminEmail:       "team@example.com",
+    AdminTemplate:    "ContactAdminAlert.html",
+    AdminSubject:     "New contact form submission",
+    Model:            form,
+    LogContext:       "ContactForm",
+    Locale:           user.PreferredCulture); // e.g. from Auth's PreferredCulture
+
+await notifier.NotifyAsync(notification, ct);
+```
+
+`Locale` affects **only** the customer email's template-variant selection (it is passed as
+the `locale` argument to `IEmailTemplateRenderer.RenderAsync` for the customer send). The
+admin email always renders using the ambient culture and is unaffected by this value. When
+`Locale` is `null` (the default), both emails render with the ambient culture, matching the
+pre-existing behavior.
 
 ### Omitting the admin email
 
