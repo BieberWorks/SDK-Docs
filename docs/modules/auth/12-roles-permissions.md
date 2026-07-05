@@ -174,6 +174,71 @@ The `UserManagementModule` maps the following endpoints (all require the appropr
 | `PUT` | `/api/admin/users/{userId}/lock` | `auth:users:manage` |
 | `PUT` | `/api/admin/users/{userId}/roles` | `auth:users:manage` |
 
+`UserDetailDto` additionally exposes a `PreferredCulture` field:
+
+```csharp
+public sealed record UserDetailDto
+{
+    // ... Id, Email, UserName, DisplayName, IsLockedOut, EmailConfirmed, Roles ...
+
+    /// Optional persisted language preference (BCP-47/ISO-639-1, e.g. "de" or "en-US").
+    /// null when unset — consumers apply their own fallback.
+    public string? PreferredCulture { get; init; }
+}
+```
+
+`PreferredCulture` is `null` for accounts that never set a preference (including all
+accounts that existed before this feature — the underlying `AspNetUsers.PreferredCulture`
+column is a nullable, additive EF Core migration and does not require any data backfill).
+The SDK does not enforce a default when it is `null`; the consuming application decides
+its own fallback (e.g. the app's default culture or the request's ambient culture).
+
+### IUserCulturePreferenceService
+
+`IUserCulturePreferenceService` (from `Auth.Contracts`) reads and writes a user's
+`PreferredCulture` directly, without requiring an HTTP context — suitable for background
+jobs, webhooks, or admin tooling that needs to set the preference outside a request:
+
+```csharp
+namespace BieberWorks.SDK.Auth.Contracts;
+
+public interface IUserCulturePreferenceService
+{
+    Task<string?> GetPreferredCultureAsync(string userId, CancellationToken ct = default);
+    Task SetPreferredCultureAsync(string userId, string culture, CancellationToken ct = default);
+}
+```
+
+The implementation (`UserCulturePreferenceService` in `Auth.Management`) is backed by
+`UserManager<ApplicationUser>`; `SetPreferredCultureAsync` throws `InvalidOperationException`
+if the user does not exist or the underlying `UserManager.UpdateAsync` fails.
+
+### Automatic sync via IUserCultureSyncHook
+
+Auth registers an implementation of Foundation's `IUserCultureSyncHook`
+(`BieberWorks.SDK.SharedKernel.Localization`) so that when a logged-in user switches
+culture through `/bw/set-culture`, the change is automatically persisted onto their
+account — no extra wiring required in the host application:
+
+```csharp
+internal sealed partial class AuthUserCultureSyncHook(
+    IServiceScopeFactory scopeFactory,
+    ILogger<AuthUserCultureSyncHook> logger)
+    : IUserCultureSyncHook
+{
+    public async Task OnCultureChangedAsync(string userId, string culture, CancellationToken ct = default)
+    {
+        // Resolves its own DI scope (fire-and-forget, runs outside the request scope)
+        // and delegates to IUserCulturePreferenceService.SetPreferredCultureAsync.
+    }
+}
+```
+
+Because the culture-sync endpoint invokes the hook fire-and-forget outside the original
+request scope, `AuthUserCultureSyncHook` creates its own scope via `IServiceScopeFactory`
+rather than depending on scoped services directly, and catches/logs its own exceptions
+(a warning is logged, the culture-switch redirect is never affected).
+
 ## Domain Events
 
 The Auth module publishes the following domain events (all in `Auth.Contracts.DomainEvents`):

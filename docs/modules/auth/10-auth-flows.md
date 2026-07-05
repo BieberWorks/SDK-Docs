@@ -257,6 +257,26 @@ lockout. Both limits are enforced server-side by `ITwoFactorRateLimitService`.
 
 Auth sends its transactional mails (password reset, e-mail confirmation, two-factor code) through the generic `IEmailSender` and the email-template-descriptor pipeline. It does **not** expose a dedicated email interface on its contract surface — an internal adapter bridges to `IEmailSender` and renders the bodies by template key.
 
+### Locale-aware sending — PreferredCulture
+
+Each transactional mail (password reset, e-mail confirmation, two-factor code) is rendered
+in the recipient's persisted `PreferredCulture` when one is set on the user record. The
+internal `IAuthEmailSender` methods accept an optional `locale` parameter that the three
+domain-event handlers (`PasswordResetRequestedEventHandler`,
+`EmailConfirmationRequestedEventHandler`, `TwoFactorCodeRequestedEventHandler`) populate
+from `ApplicationUser.PreferredCulture` before calling the sender:
+
+```csharp
+await emailSender.SendEmailConfirmationAsync(
+    domainEvent.Email, customerName, confirmationLink, user?.PreferredCulture);
+```
+
+When `PreferredCulture` is `null` (unset), the `locale` parameter is passed as `null` and
+`IEmailTemplateRenderer.RenderAsync` falls back to the current ambient culture — the
+behavior is unchanged from before this feature. See [SDK-Email's `RenderAsync`
+documentation](https://github.com/BieberWorks/SDK-Email) for how the `locale` parameter
+selects the template variant.
+
 - If `SDK-Email` is installed and an `IEmailSender` is registered, the bodies are rendered through `SDK-Email`'s template pipeline (keyed by `AuthEmailTemplateKeys`) and sent via `IEmailSender`.
 - If no `IEmailSender` is registered, the module falls back to logging the links only (suitable for development).
 

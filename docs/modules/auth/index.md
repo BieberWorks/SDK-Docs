@@ -48,7 +48,7 @@ All packages are released together and share one version, computed from Conventi
 | Installation, `Program.cs`, `appsettings.json`, JWT/cookie config, AppBar widget, admin bootstrap, migrations | [Setup & Configuration](01-getting-started.md) |
 | Dual-scheme login, token refresh, registration, email confirmation, password flows, **profile self-service**, two-factor auth, email senders/templates | [Authentication Flows](10-auth-flows.md) |
 | Disabling self-registration: host config + runtime admin toggle, `auth:registration:manage` permission, single-user/portfolio recipe | [Registration](11-registration.md) |
-| Role model, permission system, defining/checking permissions, role & user management, domain events | [Roles & Permissions](12-roles-permissions.md) |
+| Role model, permission system, defining/checking permissions, role & user management, **PreferredCulture / IUserCulturePreferenceService**, domain events | [Roles & Permissions](12-roles-permissions.md) |
 | Self-service and admin-initiated account deletion, guard sequence, erasure preview, cross-module wiring | [Account Deletion](13-account-deletion.md) |
 | Ready-made pages, components, `UserMenu` widget, `IAuthClient`, validation attributes, localization | [UI Components](50-ui-components.md) |
 | Release history | [Changelog](90-changelog.md) |
