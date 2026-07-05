@@ -26,15 +26,22 @@ builder.Services
 
 The `BypassPredicate` has a sensible default (see below) — you only need to override it if the Admin role check is insufficient.
 
-**Middleware placement — must come before `UseRouting` and `UseAuthentication`:**
+**Middleware placement — must come after `UseAuthentication` and before `UseAuthorization`:**
 
 ```csharp
-app.UseMaintenanceMode();     // <-- early in the pipeline
 app.UseRouting();
 app.UseAuthentication();
+app.UseMaintenanceMode();     // <-- after UseAuthentication, before UseAuthorization
 app.UseAuthorization();
 // ... rest of pipeline
 ```
+
+The default `BypassPredicate` inspects `HttpContext.User` to bypass authenticated Admins.
+That claims principal is only populated once `UseAuthentication()` has run — placing
+`UseMaintenanceMode()` *before* `UseAuthentication()` means `ctx.User` is always
+anonymous at that point, so the Admin bypass silently never triggers. Keep the
+middleware after authentication (and before authorization/endpoints) so the bypass
+check works as documented.
 
 ### Routes.razor
 
@@ -161,47 +168,56 @@ public static IServiceCollection AddMyModule(this IServiceCollection services)
 
 ---
 
-## Consumer Maintenance Page
+## Public Maintenance Page
 
-The SDK does not ship a maintenance page — consumers own the design. The `/maintenance` path receives a redirect, but you must implement the actual Razor component:
+As of `BieberWorks.SDK.Maintenance.UI.Blazor.MudBlazor` 2.1.0, the module ships its own
+public page at `/maintenance` — no consumer setup required. It is anonymous (no
+`[Authorize]`), renders under a minimal full-screen `MaintenanceLayout` (no
+AppBar/Nav/Drawer, inherits the host's app-wide `BwThemeProvider` theme), and shows the
+same logo + Title/Message/Reason/ETA content as the admin preview via the shared
+`MaintenanceContentView` component. If maintenance mode is not active, the page
+redirects to `/` on first render.
 
-```csharp
-@page "/maintenance"
+Add the UI assembly to the Blazor router as shown above and the page is available
+immediately; no additional Razor component to write.
+
+### Reusing MaintenanceContentView with a custom PagePath
+
+If you set `opts.PagePath` to something other than `/maintenance`, you must provide
+your own page at that route — but you can still reuse the display component instead of
+re-implementing the logo/text layout:
+
+```razor
+@page "/status/maintenance"
 @inject IMaintenanceModeService MaintenanceService
+@inject IBrandingService BrandingService
 
-<div class="maintenance-container">
-    @if (_status?.IsEnabled == true)
-    {
-        <h1>@_status.Title</h1>
-        <p>@_status.Message</p>
-
-        @if (!string.IsNullOrEmpty(_status.Reason))
-        {
-            <p><strong>Reason:</strong> @_status.Reason</p>
-        }
-
-        @if (!string.IsNullOrEmpty(_status.Eta))
-        {
-            <p><strong>ETA:</strong> @_status.Eta</p>
-        }
-
-        @if (_status.EnabledAt.HasValue)
-        {
-            <p><em>Maintenance started: @_status.EnabledAt:g</em></p>
-        }
-    }
-    else
-    {
-        <p>Maintenance mode is not active.</p>
-    }
-</div>
+@if (_status is not null)
+{
+    <BieberWorks.SDK.Maintenance.UI.Blazor.MudBlazor.Components.MaintenanceContentView
+        Title="@_status.Title"
+        Message="@_status.Message"
+        Reason="@_status.Reason"
+        Eta="@_status.Eta"
+        LogoSvg="@_logoSvg"
+        LogoUrl="@_logoUrl"
+        Dense="false" />
+}
 
 @code {
     private MaintenanceStatus? _status;
+    private string? _logoSvg;
+    private string? _logoUrl;
 
     protected override async Task OnInitializedAsync()
     {
         _status = await MaintenanceService.GetStatusAsync();
+
+        var logo = await BrandingService.GetLogoSvgAsync();
+        _logoSvg = logo?.Markup is { Length: > 0 } svg ? SvgColorPatcher.Patch(svg) : null;
+
+        var assets = await BrandingService.GetDerivedAssetsAsync();
+        _logoUrl = assets.Favicon32Url;
     }
 }
 ```
