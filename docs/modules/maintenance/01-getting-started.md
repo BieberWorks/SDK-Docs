@@ -168,6 +168,47 @@ public static IServiceCollection AddMyModule(this IServiceCollection services)
 
 ---
 
+## Bypass mechanisms
+
+Three composable, additive options let requests pass through the middleware even
+while maintenance mode is active. They can be combined; the middleware evaluates
+them in the order shown in [Architecture](10-architecture.md#middleware-request-processing).
+
+| Mechanism | Scope | Evaluation | Typical use case |
+|---|---|---|---|
+| `MaintenanceOptions.BypassPredicate` | Host-wide, single rule | Synchronous, `Func<HttpContext, bool>` | Global consumer rule (e.g. custom admin check), evaluated once per request |
+| `IMaintenancePathProvider` | Static path prefixes | `IEnumerable<string>`, `StartsWith` match | Modules whitelisting fixed route prefixes (e.g. `/bw/auth/`) without host config |
+| `IMaintenanceBypassProvider` | Dynamic, per-request condition | `ValueTask<bool>`, async, OR-combined across all registrations | Requests that depend on content, not just path — e.g. presence of a signature header |
+
+`IMaintenanceBypassProvider` is the right fit when a path prefix alone is not a safe
+enough condition — for example, a webhook receiver that must only bypass maintenance
+when the expected signature header is present:
+
+```csharp
+using BieberWorks.SDK.Maintenance.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+
+internal sealed class WebhookBypassProvider : IMaintenanceBypassProvider
+{
+    public ValueTask<bool> ShouldBypassAsync(HttpContext context)
+    {
+        var isWebhookPath = context.Request.Path.StartsWithSegments("/bw/payments/webhooks");
+        var hasSignature = context.Request.Headers.ContainsKey("Stripe-Signature");
+        return ValueTask.FromResult(isWebhookPath && hasSignature);
+    }
+}
+
+// Register in your module's AddXxx method:
+services.AddSingleton<IMaintenanceBypassProvider, WebhookBypassProvider>();
+```
+
+The middleware short-circuits on the first provider returning `true` — remaining
+providers are not invoked for that request. Provider exceptions propagate unchanged
+(fail-fast); implementations should not read the request body.
+
+---
+
 ## Public Maintenance Page
 
 As of `BieberWorks.SDK.Maintenance.UI.Blazor.MudBlazor` 2.1.0, the module ships its own

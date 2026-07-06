@@ -185,6 +185,43 @@ public static IServiceCollection AddBieberWorksAuth(this IServiceCollection serv
 
 The host doesn't know or care about Auth's paths — they are auto-contributed at registration time.
 
+### IMaintenanceBypassProvider
+
+Allows packages to contribute dynamic, per-request bypass decisions that cannot be expressed
+as a static path prefix — e.g. a webhook receiver that must stay reachable only when a
+signature header is present:
+
+```csharp
+public interface IMaintenanceBypassProvider
+{
+    ValueTask<bool> ShouldBypassAsync(HttpContext context);
+}
+```
+
+**Usage pattern:**
+- Register in a module's `AddXxx` method: `services.AddSingleton<IMaintenanceBypassProvider, MyProvider>()`
+- The middleware collects all registered providers and OR-combines them.
+- The first provider returning `true` short-circuits — remaining providers are not invoked.
+- Provider exceptions are not caught by the middleware (fail-fast, consistent with the SDK-wide
+  error-handling convention).
+
+Example — a Stripe webhook receiver:
+
+```csharp
+internal sealed class WebhookBypassProvider : IMaintenanceBypassProvider
+{
+    public ValueTask<bool> ShouldBypassAsync(HttpContext context)
+    {
+        var isWebhookPath = context.Request.Path.StartsWithSegments("/bw/payments/webhooks");
+        var hasSignature = context.Request.Headers.ContainsKey("Stripe-Signature");
+        return ValueTask.FromResult(isWebhookPath && hasSignature);
+    }
+}
+```
+
+See [Bypass mechanisms](01-getting-started.md#bypass-mechanisms) for how this compares to
+`BypassPredicate` and `IMaintenancePathProvider`.
+
 ### IMaintenanceModeService
 
 Read-only service for consuming the current maintenance state:
