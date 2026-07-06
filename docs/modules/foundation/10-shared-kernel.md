@@ -49,6 +49,42 @@ public record UserRegistered(Guid UserId, string Email)
 }
 ```
 
+## ISearchIndexRefreshEvent
+
+```csharp
+public interface ISearchIndexRefreshEvent : IDomainEvent
+{
+    string SearchEntityType { get; }   // e.g. "Pages.Page" — must match the ISearchableEntitySource EntityType
+    string SearchEntityId   { get; }   // consumer-side id, string-serialized
+    SearchIndexChangeKind ChangeKind { get; } // Upserted | Deleted
+}
+
+public enum SearchIndexChangeKind { Upserted, Deleted }
+```
+
+`ISearchIndexRefreshEvent` extends `IDomainEvent` and activates incremental search-index
+maintenance. SDK-Search registers an open-generic handler that consumes any event implementing
+this interface and upserts/removes the corresponding document via the active
+`ISearchProvider` — without the publishing module needing a dependency on SDK-Search
+(only on `BieberWorks.SDK.Search.Contracts` for `ISearchableEntitySource<T>`, which lives in a
+separate package).
+
+::: tip Independent of IAuditableEvent
+`IAuditableEvent` and `ISearchIndexRefreshEvent` are deliberately separate opt-in markers. A
+domain event MAY implement both when a change is both auditable and search-relevant, but
+implementing one never implies the other — auditing and search-index maintenance are unrelated
+concerns that happen to share the "marker interface + open-generic handler" pattern.
+:::
+
+```csharp
+public record PageUpdated(Guid PageId) : ISearchIndexRefreshEvent
+{
+    public string SearchEntityType => "Pages.Page";
+    public string SearchEntityId   => PageId.ToString();
+    public SearchIndexChangeKind ChangeKind => SearchIndexChangeKind.Upserted;
+}
+```
+
 ## Result / Result&lt;T&gt;
 
 ```csharp
