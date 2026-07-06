@@ -128,6 +128,28 @@ public interface IPermissionService
 
 `IPermissionService` is registered as a **singleton** and caches effective permissions per user in memory. After changing roles or permission assignments, `Invalidate()` must be called — `RoleManagementService` does this automatically.
 
+### Registration (v3.0.0+): AddBieberWorksAuthorization()
+
+As of Auth v3.0.0, the `IPermissionService` implementation and its authorization policy
+provider/handler live entirely in `BieberWorks.SDK.Core.Authorization` and are registered via
+the `AddBieberWorksAuthorization()` extension. `AuthModule.RegisterServices` calls this
+extension itself, so existing Auth-only hosts require **no code change**.
+
+Hosts that run **SDK-ApiKeys without SDK-Auth** (the primary motivation for this move — M2M
+authorization without a full Identity/Auth module) must call `AddBieberWorksAuthorization()`
+themselves, since no `AuthModule` is present to do it for them:
+
+```csharp
+services.AddBieberWorksAuthorization();
+```
+
+Role-based permission resolution is provided through the new `IRolePermissionSource`
+abstraction (Tier 0, `BieberWorks.SDK.Core.Authorization`). It is **optional** — a host without
+any registered `IRolePermissionSource` still gets fully functional permission enforcement for
+direct `perm`-claim principals (e.g. API-Key scopes), just without role-based permissions.
+SDK-Auth registers `RoleManagerPermissionSource` (internal), backed by
+`RoleManager<ApplicationRole>`, as its `IRolePermissionSource`.
+
 ## Role Management (IRoleManagementService)
 
 `IRoleManagementService` is the central entry point for programmatic role management:

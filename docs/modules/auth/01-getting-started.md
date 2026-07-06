@@ -66,6 +66,26 @@ await app.RunAsync();
 `UseAuthentication()` must come **before** `UseAuthorization()`. `InitializeBieberWorksModulesAsync()` runs EF migrations and `PermissionStartupTasks` — this must complete before the first request.
 :::
 
+::: danger Required host module (v3.0.0+): SDK-RateLimiting
+As of Auth v3.0.0, login and 2FA (verify/resend) rate limiting is implemented via
+`BieberWorks.SDK.RateLimiting.Contracts.IRateLimiter` instead of Auth's own internal
+in-memory services. Auth only references the `.Contracts` package — the host **must**
+register `RateLimitingModule` (from `BieberWorks.SDK.RateLimiting`) alongside `AuthModule`:
+
+```csharp
+builder.Services.AddBieberWorksModules(builder.Configuration,
+    new AuthModule(),
+    new RateLimitingModule()   // required — Auth fails hard at startup without it
+);
+```
+
+Without a registered `IRateLimiter`, `InitializeBieberWorksModulesAsync()` throws an
+`InvalidOperationException` at startup (fail-fast instead of a silent runtime crash on the
+first login). Login/2FA default policies (5 attempts / 15 min lockout for login and
+2FA-verify, 60s cooldown for 2FA-resend) are registered automatically and match the
+pre-v3.0.0 behaviour; they can be overridden via SDK-Settings if present.
+:::
+
 ## appsettings.json
 
 ### Database connection
