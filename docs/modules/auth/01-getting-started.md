@@ -66,24 +66,32 @@ await app.RunAsync();
 `UseAuthentication()` must come **before** `UseAuthorization()`. `InitializeBieberWorksModulesAsync()` runs EF migrations and `PermissionStartupTasks` — this must complete before the first request.
 :::
 
-::: danger Required host module (v3.0.0+): SDK-RateLimiting
-As of Auth v3.0.0, login and 2FA (verify/resend) rate limiting is implemented via
-`BieberWorks.SDK.RateLimiting.Contracts.IRateLimiter` instead of Auth's own internal
-in-memory services. Auth only references the `.Contracts` package — the host **must**
-register `RateLimitingModule` (from `BieberWorks.SDK.RateLimiting`) alongside `AuthModule`:
+::: tip Optional: SDK-RateLimiting (as of v3.1.0)
+Login and 2FA (verify/resend) rate limiting is implemented via
+`BieberWorks.SDK.RateLimiting.Contracts.IRateLimiter`. As of Auth **v3.1.0**,
+`BieberWorks.SDK.RateLimiting` is **optional**, not required:
 
 ```csharp
 builder.Services.AddBieberWorksModules(builder.Configuration,
     new AuthModule(),
-    new RateLimitingModule()   // required — Auth fails hard at startup without it
+    new RateLimitingModule()   // optional — see below
 );
 ```
 
-Without a registered `IRateLimiter`, `InitializeBieberWorksModulesAsync()` throws an
-`InvalidOperationException` at startup (fail-fast instead of a silent runtime crash on the
-first login). Login/2FA default policies (5 attempts / 15 min lockout for login and
-2FA-verify, 60s cooldown for 2FA-resend) are registered automatically and match the
-pre-v3.0.0 behaviour; they can be overridden via SDK-Settings if present.
+- **Without** `RateLimitingModule` in the host, Auth automatically falls back to a built-in,
+  in-process rate limiter (`AuthFallbackRateLimiter`). It enforces the same default policies
+  as before (5 attempts / 15 min lockout for login and 2FA-verify, 60s cooldown for
+  2FA-resend) — real, working brute-force protection with zero extra configuration. The
+  fallback is volatile (in-memory, single-process) and does not support Settings-overrides or
+  the Admin UI.
+- **With** `RateLimitingModule` registered, its central implementation is used instead, giving
+  you Settings-backed policy overrides, the Admin UI, and shared limits across modules.
+- **Known gap:** if the host references the `BieberWorks.SDK.RateLimiting` NuGet package but
+  does **not** add `RateLimitingModule` to its module list (e.g. a transitive package
+  reference from another module, without actually activating it), Auth still detects the
+  package as present and will **not** silently fall back — `InitializeBieberWorksModulesAsync()`
+  throws an `InvalidOperationException` at startup instead. Either add `RateLimitingModule` or
+  remove the package reference so the built-in fallback can take over.
 :::
 
 ## appsettings.json
