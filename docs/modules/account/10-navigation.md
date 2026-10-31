@@ -115,3 +115,9 @@ hosted by SDK-Admin at `/admin/navigation`, discovers it automatically and rende
 For the full JSON schema, override semantics, and editor capabilities, see the SDK-Shell
 module's navigation documentation (shared kernel) and SDK-Admin's `11-navigation.md`
 (Admin-flavored write-up of the same mechanism).
+
+## Anonymous access
+
+`AccountLayout` sets `RequireAuthenticatedUser="true"` on `BwShellLayoutBase<IAccountSection>`. Anonymous users
+(including clicks inside an interactive circuit that never pass the HTTP pipeline) are redirected to the login
+page via `BwRedirectToLogin` and see neither the drawer nor the navigation. Requires SDK-Shell 1.1.0 or later.
