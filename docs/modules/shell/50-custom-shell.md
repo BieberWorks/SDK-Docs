@@ -83,6 +83,25 @@ That's it — `BwShellLayoutBase<TMarker>` handles resolving the nav tree via
 `IShellNavigationService<IPartnerSection>`, filtering hidden sections, rendering the drawer with
 icon resolution via `IShellIconResolver`, and gating the body behind an authorization policy.
 
+### Anonymous access and access denied
+
+`BwShellLayoutBase<TMarker>` resolves the cascaded `Task<AuthenticationState>` before rendering anything
+when `RequireAuthenticatedUser="true"` (default `false`) or a `RequirePolicy` is set (which implies
+`RequireAuthenticatedUser`):
+
+| State | Result |
+|---|---|
+| Authentication state pending | nothing is rendered (no navigation flash) |
+| Anonymous | only `BwRedirectToLogin` (`forceLoad` + `replace`); no drawer, no navigation, no `NotAuthorizedContent` |
+| Authenticated, policy not satisfied | `NotAuthorizedContent` (or "Access denied."), navigation hidden (checked via `IAuthorizationService`) |
+| Authenticated, allowed | shell with navigation and body |
+
+This matters in global interactive render modes: a click inside an established circuit never passes the
+HTTP pipeline, so the cookie redirect of SDK-Auth does not run. Use `BwAuthorizeRouteView` (SDK-UI) in
+`Routes.razor` as well, and keep `LoginRedirectOptions.LoginPath` equal to `AuthCookieOptions.LoginPath`.
+Without a cascaded `AuthenticationState` task the previous behaviour applies. Requires
+`BieberWorks.SDK.UI.Blazor.MudBlazor` 1.3.0 or later.
+
 ## 5. Wire up routing
 
 Route `IPartnerSection`-marked pages to `PartnerLayout` in `Routes.razor`, the same pattern
