@@ -299,6 +299,8 @@ Content-Type: application/json
 }
 ```
 
+A successful reset revokes (deletes) all refresh tokens of the user, so existing sessions cannot be refreshed any more. Already issued access tokens stay valid until they expire.
+
 ### Change password (logged-in user)
 
 ```http
@@ -311,6 +313,8 @@ Content-Type: application/json
   "newPassword": "NewSecret#456"
 }
 ```
+
+A successful change revokes (deletes) all refresh tokens of the user, including those of other devices. Already issued access tokens stay valid until they expire.
 
 ## Profile Self-Service
 
