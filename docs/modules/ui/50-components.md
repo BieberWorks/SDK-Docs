@@ -298,6 +298,8 @@ Use `BwRouter` (from `BieberWorks.SDK.UI.MudBlazor.Routing`) instead of the stan
 - The host has pages that share the same route as SDK module pages (the host's `@page` should always win), or
 - Any `OverridePage` / `OverrideLayout` / `OverrideComponent` registrations are used.
 
+In an interactive circuit `BwRouter` intercepts internal links like the standard `Router`: navigations to a page stay in the circuit without an HTTP request, so cookie events and server redirects do not run for them. A link to a URL without a page (an endpoint or a file) triggers a full page load. `NavigationManager.NavigateTo` to such a URL needs `forceLoad: true`, otherwise the not-found page is rendered.
+
 `BwRouter` consults the `IComponentOverrideRegistry` on every navigation and replaces the resolved component type before rendering. The standard Blazor `Router` ignores the registry.
 
 If none of these conditions apply and you have no route conflicts, the standard `Router` works without issues.
@@ -378,3 +380,40 @@ await _dataView!.ReloadAsync(); // reloads correct viewport automatically
 ### CSS
 
 Include `_content/BieberWorks.SDK.UI.MudBlazor/css/bw-dataview.css` in the host's `<head>` (or via `app.css` import). This file is served as a static web asset automatically when the NuGet package is referenced.
+
+## Anonymous access in interactive circuits
+
+With a global interactive render mode (`<Routes @rendermode="InteractiveServer" />`), a click on a protected
+link inside an established circuit is handled by the client-side router. It never passes through the HTTP
+pipeline, so the cookie `OnRedirectToLogin` event of SDK-Auth does not run. Without extra handling an
+anonymous user stays on the protected page (navigation plus "no access") instead of seeing the login form.
+
+| Component | Package | Purpose |
+|---|---|---|
+| `BwRedirectToLogin` | `BieberWorks.SDK.UI.Blazor` | Renders nothing; calls `NavigateTo(url, forceLoad: true, replace: true)` in `OnInitialized` so the HTTP pipeline runs and the protected page leaves the history. Does not catch `NavigationException` (the SSR redirect mechanism). |
+| `BwAuthorizeRouteView` | `BieberWorks.SDK.UI.Blazor.MudBlazor` | Drop-in for `AuthorizeRouteView` (`RouteData`, `DefaultLayout`, `Resource`). Anonymous: `BwRedirectToLogin`. Authenticated without permission: localized "no access" alert. `Authorizing`: spinner. |
+
+```razor
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <BwAuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
+    </Found>
+</Router>
+```
+
+`NotAuthorizedContent` (`RenderFragment<AuthenticationState>`) and `AuthorizingContent` optionally replace the
+defaults. Note that `AuthorizeRouteView` renders both fragments inside `DefaultLayout`, not inside the page's own layout.
+
+### Login path
+
+The target is configured with `LoginRedirectOptions.LoginPath` (default `/auth/login`, section
+`BieberWorks:UI:LoginRedirect`). Keep it identical to `AuthCookieOptions.LoginPath` (SDK-Auth), which drives the
+HTTP redirect. Components work without any registration (built-in default).
+
+```csharp
+builder.Services.Configure<LoginRedirectOptions>(o => o.LoginPath = "/account/signin");
+```
+
+The path is resolved relative to the base URI, so a `PathBase` is preserved. `returnUrl` is the current path and
+query, only added if it is a local URL (starts with `/`, not `//` or `/\`, no control characters; same rule as
+`ReturnUrlValidator.IsLocal`). On or below the login path no redirect happens (ping-pong guard).
