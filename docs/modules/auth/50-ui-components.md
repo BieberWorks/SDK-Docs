@@ -49,7 +49,7 @@ builder.Services
 | `Register.razor` | `/auth/register` | Registration form (email, password, confirmation) |
 | `ForgotPassword.razor` | `/auth/forgot-password` | Email input for password reset link |
 | `ResetPassword.razor` | `/auth/reset-password` | Set new password via `?email=&token=` from reset link |
-| `Logout.razor` | `/auth/logout` | Calls `IAuthClient.LogoutAsync()` and navigates to home |
+| `Logout.razor` | `/auth/logout` | Navigates with `forceLoad` to `/api/auth/signout`, which clears the cookie and redirects to `/auth/login` (`IAuthClient.LogoutAsync` is a no-op for the in-process client) |
 
 ### Account pages (require login)
 

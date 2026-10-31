@@ -136,18 +136,57 @@ All JWT settings are bound from the `JwtSettings` section (`JwtSettings.SectionN
 The `Secret` must **never** end up in versioned files. Use `dotnet user-secrets` for local development and environment variables / secret manager in production.
 :::
 
+### Return URL configuration
+
+By default only local return URLs are accepted after login. To allow redirects to another application, list its origins:
+
+```json
+{
+  "BieberWorks": {
+    "Auth": {
+      "ReturnUrl": {
+        "AllowedReturnOrigins": [ "https://app.example.com", "http://localhost:5001" ]
+      }
+    }
+  }
+}
+```
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `AllowedReturnOrigins` | `string[]` | empty | Origins as `scheme://host[:port]`. No path, wildcard or user info. |
+
+Invalid entries abort host startup (`ValidateOnStart`). A non-loopback `http://` origin is accepted but logs a warning. See [Return URL rules](10-auth-flows.md#return-url-rules).
+
 ### Cookie configuration
 
-Cookie settings are defined in code and come from `AuthModule`:
+Cookie behaviour is configured through `AuthCookieOptions` (section `BieberWorks:Auth:Cookie`, or `services.Configure<AuthCookieOptions>(...)` in code). The options are read lazily, so a `Configure` call anywhere in the host takes effect.
 
-| Property | Value |
-|---|---|
-| Cookie name | `bw.auth` |
-| `HttpOnly` | `true` |
-| `SameSite` | `Strict` |
-| `SecurePolicy` | `SameAsRequest` |
-| `SlidingExpiration` | `true` |
-| Lifetime | 8 hours |
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `CookieName` | `string` | `bw.auth` | Name of the auth cookie |
+| `PolicySchemeName` | `string` | `Smart` | Policy scheme that selects JWT or cookie |
+| `SameSite` | `SameSiteMode` | `Strict` | SameSite mode (see the note below) |
+| `SecurePolicy` | `CookieSecurePolicy` | `SameAsRequest` | Secure flag policy |
+| `ExpireTimeSpan` | `TimeSpan` | 8 hours | Sliding expiration window |
+| `LoginPath` | `string?` | `/auth/login` | Anonymous browser page requests are redirected here with `?returnUrl=`. `null` or empty keeps the plain `401`. |
+| `AccessDeniedPath` | `string?` | `/auth/access-denied` | Signed-in browser page requests without permission are redirected here with `?returnUrl=`. `null` or empty keeps the plain `403`. |
+| `NoRedirectPathPrefixes` | `string[]` | `/api`, `/_blazor`, `/_framework`, `/hubs` | Prefixes (matched per path segment) that never get a redirect |
+| `Domain` | `string?` | `null` | Cookie domain; `null` = host-only cookie |
+
+`HttpOnly` is always `true` and sliding expiration is always on.
+
+::: warning API-only hosts
+A host that serves only APIs and has no `/auth/login` page should set `LoginPath` and `AccessDeniedPath` to an empty value so that clients keep receiving `401` and `403` instead of a redirect to a missing page.
+:::
+
+::: warning Domain
+Setting `Domain` (for example `.example.com`) sends the session cookie to **all** subdomains, including ones you do not fully control. Leave it `null` unless you need single sign-on across subdomains.
+:::
+
+::: info SameSite=Strict and external links
+With `SameSite=Strict` the browser does not send the cookie on navigations that start on another site (a link in an email or on another domain). The first page view then arrives anonymous and is redirected to the login page, even though the user is signed in. Use `Lax` if links from other sites must open signed in.
+:::
 
 When accessing without a cookie (e.g., API client with `Authorization: Bearer …`), the `Smart` policy scheme automatically switches to JWT Bearer.
 

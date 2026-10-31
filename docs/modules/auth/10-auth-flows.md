@@ -29,9 +29,9 @@ Blazor Server runs over SignalR — inside an active circuit, HTTP cookies canno
 
 1. The user submits a form to `LoginBase.HandleLoginAsync()`.
 2. `InProcAuthClient.LoginAsync()` dispatches the `LoginCommand` via `IAppMessageDispatcher`.
-3. `LoginCommandHandler` checks credentials, creates a `ClaimsPrincipal`, and stores it in `CookieSignInTicketStore` (in-memory, TTL 30 seconds). The store returns a `Guid` (ticket ID).
-4. The handler returns the ticket as `TempAccessToken` in the `LoginResponse`.
-5. `LoginBase` navigates with `forceLoad: true` to `/api/auth/finalize-login?ticket={id}&returnUrl={url}`.
+3. `InProcAuthClient.LoginAsync()` verifies the credentials through the Identity `UserManager` and builds the `ClaimsPrincipal` (`BuildAndStoreTicket`). The principal is stored in the `ICookieSignInTicketStore` (in-memory, single use, TTL 30 seconds); the store returns a `Guid` (ticket ID).
+4. The ticket is returned to the caller as `AuthResult.Token`.
+5. `LoginViewModel` navigates through `IAuthNavigator.NavigateToFinalizeLogin` (forceLoad) to `/api/auth/finalize-login?ticket={id}&returnUrl={url}`.
 6. This HTTP endpoint (outside the SignalR circuit) calls `HttpContext.SignInAsync()`, sets the cookie, and redirects to `returnUrl`.
 
 ```
@@ -51,6 +51,22 @@ Blazor Circuit          HTTP Endpoint
 ::: info Why forceLoad?
 Inside a running SignalR circuit, `HttpContext.SignInAsync()` can no longer write the `Set-Cookie` header — the response is already committed. The `forceLoad` redirect creates a new HTTP request outside the circuit.
 :::
+
+## Anonymous page requests
+
+When an anonymous request reaches a protected page, the cookie scheme redirects the browser to the login page instead of answering `401`: `302 <PathBase>/auth/login?returnUrl=<escaped PathBase+Path+Query>`. The `Location` is always relative.
+
+A request is treated as a browser navigation only if **all** of these hold: method is `GET` or `HEAD`; the `Accept` header contains `text/html` (this includes Blazor enhanced navigation, `text/html; blazor-enhanced-nav=on`); there is no `X-Requested-With: XMLHttpRequest`; no `Upgrade: websocket`; and the path is not under one of `NoRedirectPathPrefixes`. Everything else (fetch with `*/*`, JSON, XHR, `/api/...`, the Blazor circuit, POST) keeps `401`.
+
+- The login redirect applies to the anonymous case only. Signed-in users without permission are redirected the same way to `AccessDeniedPath` (default `/auth/access-denied`, a page shipped in `Auth.UI.Blazor.MudBlazor`). A forbidden request that is not a browser navigation keeps `403`.
+- No `returnUrl` is added for requests below the target path; a challenge of the target page itself answers `401` or `403` to avoid a redirect loop.
+- API-only hosts clear `LoginPath` and `AccessDeniedPath`; see [Cookie configuration](01-getting-started.md#cookie-configuration) for the options, the `Domain` risk and the `SameSite=Strict` behaviour for links from other sites.
+
+### Interactive circuit path
+
+The redirect above only runs for HTTP requests. With a global interactive render mode (`<Routes @rendermode="InteractiveServer" />`), a click on a protected link inside an established circuit is handled by the client-side router and never passes the cookie `OnRedirectToLogin` event. Without extra handling the anonymous user stays on the protected page. Use `BwAuthorizeRouteView` (SDK-UI, `BieberWorks.SDK.UI.Blazor.MudBlazor`) instead of `AuthorizeRouteView` in `Routes.razor`: anonymous users are sent to the login page with `NavigateTo(..., forceLoad: true, replace: true)` and a validated local `returnUrl`; shell layouts (`BwShellLayoutBase`, SDK-Shell) do the same via `RequireAuthenticatedUser` / `RequirePolicy`.
+
+The two redirects must agree on the login page: `LoginRedirectOptions.LoginPath` (SDK-UI, default `/auth/login`) has to equal `AuthCookieOptions.LoginPath` (default `/auth/login`). If you change one, change the other. The `returnUrl` rule in SDK-UI mirrors `ReturnUrlValidator.IsLocal`; see [Anonymous access in interactive circuits](../ui/50-components.md#anonymous-access-in-interactive-circuits).
 
 ## Login Flow (JWT / API Client)
 
@@ -83,6 +99,52 @@ Success response (`LoginResponseDto`):
 
 The claims in the JWT are: `sub` (UserId), `email`, `jti`, and all roles as `role` claims.
 
+### Return URL rules
+
+The `returnUrl` is validated twice with the public helper `ReturnUrlValidator` (`BieberWorks.SDK.Auth.Contracts`): by `LoginBase` and again by `finalize-login`. `ReturnUrlValidator.Sanitize(url, allowedOrigins, fallback)` returns the URL if it is acceptable and the fallback otherwise; `IsLocal(url)` and `IsAllowed(url, origins)` are the underlying checks. The two-argument `Sanitize(url, fallback = "/")` accepts local URLs only.
+
+A **local** return URL is accepted only if all of the following hold:
+
+- It starts with `/`.
+- The second character is neither `/` nor `\` (rejects `//host` and `/\host`).
+- It contains no control characters anywhere (tab, CR, LF, ...).
+
+An **absolute** return URL (for example to another application of the same organisation) is accepted only if its origin is listed in `BieberWorks:Auth:ReturnUrl:AllowedReturnOrigins` (see [Setup](01-getting-started.md#return-url-configuration)). The URL must additionally satisfy:
+
+- Scheme `http` or `https`; no user info; no backslash, control or whitespace characters in the raw string.
+- Scheme, host (compared in its IDN/punycode form, case-insensitive) and port (default ports normalized) equal an allow-list entry. A host with a trailing dot never matches. A fragment is allowed.
+
+The accepted absolute URL is returned in its normalized ASCII form so the `Location` header is always valid. Allow-list entries must be plain `scheme://host[:port]` origins; wildcards, paths and user info are rejected at startup. Everything else falls back to `/`: `null`/empty values, other origins, `javascript:`, host-relative values (`evil.com`), `//host`, a leading space, a backslash start, and the virtual-path form `~/...` (stricter than `IUrlHelper.IsLocalUrl`).
+
+Non-ASCII characters in local paths (for example `/ä`) are percent-encoded in the redirect `Location` header.
+
+If the ticket passed to `finalize-login` is unknown or expired, the endpoint redirects to `/auth/login`. A valid, non-root return URL (including an allowed absolute one) is preserved as `/auth/login?returnUrl=<escaped>`; an invalid one is dropped.
+
+### Login rate limiting behind a proxy
+
+The login rate limiter partitions by the connection's `RemoteIpAddress` and the submitted identifier. The `X-Forwarded-For` header is **not** evaluated, because it is client-controlled and would let an attacker rotate the partition key. Hosts behind a reverse proxy or load balancer must call `UseForwardedHeaders` (with the proxy addresses configured as known proxies) so that ASP.NET Core resolves the real client address into `RemoteIpAddress`.
+
+Without it, all clients share the proxy's IP and therefore one bucket per identifier; the per-account counter keyed by the identifier stays effective.
+
+### Account lockout
+
+A locked-out account (ASP.NET Core Identity lockout, set by an administrator or by Identity itself) is rejected consistently:
+
+| Flow | Behavior |
+|------|----------|
+| Login (`LoginCommandHandler`) | After the password has been verified, a locked account returns `Identity.Login.LockedOut` (HTTP 403, `DomainError.Forbidden`). No token and no 2FA code is issued. The attempt is not counted by the login rate limiter. |
+| 2FA verify | `Identity.Login.LockedOut` (403) before the recovery code or OTP is checked. |
+| Token refresh | `Identity.Login.LockedOut` (403); the submitted refresh token is revoked. |
+
+A wrong password or an unknown user always yields `Identity.Login.Unauthorized`, whether or not the account is locked, so the lock state does not leak to unauthenticated callers. The localized message `Identity.Login.LockedOut` ships with `Auth.Presentation` and `Auth.UI.Blazor`.
+
+::: warning What lockout does not do
+- Access tokens that were already issued stay valid until they expire (`AccessTokenExpirationMinutes`).
+- Existing cookie sessions stay active: the cookie uses sliding expiration and the security stamp is not revalidated on each request.
+
+Use short access-token lifetimes if immediate revocation matters.
+:::
+
 ## Token Refresh
 
 ```http
@@ -111,7 +173,9 @@ Content-Type: application/json
 }
 ```
 
-After successful registration, the `UserRegisteredEvent` is published. `EmailConfirmationRequestedEventHandler` sends a confirmation email through the transactional-email pipeline (see [Transactional emails](#transactional-emails)). The user can only fully log in after email confirmation (if email confirmation is enforced).
+`email` and `password` are required; `firstName` and `lastName` are optional (maximum 100 characters). See [Request fields](11-registration.md#request-fields).
+
+After successful registration, the `UserRegisteredEvent` is published. `EmailConfirmationRequestedEventHandler` sends a confirmation email through the transactional-email pipeline (see [Transactional emails](#transactional-emails)). By default, registration returns a token pair and the user can sign in without confirming the address. Enforcement is opt-in; see [Email confirmation enforcement](#email-confirmation-enforcement).
 
 ## Email Confirmation
 
@@ -132,14 +196,82 @@ Content-Type: application/json
 { "userId": "…", "token": "…" }
 ```
 
-Alternatively, confirmation can be requested again:
+Alternatively, confirmation can be requested again. The endpoint requires authentication and has no body; the user id is taken from the authenticated principal:
 
 ```http
 POST /api/auth/resend-confirmation
+Authorization: Bearer eyJ…
+```
+
+### Anonymous confirmation-email request
+
+Users who cannot sign in because the address is unconfirmed (see [Email confirmation enforcement](#email-confirmation-enforcement)) have no session, so the authenticated `resend-confirmation` endpoint is not usable for them. For that case:
+
+```http
+POST /api/auth/request-confirmation-email
 Content-Type: application/json
 
-{ "userId": "…" }
+{ "identifier": "user@example.com" }
 ```
+
+`identifier` is the email address or user name. The endpoint is anonymous and **always** answers `200 OK` with the same message and a fixed `cooldownSeconds` (60), whether the account is unknown, already confirmed, still cooling down, or the request was throttled. An `EmailConfirmationRequestedEvent` is raised only for an existing, unconfirmed account whose per-account cooldown (`IResendConfirmationRateLimitService`) has elapsed.
+
+Two `IRateLimiter` policies protect the endpoint: `auth:confirmation-request-ip` (20 per 15 minutes per client IP, taken from `Connection.RemoteIpAddress`, see [Login rate limiting behind a proxy](#login-rate-limiting-behind-a-proxy)) and `auth:confirmation-request-identifier` (3 per hour per identifier). Throttled requests are silently dropped and answered like any other.
+
+The in-process client exposes the same operation as `IAuthClient.ResendConfirmationEmailByAddressAsync`; the login page shows a resend link with a countdown after a refused sign-in.
+
+::: warning Limits of the enumeration protection
+- **Timing:** an existing account triggers a token write and event, so its response is measurably slower than for an unknown identifier. This is not equalized.
+- **Registration:** `POST /api/auth/register` answers `409 Conflict` for an already confirmed address. Anyone can still probe whether an address is registered through that endpoint.
+:::
+
+## Email confirmation enforcement
+
+Set `BieberWorks:Auth:SignIn:RequireConfirmedEmail` to `true` (default `false`) to require a confirmed email address. The gate is implemented by the Auth module itself and is not mirrored into `IdentityOptions.SignIn`.
+
+| Flow | Behavior with the option on |
+|------|-----------------------------|
+| Login | After the password and the lockout check, an unconfirmed account returns `Identity.Login.EmailNotConfirmed` (HTTP 403, `DomainError.Forbidden`). No token, no 2FA code is sent, and the attempt is not counted by the login rate limiter. A wrong password still yields `Identity.Login.Unauthorized`, a locked account `Identity.Login.LockedOut`. |
+| 2FA verify | Returns `Identity.Login.EmailNotConfirmed` before the code is checked. |
+| Token refresh | Returns `Identity.Login.EmailNotConfirmed`; the submitted refresh token is revoked (same as for lockout). |
+| Register | No tokens are issued: `TokenResponse` is `null` and `RequiresEmailConfirmation` is `true`. Without the option, registration is unchanged. |
+
+HTTP error bodies (`ErrorResponseDto`) carry the machine-readable `code` of the first error, so API clients can branch on `Identity.Login.EmailNotConfirmed` without parsing the localized message. For the in-process client, `AuthResult.RequiresEmailConfirmation` is set when login fails with that code.
+
+::: warning Existing users
+The gate is evaluated against the current `EmailConfirmed` value, with no grandfathering. Users who registered earlier without confirming are locked out as soon as the option is switched on. Confirm or bulk-update those accounts before enabling it.
+:::
+
+::: info Claim snapshot
+The cookie ticket carries an `emailConfirmed` claim captured at sign-in. It is not refreshed during the session: a user who confirms the address keeps the old value until the next sign-in.
+:::
+
+## Error codes and messages
+
+The `message` of every error response (`ErrorResponseDto`) and every `AuthResult.Errors` entry is localized
+(English and German, current UI culture) through `IErrorLocalizer`. The texts come from `AuthErrorResources`
+(`Error_<code with '.' replaced by '_'>`, e.g. `Error_Identity_Login_EmailNotConfirmed`), which Auth registers via
+`AddErrorResources<AuthErrorResources>()`. Operators can override single texts with SDK-Localization (module `Auth`).
+The machine-readable `code` is unchanged, so clients should branch on `code`, never on `message`.
+
+Sign-in related codes and their texts (English / German):
+
+| Code | HTTP | English | German |
+|------|------|---------|--------|
+| `Identity.Login.Unauthorized` | 401 | Invalid email/username or password. | Ungültige E-Mail/Benutzername oder Passwort. |
+| `Identity.Login.LockedOut` | 403 | Your account has been locked. Please try again later. | Ihr Konto wurde gesperrt. Bitte versuchen Sie es später erneut. |
+| `Identity.Login.EmailNotConfirmed` | 403 | Your email address has not been confirmed yet. Please use the link in your confirmation email. | Ihre E-Mail-Adresse wurde noch nicht bestätigt. Bitte nutzen Sie den Link in Ihrer Bestätigungs-E-Mail. |
+| `Identity.Login.RateLimited` | 429 | Too many sign-in attempts. Please try again later. | Zu viele Anmeldeversuche. Bitte versuchen Sie es später erneut. |
+| `Identity.Login.Failure` | 400 | Sign-in failed. Please try again. | Die Anmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut. |
+| `Identity.2FA.InvalidToken` | 401 | Invalid two-factor authentication code. | Ungültiger Zwei-Faktor-Code. |
+| `Identity.2FA.InvalidCode` | 401 | Invalid verification code. | Ungültiger Bestätigungscode. |
+| `Identity.2FA.TooManyAttempts` | 429 | Too many failed 2FA attempts. Please wait 15 minutes. | Zu viele 2FA-Fehlversuche. Bitte 15 Minuten warten. |
+| `Identity.2FA.ResendThrottled` | 429 | Please wait before requesting another code. | Bitte warten Sie, bevor Sie einen neuen Code anfordern. |
+| `Identity.Token.Refresh.Forbidden` | 403 | Your session can no longer be refreshed. Please sign in again. | Ihre Sitzung kann nicht mehr erneuert werden. Bitte melden Sie sich erneut an. |
+
+`Identity.Login.Unauthorized` is deliberately neutral: it is returned for a wrong password and for an unknown user alike, so the text never reveals whether an account exists.
+
+Every other code used by Auth (account deletion, username and display name, email confirmation, remaining 2FA codes, and the ASP.NET Core Identity password rules such as `PasswordTooShort`) has an entry in `AuthErrorResources` as well; the full list is the `.resx` file next to `AuthErrorResources.cs`. A test keeps it complete in both languages. In the login view model, texts delivered by the server are shown as they are; the UI resources `Identity.*` take precedence only for the codes they define.
 
 ## Password Flows
 
@@ -210,12 +342,11 @@ transactional emails (template key `auth:two-factor-code`).
 ### Enable 2FA
 
 ```http
-POST /api/auth/2fa/enable
+POST /api/auth/enable-2fa
 Authorization: Bearer eyJ…
-Content-Type: application/json
-
-{ "userId": "…" }
 ```
+
+The request has no body; the user id is taken from the authenticated principal's claims.
 
 Enabling returns **8 single-use recovery codes**. They are shown **exactly once** — the
 server stores only an HMAC-SHA256 hash (salted), never the plaintext. The management UI
@@ -232,7 +363,7 @@ OTP is generated and emailed to the user. The client never receives or sends the
 cannot be completed for an arbitrary account.
 
 ```http
-POST /api/auth/2fa/verify
+POST /api/auth/verify-2fa
 Content-Type: application/json
 
 {
@@ -246,9 +377,9 @@ use). On success both transport paths — the in-process Blazor Server cookie fl
 JWT/API flow — converge on the same finalize-login step a normal login uses, so the
 resulting session is identical.
 
-A new OTP can be requested via `POST /api/auth/2fa/resend` (subject to a 60-second
-cooldown). Verification is brute-force protected: 5 failed attempts trigger a 15-minute
-lockout. Both limits are enforced server-side by `ITwoFactorRateLimitService`.
+A new OTP can be requested via `POST /api/auth/resend-2fa`. Both limits are enforced
+server-side by `IRateLimiter` with two policies: `TwoFactorVerify` (5 attempts per 15 minutes,
+followed by a 15-minute lockout) and `TwoFactorResend` (1 request per 60 seconds).
 
 > TOTP authenticator apps and WebAuthn/passkeys are intentionally out of scope for this
 > email-OTP factor; they are tracked as separate follow-up work.

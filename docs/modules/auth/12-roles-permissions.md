@@ -128,6 +128,14 @@ public interface IPermissionService
 
 `IPermissionService` is registered as a **singleton** and caches effective permissions per user in memory. After changing roles or permission assignments, `Invalidate()` must be called — `RoleManagementService` does this automatically.
 
+### Startup catalog validation
+
+At startup `PermissionStartupTasks` scans loaded assemblies for `[RequiresPermission]` and throws an `InvalidOperationException` if a referenced key is missing from the catalog. This stays mandatory.
+
+- Only assemblies that reference `BieberWorks.SDK.Core.Authorization` (plus that assembly itself) are scanned; dynamic assemblies are skipped. Other assemblies cannot carry the attribute.
+- If a scanned assembly or type cannot be loaded (missing dependency: `TypeLoadException`, `FileNotFoundException`, `FileLoadException`, `ReflectionTypeLoadException`), a warning with the assembly and type name is logged and the scan continues. Types that fail to load are not validated.
+- Test hosts (for example `WebApplicationFactory`) load many extra assemblies; the filter reduces the set that is reflected over. Whether a project-specific workaround for a test host is still needed has not been verified here; keep it until you have checked against your own host.
+
 ### Registration (v3.0.0+): AddBieberWorksAuthorization()
 
 As of Auth v3.0.0, the `IPermissionService` implementation and its authorization policy

@@ -114,8 +114,44 @@ but you can still log in via the direct route:
 Result: `/auth/register` redirects to login and the endpoint returns 403; visitors see no auth
 buttons; you retain full access via the direct login route.
 
+## Request fields
+
+`POST /api/auth/register` accepts this JSON body (property names are case-insensitive):
+
+| Field | Required | Rules |
+|-------|----------|-------|
+| `email` | yes | Non-empty. Missing or blank: `400`, `Identity.EmailRequired`. |
+| `password` | yes | Non-empty and accepted by the configured Identity password rules. Missing or empty: `400`, `Identity.Password.Required`. |
+| `firstName` | no | Trimmed; maximum 100 characters. Missing or `null` is stored as an empty string. Longer: `422`, `Identity.Register.FirstNameTooLong`. |
+| `lastName` | no | Same rules as `firstName`; error `Identity.Register.LastNameTooLong`. |
+
+Input is validated before any database access. The UI (`RegisterViewModel`) sends empty strings for both names, which stays valid.
+
 ## Error Codes
 
 | Code | Meaning |
 |------|---------|
 | `Identity.RegistrationDisabled` | Registration is currently off (either layer). |
+| `Identity.EmailRequired` | The email address is missing or blank (400). |
+| `Identity.Password.Required` | The password is missing or empty (400). |
+| `Identity.Register.FirstNameTooLong` | First name longer than 100 characters (422). |
+| `Identity.Register.LastNameTooLong` | Last name longer than 100 characters (422). |
+| `Identity.EmailAlreadyRegistered` | A confirmed account with this address exists (409). |
+| `Identity.Register.Failure` | The account was created but no token could be issued (400). |
+
+Message texts (English / German):
+
+| Code | English | German |
+|------|---------|--------|
+| `Identity.RegistrationDisabled` | Registration is currently disabled. | Die Registrierung ist derzeit deaktiviert. |
+| `Identity.EmailRequired` | An email address is required. | Eine E-Mail-Adresse ist erforderlich. |
+| `Identity.Password.Required` | A password is required. | Ein Passwort ist erforderlich. |
+| `Identity.Register.FirstNameTooLong` | The first name must not be longer than 100 characters. | Der Vorname darf höchstens 100 Zeichen lang sein. |
+| `Identity.Register.LastNameTooLong` | The last name must not be longer than 100 characters. | Der Nachname darf höchstens 100 Zeichen lang sein. |
+| `Identity.EmailAlreadyRegistered` | This email address is already registered. | Diese E-Mail-Adresse ist bereits registriert. |
+
+The `message` of every error response (`ErrorResponseDto`) and every `AuthResult.Errors` entry is localized
+(English and German, current UI culture) through `IErrorLocalizer`. The texts come from `AuthErrorResources`
+(`Error_<code with '.' replaced by '_'>`, e.g. `Error_Identity_Login_EmailNotConfirmed`), which Auth registers via
+`AddErrorResources<AuthErrorResources>()`. Operators can override single texts with SDK-Localization (module `Auth`).
+The machine-readable `code` is unchanged, so clients should branch on `code`, never on `message`.
