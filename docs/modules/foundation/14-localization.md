@@ -155,3 +155,31 @@ AuthModule.de.resx       (German)
 ```
 
 Set `Build Action = Embedded Resource` on each `.resx` file.
+
+## Module error messages (IErrorLocalizer)
+
+`IErrorLocalizer` turns a `DomainError.Code` into a user-facing, localized message. The resource key is
+`Error_<Code>` with every `.` replaced by `_`, for example `Identity.Login.EmailNotConfirmed` becomes
+`Error_Identity_Login_EmailNotConfirmed`.
+
+Core.Web ships only the generic `Error_Generic_Unexpected`. A module contributes its own texts by shipping a
+resource marker type with `.resx` (English, default) and `.de.resx` files and registering it:
+
+```csharp
+// Auth/Resources/AuthErrorResources.cs  (+ AuthErrorResources.resx, AuthErrorResources.de.resx)
+public sealed class AuthErrorResources;
+
+// in the module's service registration
+services.AddErrorResources<AuthErrorResources>();
+```
+
+Behavior of `LayeredErrorLocalizer`:
+
+- Registered sources are queried in registration order; the first hit wins. The Core `ErrorResources` come last.
+- If no source knows the key, a warning is logged and the generic message is returned (the raw code is never shown).
+- Localizers are created through `IStringLocalizerFactory`, so the optional DB override layer (`ITranslationStore`)
+  applies automatically. The module name used for overrides is derived from the marker type namespace
+  (`BieberWorks.SDK.<Module>.…` → `<Module>`).
+- `AddErrorResources<T>()` may be called several times; registering the same type twice is idempotent. The call order
+  relative to `AddBieberWorksLocalization` does not matter.
+- Every key must exist in all shipped languages; do not keep keys that no code references.
