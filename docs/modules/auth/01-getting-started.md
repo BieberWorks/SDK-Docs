@@ -168,13 +168,13 @@ Cookie behaviour is configured through `AuthCookieOptions` (section `BieberWorks
 | `PolicySchemeName` | `string` | `Smart` | Policy scheme that selects JWT or cookie |
 | `SameSite` | `SameSiteMode` | `Strict` | SameSite mode (see the note below) |
 | `SecurePolicy` | `CookieSecurePolicy` | `SameAsRequest` | Secure flag policy |
-| `ExpireTimeSpan` | `TimeSpan` | 8 hours | Sliding expiration window |
+| `ExpireTimeSpan` | `TimeSpan` | 8 hours | Fallback lifetime for tickets issued without an expiry. Server-side sessions do not use it; see [Sessions](14-sessions.md) for the absolute and idle limits |
 | `LoginPath` | `string?` | `/auth/login` | Anonymous browser page requests are redirected here with `?returnUrl=`. `null` or empty keeps the plain `401`. |
 | `AccessDeniedPath` | `string?` | `/auth/access-denied` | Signed-in browser page requests without permission are redirected here with `?returnUrl=`. `null` or empty keeps the plain `403`. |
 | `NoRedirectPathPrefixes` | `string[]` | `/api`, `/_blazor`, `/_framework`, `/hubs` | Prefixes (matched per path segment) that never get a redirect |
 | `Domain` | `string?` | `null` | Cookie domain; `null` = host-only cookie |
 
-`HttpOnly` is always `true` and sliding expiration is always on.
+`HttpOnly` is always `true`. Sliding expiration is off: the cookie ticket expires at the absolute end of its server-side session and idle time is tracked in the session store ([Sessions](14-sessions.md)).
 
 ::: warning API-only hosts
 A host that serves only APIs and has no `/auth/login` page should set `LoginPath` and `AccessDeniedPath` to an empty value so that clients keep receiving `401` and `403` instead of a redirect to a missing page.

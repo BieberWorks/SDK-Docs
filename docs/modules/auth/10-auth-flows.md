@@ -32,7 +32,7 @@ Blazor Server runs over SignalR — inside an active circuit, HTTP cookies canno
 3. `InProcAuthClient.LoginAsync()` verifies the credentials through the Identity `UserManager` and builds the `ClaimsPrincipal` (`BuildAndStoreTicket`). The principal is stored in the `ICookieSignInTicketStore` (in-memory, single use, TTL 30 seconds); the store returns a `Guid` (ticket ID).
 4. The ticket is returned to the caller as `AuthResult.Token`.
 5. `LoginViewModel` navigates through `IAuthNavigator.NavigateToFinalizeLogin` (forceLoad) to `/api/auth/finalize-login?ticket={id}&returnUrl={url}`.
-6. This HTTP endpoint (outside the SignalR circuit) calls `HttpContext.SignInAsync()`, sets the cookie, and redirects to `returnUrl`.
+6. This HTTP endpoint (outside the SignalR circuit) starts a server-side session (`auth.UserSessions`), adds its id as the `sid` claim, calls `HttpContext.SignInAsync()` with the absolute session end as ticket expiry, sets the cookie, and redirects to `returnUrl`. From then on every request validates the session; see [Sessions](14-sessions.md).
 
 ```
 Blazor Circuit          HTTP Endpoint
@@ -51,6 +51,10 @@ Blazor Circuit          HTTP Endpoint
 ::: info Why forceLoad?
 Inside a running SignalR circuit, `HttpContext.SignInAsync()` can no longer write the `Set-Cookie` header — the response is already committed. The `forceLoad` redirect creates a new HTTP request outside the circuit.
 :::
+
+### Logout
+
+`/auth/logout` navigates (forceLoad) to `GET /api/auth/signout`, which ends the server-side session identified by the cookie (also when the cookie has expired), deletes the cookie and redirects to `/auth/login`. Requests marked `Sec-Fetch-Site: cross-site` are ignored. Details in [Sessions](14-sessions.md#sign-out).
 
 ## Anonymous page requests
 
@@ -140,9 +144,10 @@ A wrong password or an unknown user always yields `Identity.Login.Unauthorized`,
 
 ::: warning What lockout does not do
 - Access tokens that were already issued stay valid until they expire (`AccessTokenExpirationMinutes`).
-- Existing cookie sessions stay active: the cookie uses sliding expiration and the security stamp is not revalidated on each request.
 
-Use short access-token lifetimes if immediate revocation matters.
+Locking a user ends all of the user's cookie sessions (see [Sessions](14-sessions.md)); the validator also rejects a locked user whatever the cause of the lock. Unlocking does not bring the sessions back.
+
+Use short access-token lifetimes (15 minutes or less) if immediate revocation of Bearer clients matters.
 :::
 
 ## Token Refresh
@@ -299,7 +304,7 @@ Content-Type: application/json
 }
 ```
 
-A successful reset revokes (deletes) all refresh tokens of the user, so existing sessions cannot be refreshed any more. Already issued access tokens stay valid until they expire.
+A successful reset revokes (deletes) all refresh tokens of the user, so existing sessions cannot be refreshed any more, and ends **all** cookie sessions of the user. Already issued access tokens stay valid until they expire.
 
 ### Change password (logged-in user)
 
@@ -314,7 +319,7 @@ Content-Type: application/json
 }
 ```
 
-A successful change revokes (deletes) all refresh tokens of the user, including those of other devices. Already issued access tokens stay valid until they expire.
+A successful change revokes (deletes) all refresh tokens of the user, including those of other devices, and ends all cookie sessions except the current one (`ChangePasswordRequest.KeepSessionId`, filled from the caller's `sid` claim when omitted). Already issued access tokens stay valid until they expire. See [Sessions](14-sessions.md).
 
 ## Profile Self-Service
 
