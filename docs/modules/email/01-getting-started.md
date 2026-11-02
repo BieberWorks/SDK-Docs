@@ -59,9 +59,11 @@ The module reads `Email:UseSmtp` from configuration on startup:
 |---|---|---|
 | `UseSmtp` | `false` | `true` = real SMTP send; `false` = logging only |
 | `Host` | `""` | SMTP server hostname |
-| `Port` | `587` | SMTP port (STARTTLS) |
+| `Port` | `587` | SMTP port |
 | `Username` | `""` | SMTP username |
 | `Password` | `""` | SMTP password |
+| `SecurityMode` | `StartTls` | Transport security, see [SMTP transport security](#smtp-transport-security) |
+| `AllowInsecureTransport` | `false` | Permits `Auto`/`None` outside Development |
 | `From` | `""` | Sender address |
 | `TemplatePath` | `null` | Optional filesystem path for template overrides |
 
@@ -72,6 +74,27 @@ The SMTP password belongs in User Secrets (development) or environment variable 
 dotnet user-secrets set "Email:Password" "your-password"
 ```
 :::
+
+## SMTP transport security
+
+`Email:SecurityMode` selects how the connection to the SMTP server is secured:
+
+| Value | Behaviour |
+|---|---|
+| `StartTls` (default) | Upgrade with STARTTLS, fail if the server does not offer it (port 587) |
+| `SslOnConnect` | Implicit TLS from the first byte (port 465) |
+| `Auto` | MailKit decides from port and server capabilities; a downgrade to plain text is possible |
+| `None` | No encryption, intended for local mail catchers such as Mailpit |
+
+`Auto` and `None` are rejected at startup (options validation) outside the `Development` environment.
+A trusted internal relay can opt out explicitly with `Email:AllowInsecureTransport=true`; a warning is logged at startup.
+The login is only attempted when `Username` is set and the server offers AUTH, so catchers without authentication work
+with an empty `Username`.
+
+```json
+// appsettings.Development.json - local Mailpit without a certificate
+{ "Email": { "UseSmtp": true, "Host": "localhost", "Port": 1025, "SecurityMode": "None" } }
+```
 
 ## Rate limiting (opt-in)
 
