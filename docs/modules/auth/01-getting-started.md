@@ -289,7 +289,7 @@ A template override saved in the Email admin UI replaces the shipped default. If
 
 ## Email Link Base URL
 
-Both `EmailConfirmationRequestedEventHandler` and `PasswordResetRequestedEventHandler` build absolute links that are embedded in transactional emails.
+The mail delivery behind `EmailConfirmationRequestedEventHandler` and `PasswordResetRequestedEventHandler` builds absolute links that are embedded in transactional emails.
 
 The base URL is resolved in the following order:
 
@@ -330,3 +330,31 @@ dotnet ef migrations add <Name> --project src/Auth --startup-project <HostProjec
 ```
 The migrations directory is located under `src/Auth/Migrations/`.
 :::
+
+## Mail queue
+
+Confirmation and password-reset mails are delivered by a background worker (see [Background mail delivery](10-auth-flows.md#background-mail-delivery)). All settings are optional.
+
+```json
+{
+  "BieberWorks": {
+    "Auth": {
+      "MailQueue": {
+        "Capacity": 1000,
+        "MaxConcurrency": 2,
+        "SendTimeout": "00:00:30",
+        "ShutdownDrainTimeout": "00:00:10"
+      }
+    }
+  }
+}
+```
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `Capacity` | `int` | 1000 | Waiting mails; further mails are dropped, logged and counted (`bieberworks.auth.email.queue_dropped`). |
+| `MaxConcurrency` | `int` | 2 | Mails delivered in parallel. |
+| `SendTimeout` | `TimeSpan` | 30 s | Upper bound per mail; a timeout counts as a failed send. |
+| `ShutdownDrainTimeout` | `TimeSpan` | 10 s | Time to deliver the remaining mails on shutdown. |
+
+Invalid values abort host startup (`ValidateOnStart`).

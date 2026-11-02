@@ -180,7 +180,11 @@ Content-Type: application/json
 
 `email` and `password` are required; `firstName` and `lastName` are optional (maximum 100 characters). See [Request fields](11-registration.md#request-fields).
 
-After successful registration, the `UserRegisteredEvent` is published. `EmailConfirmationRequestedEventHandler` sends a confirmation email through the transactional-email pipeline (see [Transactional emails](#transactional-emails)). By default, registration returns a token pair and the user can sign in without confirming the address. Enforcement is opt-in; see [Email confirmation enforcement](#email-confirmation-enforcement).
+After successful registration, the `UserRegisteredEvent` is published. `EmailConfirmationRequestedEventHandler` queues the confirmation email for background delivery (see [Background mail delivery](#background-mail-delivery) and [Transactional emails](#transactional-emails)). By default, registration returns a token pair and the user can sign in without confirming the address. Enforcement is opt-in; see [Email confirmation enforcement](#email-confirmation-enforcement).
+
+With `Auth:Registration:UniformResponse` set to `true` the answer no longer depends on the state of the address: it never contains tokens, always has `RequiresEmailConfirmation = true` and returns the address exactly as entered. A confirmed address no longer yields `409`; see [Uniform registration response](11-registration.md#uniform-registration-response).
+
+Registration (`POST /api/auth/register`, also through `InProcAuthClient`) is limited per client IP (10 per 15 minutes, policy `auth:register-ip`) in both modes. The limit applies only when the IP is known; without an `HttpContext` (for example in a Blazor Interactive Server circuit) there is no bucket at all, never a shared "unknown" one. The excess answer is `429` with `Identity.Register.RateLimited`.
 
 ## Email Confirmation
 
@@ -221,16 +225,52 @@ Content-Type: application/json
 { "identifier": "user@example.com" }
 ```
 
-`identifier` is the email address or user name. The endpoint is anonymous and **always** answers `200 OK` with the same message and a fixed `cooldownSeconds` (60), whether the account is unknown, already confirmed, still cooling down, or the request was throttled. An `EmailConfirmationRequestedEvent` is raised only for an existing, unconfirmed account whose per-account cooldown (`IResendConfirmationRateLimitService`) has elapsed.
+`identifier` is the email address or user name. The endpoint is anonymous and **always** answers `200 OK` with the same message and a fixed `cooldownSeconds` (60), whether the account is unknown, already confirmed, still cooling down, or the request was throttled. The request itself only checks the two limits below and queues one `ConfirmationRequestJob`; it never reads the account. The mail worker then looks the account up and creates a token and raises `EmailConfirmationRequestedEvent` only for an existing, unconfirmed account whose per-account cooldown (`IResendConfirmationRateLimitService`) has elapsed.
 
 Two `IRateLimiter` policies protect the endpoint: `auth:confirmation-request-ip` (20 per 15 minutes per client IP, taken from `Connection.RemoteIpAddress`, see [Login rate limiting behind a proxy](#login-rate-limiting-behind-a-proxy)) and `auth:confirmation-request-identifier` (3 per hour per identifier). Throttled requests are silently dropped and answered like any other.
 
 The in-process client exposes the same operation as `IAuthClient.ResendConfirmationEmailByAddressAsync`; the login page shows a resend link with a countdown after a refused sign-in.
 
 ::: warning Limits of the enumeration protection
-- **Timing:** an existing account triggers a token write and event, so its response is measurably slower than for an unknown identifier. This is not equalized.
-- **Registration:** `POST /api/auth/register` answers `409 Conflict` for an already confirmed address. Anyone can still probe whether an address is registered through that endpoint.
+- **Anonymous confirmation request and forgot password:** the request does the same work for every account (limits plus one enqueue); the account lookup, the token write and the domain event happen in the mail worker, so processors of the events cannot influence the response time. A saturated queue or worker is not observable per account either.
+- **Registration, default mode (`UniformResponse = false`):** `POST /api/auth/register` answers `409 Conflict` for an already confirmed address, and an unconfirmed address answers without tokens while a new one receives tokens. Anyone can still probe whether an address is registered. Enable `UniformResponse` to close this.
+- **Registration, `UniformResponse = true`:** the answer, the error for a weak password and the password hash are the same for every state. Remaining timing difference: the user insert, the username search and synchronous `UserRegisteredEvent` processors only run for new accounts, because the password cannot be moved into the queue. Only the follow-up (see [Registration](11-registration.md)) runs in the worker. Processors registered by the host are not under the control of the SDK.
+- **Remaining channel:** the real owner of the address may receive a confirmation mail or an "account exists" notice. A confirmed owner gets at most one notice per address and 24 hours, an unconfirmed one a mail only when the resend cooldown has elapsed. Without a shared limiter store each instance throttles on its own.
 :::
+
+## Background mail delivery
+
+Confirmation and password-reset mails are not sent inside the request. A job is put on an in-process, bounded queue; a hosted service (`AuthMailWorker`) delivers it with a per-job timeout. Two-factor codes are still sent synchronously.
+
+The job kinds are:
+
+| Job | Queued by | Worker does |
+|-----|-----------|-------------|
+| `PasswordResetRequestJob` | anonymous `forgot-password` | per-address limit, account lookup, queues the reset mail, raises `PasswordResetRequestedEvent` |
+| `ConfirmationRequestJob` | anonymous `request-confirmation-email` | account lookup, cooldown, token, raises `EmailConfirmationRequestedEvent` |
+| `RegistrationFollowUpJob` | uniform registration | see [Registration](11-registration.md) |
+| `PasswordResetMailJob`, `ConfirmationMailJob` | the worker or the `EmailConfirmationRequestedEvent` processor | creates the link and sends the mail |
+
+::: warning Behavior of event processors in the anonymous flows
+`PasswordResetRequestedEvent` (forgot password) and `EmailConfirmationRequestedEvent` (anonymous confirmation request, registration follow-up) are raised by the mail worker for these flows, not inside the request. Processors that the host (or another module, for example auditing) registered for these events therefore:
+
+- run in the worker's own DI scope, **without an `HttpContext`**, without the request scope and outside the request's transaction; resolve tenant, user or IP yourself if you need them (the culture of the request is restored as `CurrentUICulture`);
+- run for known accounts only, as before, but their cost no longer shows in the response time;
+- can be **lost**: the queue is in memory, so an event is gone when the process is killed, and when the bounded queue is full both the event and the mail are dropped (`queue_dropped` counts it). A durable outbox is not part of this module;
+- cannot stop the reset mail: for forgot password the mail is queued before the event is published, and a processor that throws is logged and counted (`send_failures`, kind `password_reset_request`). The foundation publisher stops at the first processor that throws, so processors registered after a failing one do not run for that event. For `EmailConfirmationRequestedEvent` the mail is queued by a processor of the SDK; a host processor that throws before it in registration order can prevent that mail.
+
+Events raised for authenticated flows (resend, registration with `UniformResponse = false`) are unchanged and still run in the request.
+:::
+
+- The queue lives in memory. Mails still queued when the process is killed are lost; the user can request a new mail (resend, "forgot password").
+- On a graceful stop the queue is drained for `ShutdownDrainTimeout`; the host's own shutdown timeout (30 seconds by default in .NET) also applies. Jobs left after that are discarded and logged as an error with their number.
+- The host must run hosted services. A host that only builds the service provider delivers nothing.
+- The culture of the request is captured when the mail is queued; the stored `PreferredCulture` of the account takes precedence.
+- Each instance has its own queue; there is no coordination between instances.
+- During a graceful stop the queue no longer accepts jobs. A request job that is still being drained cannot queue its follow-up mail; that mail is lost like any other queued mail.
+- Metrics (meter `BieberWorks.SDK.Auth`, tag `kind`): `bieberworks.auth.email.send_failures` (delivery failed or timed out) and `bieberworks.auth.email.queue_dropped` (queue full). Both are also logged as errors, without the address. Alert on both.
+
+See [Getting started](01-getting-started.md#mail-queue) for the settings.
 
 ## Email confirmation enforcement
 
@@ -291,7 +331,9 @@ Content-Type: application/json
 { "email": "user@example.com" }
 ```
 
-Always responds with `200 OK` (no disclosure whether the email address exists). The `PasswordResetRequestedEventHandler` sends a reset link through the transactional-email pipeline.
+Always responds with `200 OK` (no disclosure whether the email address exists). The request only queues a `PasswordResetRequestJob` (see [Background mail delivery](#background-mail-delivery)); it does not read the account. The worker looks the address up, queues the reset mail and then raises `PasswordResetRequestedEvent` for a known address. The reset token is created and the mail sent by the worker, so neither a slow mail server nor any `IDomainEventProcessor<PasswordResetRequestedEvent>` (for example auditing) changes the response time. Those processors run in the worker without `HttpContext` (see the warning above).
+
+The endpoint is limited per client IP (10 per 15 minutes, policy `auth:forgot-password-ip`), again only when the IP is known. A client over the limit gets the normal `200 OK`; nothing is sent. In addition the worker handles at most 3 requests per address and hour (policy `auth:password-reset-address`) and drops further ones silently. The limit is applied before the event is raised, so it also caps the volume of `PasswordResetRequestedEvent` (audit entries, host processors). Both limits use `IRateLimiter`; without the SDK-RateLimiting module the built-in in-process fallback applies, and a host without any limiter keeps working unthrottled.
 
 ### Reset password
 
@@ -307,6 +349,8 @@ Content-Type: application/json
 ```
 
 A successful reset revokes (deletes) all refresh tokens of the user, so existing sessions cannot be refreshed any more, and ends **all** cookie sessions of the user. Already issued access tokens stay valid until they expire.
+
+A new password that breaks the password policy returns `422` with the code `General.Validation`; `errors` lists one localized text per broken rule. Any other failure, such as an invalid or expired token or an unknown address, returns `400` with `Identity.PasswordReset.Failure`. An unknown address and an invalid token answer identically, so the endpoint does not disclose whether an account exists.
 
 ### Change password (logged-in user)
 
@@ -333,7 +377,7 @@ Beyond passwords, a signed-in user can manage their own identity from the **Prof
 | Action | `IAuthClient` method | Notes |
 |--------|----------------------|-------|
 | Change username | `ChangeUsernameAsync(userId, ChangeUsernameRequest)` | Subject to Identity username validation + uniqueness. |
-| Change display name | `ChangeDisplayNameAsync(userId, ChangeDisplayNameRequest)` | Free-form display name; falls back to the email when empty. |
+| Change display name | `ChangeDisplayNameAsync(userId, ChangeDisplayNameRequest)` | Free-form display name; an empty value is stored as `null` (no fallback to the email). |
 | Resend confirmation email | `ResendConfirmationEmailAsync(userId)` | Re-sends the confirmation link; also exposed as `POST /api/auth/resend-confirmation`. |
 
 The `userId` is taken from the authenticated principal — a user can only edit their own
@@ -421,11 +465,11 @@ The language of a mail is resolved in this order:
 
 The adapter applies this once for subject and body of all three mail kinds. `PreferredCulture` is written at registration: the explicit `RegisterRequest.Culture` (validated, at most 35 characters, invalid values are ignored), otherwise the ambient culture. `HttpAuthClient` sends its `CurrentUICulture` automatically, because a remote API cannot see the app culture. Resending the confirmation mail, or registering again with an unconfirmed address, never overwrites a stored `PreferredCulture`; the mail then follows the stored value or the ambient culture.
 
-The greeting uses `FirstName LastName`, then the display name, then nothing ("Hello,"). The mail address is never used as a name.
+The greeting uses `FirstName LastName`, then the display name, then nothing ("Hello,"). The mail address is never used as a name: a display name that equals the address, its local part (for example `max.mustermann` for `max.mustermann@example.de`, compared case-insensitively) or the stored user name is treated as empty. Registration stores the sanitized local part as both user name and display name, so this check covers that value; a display name chosen by the user is kept.
 
 ### Delivery failures
 
-A failed delivery never changes the response of the endpoint that triggered it: registration, resend, forgot-password and sign-in answer the same as on success, and `forgot-password` answers identically for known and unknown addresses (also through `InProcAuthClient`). The handlers log the failure at `Error` level with the exception and the user id (never the address) and increment the counter `bieberworks.auth.email.send_failures` (tag `kind`: `email_confirmation`, `password_reset`, `two_factor_code`) of the meter `BieberWorks.SDK.Auth`. The meter uses only `System.Diagnostics.Metrics`; add it to OpenTelemetry with `AddMeter("BieberWorks.SDK.Auth")` and alert on the counter. Users whose mail did not arrive can request a new one from the login page or through the anonymous resend endpoint.
+A failed delivery never changes the response of the endpoint that triggered it: registration, resend, forgot-password and sign-in answer the same as on success, and `forgot-password` answers identically for known and unknown addresses (also through `InProcAuthClient`). The handlers log the failure at `Error` level with the exception and the user id (never the address) and increment the counter `bieberworks.auth.email.send_failures` (tag `kind`: `email_confirmation`, `password_reset`, `two_factor_code`, `password_reset_request`, `confirmation_request`) of the meter `BieberWorks.SDK.Auth`. The meter uses only `System.Diagnostics.Metrics`; add it to OpenTelemetry with `AddMeter("BieberWorks.SDK.Auth")` and alert on the counter. Users whose mail did not arrive can request a new one from the login page or through the anonymous resend endpoint.
 
 - If `SDK-Email` is installed and an `IEmailSender` is registered, the bodies are rendered through `SDK-Email`'s template pipeline (keyed by `AuthEmailTemplateKeys`) and sent via `IEmailSender`.
 - If no `IEmailSender` is registered, the module falls back to logging the links only (suitable for development).

@@ -114,6 +114,36 @@ but you can still log in via the direct route:
 Result: `/auth/register` redirects to login and the endpoint returns 403; visitors see no auth
 buttons; you retain full access via the direct login route.
 
+## Uniform registration response
+
+Section `Auth:Registration`, property `UniformResponse` (default `false`).
+
+With the default the behavior is unchanged: `409 Identity.EmailAlreadyRegistered` for a confirmed address, tokens for a new account (unless `RequireConfirmedEmail` is on), no resend cooldown on an unconfirmed duplicate.
+
+With `UniformResponse = true` the handler works in this order, independent of the account state:
+
+1. Gate (host config and admin toggle), then input and name lengths.
+2. Per-IP limit (`429` when exceeded; applies in both modes, only for a known IP).
+3. Password policy against a candidate user, always. A weak password fails the same way for every address.
+4. Lookup. A new address is created; an existing one pays for one password hash that is discarded.
+5. A `RegistrationFollowUpJob` is queued for the mail worker.
+6. The response is always `RequiresEmailConfirmation = true`, `TokenResponse = null` and the `Email` exactly as entered. A race on the same address (`DuplicateEmail`, `DuplicateUserName`) gives the same answer.
+
+The worker re-reads the account and decides:
+
+| Account | Mail |
+|---------|------|
+| Unconfirmed (also just created) | A new confirmation token and `EmailConfirmationRequestedEvent`, only when the resend cooldown (default 60 s, setting `ResendConfirmationCooldownSeconds`) has elapsed. Otherwise nothing is sent and the older token stays valid. The cooldown is derived from the newest token and checked before the new one is created, so the new mail is never blocked by itself. |
+| Confirmed | "Account exists" notice (template `auth:account-exists`, English and German) with links to `/auth/login` and `/auth/forgot-password` only. No token and no reset link. The text states that the existing password still applies. At most one per address and 24 hours (policy `auth:account-exists-notice-address`). |
+
+Consequences for hosts:
+
+- The immediate sign-in in the register response is gone; clients must call login afterwards. `IAuthClient` implementations never used the tokens.
+- `409 Identity.EmailAlreadyRegistered` is no longer returned.
+- `EmailConfirmationRequestedEvent` is raised by the background worker, so a host processor on it runs without `HttpContext` and outside the request. The same holds for the anonymous confirmation-email request and forgot password; the event can be lost when the process is killed or the queue is full (see [Background mail delivery](10-auth-flows.md#background-mail-delivery)).
+- Someone who registers again with a different password is not told that the old password remains valid, except by the mail.
+- The 24 hour notice limit is per process when the fallback limiter is used.
+
 ## Request fields
 
 `POST /api/auth/register` accepts this JSON body (property names are case-insensitive):
@@ -135,9 +165,11 @@ Input is validated before any database access. The UI (`RegisterViewModel`) send
 | `Identity.RegistrationDisabled` | Registration is currently off (either layer). |
 | `Identity.EmailRequired` | The email address is missing or blank (400). |
 | `Identity.Password.Required` | The password is missing or empty (400). |
+| `General.Validation` | The password breaks the password policy (422). `errors` lists one localized text per broken rule. The texts come from the keys `Error_<IdentityCode>`, for example `Error_PasswordTooShort`; a custom password validator adds its own key through `AddErrorResources`. |
 | `Identity.Register.FirstNameTooLong` | First name longer than 100 characters (422). |
 | `Identity.Register.LastNameTooLong` | Last name longer than 100 characters (422). |
-| `Identity.EmailAlreadyRegistered` | A confirmed account with this address exists (409). |
+| `Identity.EmailAlreadyRegistered` | A confirmed account with this address exists (409). Not returned with `UniformResponse = true`. |
+| `Identity.Register.RateLimited` | The client IP exceeded 10 registrations in 15 minutes (429). |
 | `Identity.Register.Failure` | The account was created but no token could be issued (400). |
 
 Message texts (English / German):
@@ -150,6 +182,7 @@ Message texts (English / German):
 | `Identity.Register.FirstNameTooLong` | The first name must not be longer than 100 characters. | Der Vorname darf höchstens 100 Zeichen lang sein. |
 | `Identity.Register.LastNameTooLong` | The last name must not be longer than 100 characters. | Der Nachname darf höchstens 100 Zeichen lang sein. |
 | `Identity.EmailAlreadyRegistered` | This email address is already registered. | Diese E-Mail-Adresse ist bereits registriert. |
+| `Identity.Register.RateLimited` | Too many registration attempts. Please try again later. | Zu viele Registrierungsversuche. Bitte versuchen Sie es später erneut. |
 
 The `message` of every error response (`ErrorResponseDto`) and every `AuthResult.Errors` entry is localized
 (English and German, current UI culture) through `IErrorLocalizer`. The texts come from `AuthErrorResources`
