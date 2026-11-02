@@ -4,17 +4,16 @@
 
 `RateLimiting.Contracts` references only `BieberWorks.SDK.SharedKernel` (Tier 1). It defines `IRateLimiter`, the DTOs, `IRateLimitPolicyProvider`, and `IRateLimitPolicyRegistry` — no reference to SDK-Settings. This lets Tier-2 modules (e.g. Auth) reference `RateLimiting.Contracts` without a tier cycle.
 
-The Settings integration lives exclusively in the Impl package `BieberWorks.SDK.RateLimiting`, via an *optional-at-runtime* `PackageReference` to `BieberWorks.SDK.Settings.Contracts`. The package compiles against `ISettingsService`, but `RateLimitingModule.RegisterServices` only wires the Settings-backed provider when `ISettingsService` is already registered in the host:
+The Settings integration lives exclusively in the Impl package `BieberWorks.SDK.RateLimiting`, via a `PackageReference` to `BieberWorks.SDK.Settings.Contracts`. `RateLimitingModule.RegisterServices` registers the provider through a factory, so the choice is made at resolution time and the registration order of SDK-Settings vs. RateLimiting does not matter:
 
 ```csharp
-var settingsIsRegistered = services.Any(d =>
-    d.ServiceType.FullName == "BieberWorks.SDK.Settings.Contracts.ISettingsService");
-
-if (settingsIsRegistered)
-    services.TryAddSingleton<IRateLimitPolicyProvider, SettingsBackedRateLimitPolicyProvider>();
-else
-    services.TryAddSingleton<IRateLimitPolicyProvider, DefaultRateLimitPolicyProvider>();
+services.TryAddSingleton<IRateLimitPolicyProvider>(sp =>
+    sp.GetService<ISettingsService>() is { } settings
+        ? new SettingsBackedRateLimitPolicyProvider(settings, registry, cache)
+        : new DefaultRateLimitPolicyProvider(registry));
 ```
+
+A provider registered by the host beforehand is kept (`TryAdd`).
 
 This means a host that never adds SDK-Settings gets a fully functional, code-default-only rate limiter — no crash, no silent no-op.
 

@@ -15,8 +15,8 @@ dotnet add package BieberWorks.SDK.RateLimiting.UI.Blazor.MudBlazor
 
 ```csharp
 // Module discovery registers RateLimitingModule automatically (IModule convention).
-// If SDK-Settings is also registered in the host, register it *before* the RateLimiting
-// module discovery runs so the detection check in RateLimitingModule finds ISettingsService.
+// If SDK-Settings is also registered in the host, its overrides are picked up automatically;
+// registration order relative to RateLimitingModule does not matter.
 builder.Services.AddBieberWorksModules(); // discovers RateLimitingModule + all other IModule types
 ```
 
