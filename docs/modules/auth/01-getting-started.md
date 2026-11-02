@@ -259,6 +259,33 @@ Change the bootstrap password after the first login.
 | `Auth:Bootstrap:Password` | `string` | — | Initial password — supply via user-secrets or env, never appsettings |
 
 If `SeedAdmin` is `true` but `Email` or `Password` is missing, the seeder logs a warning and skips — the application continues to start normally.
+### Token lifetimes
+
+The e-mail confirmation link and the password reset link have a configurable lifetime. The same values drive the validity of the token and the validity text in the mails (`{{ValidityDuration}}`), so the mail never promises a different duration.
+
+```json
+{
+  "BieberWorks": {
+    "Auth": {
+      "TokenLifetimes": {
+        "EmailConfirmation": "2.00:00:00",
+        "PasswordReset": "01:00:00"
+      }
+    }
+  }
+}
+```
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `EmailConfirmation` | `TimeSpan` | 24 hours | Validity of newly issued confirmation tokens. Tokens already issued keep their stored expiry. |
+| `PasswordReset` | `TimeSpan` | 24 hours | Applied to Identity's `DataProtectionTokenProviderOptions.TokenLifespan`. |
+
+Allowed range is 1 hour to 7 days; other values abort host startup (`ValidateOnStart`). The mail text is rounded to whole hours ("1 hour", "48 hours", "48 Stunden").
+
+::: warning Template overrides in the database
+A template override saved in the Email admin UI replaces the shipped default. If it contains a fixed duration such as "48 hours", change it to `{{ValidityDuration}}`. The default greeting is `Hello{{ if CustomerName != "" }} {{ CustomerName }}{{ end }},`; overrides should adopt it so that accounts without a name get "Hello," instead of "Hello ,".
+:::
 
 ## Email Link Base URL
 

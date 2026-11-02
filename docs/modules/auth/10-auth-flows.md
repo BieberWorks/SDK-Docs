@@ -190,7 +190,9 @@ When a user registers, an `EmailConfirmationRequestedEvent` is raised. `EmailCon
 {App:PublicBaseUrl}/auth/confirm-email?userId={id}&token={token}
 ```
 
-The page (`/auth/confirm-email`) reads `userId` and `token` from the query string and calls `IAuthClient.ConfirmEmailAsync`. On success it shows a confirmation message with a link to `/auth/login`.
+The page (`/auth/confirm-email`) reads `userId` and `token` from the query string but does **not** confirm on load. It shows a button, and only the click (an `EditForm` submit that works in interactive mode and static SSR) calls `IAuthClient.ConfirmEmailAsync`. Mail scanners, link previews, browser prefetch and the double render of a prerendered circuit therefore cannot consume the token. The link format is unchanged, so mails that were already sent keep working. `ConfirmEmailViewModel.Prepare` moves to `ConfirmEmailState.Ready`; `ConfirmCommand` performs the call and ignores a second invocation while busy. On success the page shows a message with a link to `/auth/login`.
+
+Confirmation is idempotent: repeating the link of an account that is already confirmed (reload, double click, second device) succeeds. A token that has expired, belongs to another user, or was consumed while the account is still unconfirmed remains an error.
 
 The API endpoint for direct (non-Blazor) confirmation still exists:
 
@@ -411,11 +413,19 @@ await emailSender.SendEmailConfirmationAsync(
     domainEvent.Email, customerName, confirmationLink, user?.PreferredCulture);
 ```
 
-When `PreferredCulture` is `null` (unset), the `locale` parameter is passed as `null` and
-`IEmailTemplateRenderer.RenderAsync` falls back to the current ambient culture — the
-behavior is unchanged from before this feature. See [SDK-Email's `RenderAsync`
-documentation](https://github.com/BieberWorks/SDK-Email) for how the `locale` parameter
-selects the template variant.
+The language of a mail is resolved in this order:
+
+1. The explicit locale passed to the sender (the persisted `PreferredCulture`).
+2. The culture of the current request or circuit (`CultureInfo.CurrentUICulture`, set by request localization from the culture cookie or `Accept-Language`). An API host must call `UseBieberWorksLocalization()` for this to be the caller's language.
+3. English, the base template. The invariant culture counts as "no value".
+
+The adapter applies this once for subject and body of all three mail kinds. `PreferredCulture` is written at registration: the explicit `RegisterRequest.Culture` (validated, at most 35 characters, invalid values are ignored), otherwise the ambient culture. `HttpAuthClient` sends its `CurrentUICulture` automatically, because a remote API cannot see the app culture. Resending the confirmation mail, or registering again with an unconfirmed address, never overwrites a stored `PreferredCulture`; the mail then follows the stored value or the ambient culture.
+
+The greeting uses `FirstName LastName`, then the display name, then nothing ("Hello,"). The mail address is never used as a name.
+
+### Delivery failures
+
+A failed delivery never changes the response of the endpoint that triggered it: registration, resend, forgot-password and sign-in answer the same as on success, and `forgot-password` answers identically for known and unknown addresses (also through `InProcAuthClient`). The handlers log the failure at `Error` level with the exception and the user id (never the address) and increment the counter `bieberworks.auth.email.send_failures` (tag `kind`: `email_confirmation`, `password_reset`, `two_factor_code`) of the meter `BieberWorks.SDK.Auth`. The meter uses only `System.Diagnostics.Metrics`; add it to OpenTelemetry with `AddMeter("BieberWorks.SDK.Auth")` and alert on the counter. Users whose mail did not arrive can request a new one from the login page or through the anonymous resend endpoint.
 
 - If `SDK-Email` is installed and an `IEmailSender` is registered, the bodies are rendered through `SDK-Email`'s template pipeline (keyed by `AuthEmailTemplateKeys`) and sent via `IEmailSender`.
 - If no `IEmailSender` is registered, the module falls back to logging the links only (suitable for development).

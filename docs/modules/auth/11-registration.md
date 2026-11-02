@@ -124,6 +124,7 @@ buttons; you retain full access via the direct login route.
 | `password` | yes | Non-empty and accepted by the configured Identity password rules. Missing or empty: `400`, `Identity.Password.Required`. |
 | `firstName` | no | Trimmed; maximum 100 characters. Missing or `null` is stored as an empty string. Longer: `422`, `Identity.Register.FirstNameTooLong`. |
 | `lastName` | no | Same rules as `firstName`; error `Identity.Register.LastNameTooLong`. |
+| `culture` | no | Culture name such as `de` or `de-DE`, stored as the account's `PreferredCulture` and used for the confirmation mail. Missing, empty, longer than 35 characters or unknown values are ignored (no error); the culture of the request is used instead. |
 
 Input is validated before any database access. The UI (`RegisterViewModel`) sends empty strings for both names, which stays valid.
 
