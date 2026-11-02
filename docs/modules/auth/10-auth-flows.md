@@ -491,3 +491,7 @@ The Auth module registers its transactional emails as `IEmailTemplateDescriptor`
 The descriptors expose the built-in HTML (read from the Auth assembly's embedded resources) as their `DefaultHtmlContent`. At send time `AuthEmailSenderAdapter` renders **by descriptor key**, so the Email module automatically applies, in order of precedence: a database override → the code default, then the active layout and branding variables (logo, brand colors, app name).
 
 The registration is defensive: the descriptors are always registered, but when no Email module consumes `IEmailTemplateDescriptor` they are harmless no-ops. Auth therefore couples only to `BieberWorks.SDK.Email.Contracts` — never to the Email implementation — and remains runnable without `SDK-Email` (falling back to `LoggingAuthEmailSender`).
+
+### Address limits are partitioned by hash
+
+Rate limits keyed by an e-mail address or identifier (login, forgot password, account-exists notice, confirmation request) never hand the raw address to `IRateLimiter`. The value is normalised (trimmed, lower-cased) and passed as a SHA-256 hex digest, so the limiter store, its logs and any future shared backend contain no addresses. Casing variants of one address still share a bucket; the login limit stays keyed by client IP plus the address hash, and the lockout reset after a successful login uses the same key.
