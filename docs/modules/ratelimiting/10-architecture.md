@@ -54,3 +54,11 @@ Rate limit state is intentionally volatile (counters with a TTL). Persisting it 
 ## Admin UI
 
 `RateLimitingViewModel` (framework-neutral) reads all registered code-default policies from `IRateLimitPolicyRegistry`, resolves each through the runtime `IRateLimitPolicyProvider`, and flags a policy as Settings-overridden when the resolved values differ from the code default. The MudBlazor page at `/admin/rate-limiting` renders this as a read-only table; it does not allow editing policies directly — Settings values are edited through the SDK-Settings admin UI using the `ratelimit:<policy>:<property>` keys.
+
+## Logging and privacy
+
+Partition values (e-mail addresses, IPs, user ids) are never written to logs. Limit events
+log the policy name, the partition kind and a pseudonymous fingerprint (the first 12 hex
+characters of SHA-256 over kind, value and secondary value), so events of the same partition
+can be correlated without exposing the raw value. The fingerprint is computed only when the
+respective log level is enabled.
