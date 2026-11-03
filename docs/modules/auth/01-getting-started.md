@@ -261,7 +261,7 @@ Change the bootstrap password after the first login.
 If `SeedAdmin` is `true` but `Email` or `Password` is missing, the seeder logs a warning and skips — the application continues to start normally.
 ### Token lifetimes
 
-The e-mail confirmation link and the password reset link have a configurable lifetime. The same values drive the validity of the token and the validity text in the mails (`{{ValidityDuration}}`), so the mail never promises a different duration.
+The e-mail confirmation link and the password reset link have a configurable lifetime. The same values drive the validity of the token and the validity text in the mails (<span v-pre>`{{ValidityDuration}}`</span>), so the mail never promises a different duration.
 
 ```json
 {
@@ -284,7 +284,7 @@ The e-mail confirmation link and the password reset link have a configurable lif
 Allowed range is 1 hour to 7 days; other values abort host startup (`ValidateOnStart`). The mail text is rounded to whole hours ("1 hour", "48 hours", "48 Stunden").
 
 ::: warning Template overrides in the database
-A template override saved in the Email admin UI replaces the shipped default. If it contains a fixed duration such as "48 hours", change it to `{{ValidityDuration}}`. The default greeting is `Hello{{ if CustomerName != "" }} {{ CustomerName }}{{ end }},`; overrides should adopt it so that accounts without a name get "Hello," instead of "Hello ,".
+A template override saved in the Email admin UI replaces the shipped default. If it contains a fixed duration such as "48 hours", change it to <span v-pre>`{{ValidityDuration}}`</span>. The default greeting is <span v-pre>`Hello{{ if CustomerName != "" }} {{ CustomerName }}{{ end }},`</span>; overrides should adopt it so that accounts without a name get "Hello," instead of "Hello ,".
 :::
 
 ## Email Link Base URL
