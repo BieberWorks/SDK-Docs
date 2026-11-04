@@ -53,19 +53,19 @@ Add to your host `.csproj` — adjust to include only the modules you need:
 
   <!-- Auth -->
   <PackageReference Include="BieberWorks.SDK.Auth" Version="0.*-*" />
-  <PackageReference Include="BieberWorks.SDK.Auth.UI.MudBlazor" Version="0.*-*" />
+  <PackageReference Include="BieberWorks.SDK.Auth.UI.Blazor.MudBlazor" Version="0.*-*" />
 
   <!-- UI shell (required by Admin and Account) -->
-  <PackageReference Include="BieberWorks.SDK.UI.MudBlazor" Version="0.*-*" />
+  <PackageReference Include="BieberWorks.SDK.UI.Blazor.MudBlazor" Version="0.*-*" />
 
   <!-- Admin shell -->
-  <PackageReference Include="BieberWorks.SDK.Admin.UI.MudBlazor" Version="0.*-*" />
+  <PackageReference Include="BieberWorks.SDK.Admin.UI.Blazor.MudBlazor" Version="0.*-*" />
 
   <!-- Account shell -->
-  <PackageReference Include="BieberWorks.SDK.Account.UI.MudBlazor" Version="0.*-*" />
+  <PackageReference Include="BieberWorks.SDK.Account.UI.Blazor.MudBlazor" Version="0.*-*" />
 
   <!-- Audit (optional) -->
-  <PackageReference Include="BieberWorks.SDK.Audit.UI.MudBlazor" Version="0.*-*" />
+  <PackageReference Include="BieberWorks.SDK.Audit.UI.Blazor.MudBlazor" Version="0.*-*" />
 </ItemGroup>
 ```
 
@@ -74,11 +74,11 @@ Add to your host `.csproj` — adjust to include only the modules you need:
 The following is based on the Sandbox host — the canonical setup order:
 
 ```csharp
-using BieberWorks.SDK.Account.UI.MudBlazor.Extensions;
-using BieberWorks.SDK.Admin.UI.MudBlazor.Extensions;
-using BieberWorks.SDK.Audit.UI.MudBlazor.Extensions;
-using BieberWorks.SDK.Auth.UI.MudBlazor.Extensions;
-using BieberWorks.SDK.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Account.UI.Blazor.MudBlazor.Extensions;
+using BieberWorks.SDK.Admin.UI.Blazor.MudBlazor.Extensions;
+using BieberWorks.SDK.Audit.UI.Blazor.MudBlazor.Extensions;
+using BieberWorks.SDK.Auth.UI.Blazor.MudBlazor.Extensions;
+using BieberWorks.SDK.UI.Blazor.MudBlazor.Extensions;
 using BieberWorks.SDK.Core.Modularity;
 using BieberWorks.SDK.Core.Web.Modularity;
 
@@ -137,11 +137,11 @@ await app.RunAsync();
 `BwThemeProvider` must be the outermost element. `BwRouter` handles route conflict resolution between host `@page` directives and SDK module routes.
 
 ```razor
-@using BieberWorks.SDK.Admin.UI.MudBlazor.Layout
+@using BieberWorks.SDK.Admin.UI.Blazor.MudBlazor.Layout
 @using BieberWorks.SDK.Account.Contracts
-@using BieberWorks.SDK.Account.UI.MudBlazor.Layout
-@using BieberWorks.SDK.UI.MudBlazor.Components
-@using BieberWorks.SDK.UI.MudBlazor.Routing
+@using BieberWorks.SDK.Account.UI.Blazor.MudBlazor.Layout
+@using BieberWorks.SDK.UI.Blazor.MudBlazor.Components
+@using BieberWorks.SDK.UI.Blazor.MudBlazor.Routing
 
 <BwThemeProvider>
 <BwRouter AppAssembly="typeof(App).Assembly">
@@ -205,15 +205,15 @@ dotnet user-secrets set "JwtSettings:Secret" "your-32-char-minimum-secret-here"
 
 ## Connection String Lookup Order
 
-Each module tries its own named connection string first, then falls back to `DefaultConnection`. You can use a single `DefaultConnection` for all modules, or separate connection strings for finer control.
+Each module tries its own named connection string first, then falls back to `DefaultConnection` (Audit, Localization, Settings and Storage additionally fall back to `AuthDb`). You can use a single `DefaultConnection` for all modules, or separate connection strings for finer control.
 
 | Module | Tries first | Falls back to |
 |---|---|---|
 | Auth | `AuthDb` | `DefaultConnection` |
-| Audit | `AuditDb` | `DefaultConnection` |
-| Storage | `StorageDb` | `DefaultConnection` |
-| Settings | `SettingsDb` | `DefaultConnection` |
-| Localization | `LocalizationDb` | `DefaultConnection` |
+| Audit | `AuditDb` | `DefaultConnection`, then `AuthDb` |
+| Storage | `StorageDb` | `DefaultConnection`, then `AuthDb` |
+| Settings | `SettingsDb` | `DefaultConnection`, then `AuthDb` |
+| Localization | `LocalizationDb` | `DefaultConnection`, then `AuthDb` |
 | Notifications | `NotificationsDb` | `DefaultConnection` |
 
 ## Next Steps

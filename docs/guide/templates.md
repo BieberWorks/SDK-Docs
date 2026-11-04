@@ -114,7 +114,7 @@ MeinProjekt/
 |---------------------------------|-----------------------------------------------------------|
 | `BieberWorks.SDK.Core`          | `IModule`, Messaging, Module-Discovery                    |
 | `BieberWorks.SDK.Core.Web`      | `AddBieberWorksModules()`, `MapBieberWorksModules()`, `AddBwModuleAssemblies()` |
-| `BieberWorks.SDK.UI.MudBlazor`  | `BwThemeProvider`, `BwRouter`, `ILayoutThemeContext`, AppBar-Widgets, UI-Infrastruktur |
+| `BieberWorks.SDK.UI.Blazor.MudBlazor`  | `BwThemeProvider`, `BwRouter`, `ILayoutThemeContext`, AppBar-Widgets, UI-Infrastruktur |
 | `MudBlazor`                     | `9.*`, explizit referenziert zur Versionskontrolle        |
 
 ### Wichtige Konventionen
@@ -123,15 +123,15 @@ MeinProjekt/
 
 **`BwRouter` ersetzt den Standard-`<Router>`-Tag.** Er loest Route-Konflikte zwischen Host-Assembly und geladenen SDK-Modul-Assemblies auf (Host-Routen haben Prioritaet).
 
-**`AddBwModuleAssemblies()`** in `MapRazorComponents` discovert automatisch alle `BieberWorks.SDK.*.MudBlazor`-Assemblies, die per NuGet referenziert sind. Kein manueller `AddAdditionalAssemblies`-Eintrag pro SDK-Paket noetig. Eigene Projekte mit Razor-Seiten (wie ein `WeatherModule.Web`) muessen weiterhin manuell per `.AddAdditionalAssemblies(typeof(WeatherModuleModule).Assembly)` hinzugefuegt werden.
+**`AddBwModuleAssemblies()`** in `MapRazorComponents` automatically discovers all `BieberWorks.SDK.*` UI assemblies referenced via NuGet; no per-package `AddAdditionalAssemblies` entry is needed. Host-owned projects with Razor pages and a different prefix (like `WeatherModule.Web`) are registered by prefix: `AddBwModuleAssemblies(typeof(Program).Assembly, additionalUiPrefixes: ["WeatherModule"])` on the server and `<BwRouter AppAssembly="typeof(App).Assembly" AdditionalUiPrefixes="@(["WeatherModule"])">` in `Routes.razor`.
 
 ### Nächste Schritte
 
 1. Token konfigurieren (siehe [Token-Konfiguration](#token-konfiguration-bieberworks_nuget_token)).
 2. `WeatherModule` als IModule-Referenz nutzen, dann durch eigene Module ersetzen.
-3. Auth aktivieren: `BieberWorks.SDK.Auth` + `BieberWorks.SDK.Auth.UI.MudBlazor` referenzieren, `AddAuthUi()` in `Program.cs` einkommentieren.
-4. Admin-Shell: `BieberWorks.SDK.Admin.UI.MudBlazor` + `AddBieberWorksAdmin()` – fuegt `/admin/**`-Routing und `AdminLayout` hinzu.
-5. Account-Shell: analog mit `BieberWorks.SDK.Account.UI.MudBlazor` + `AddBieberWorksAccount()`.
+3. Auth aktivieren: `BieberWorks.SDK.Auth` + `BieberWorks.SDK.Auth.UI.Blazor.MudBlazor` referenzieren, `AddAuthUi()` in `Program.cs` einkommentieren.
+4. Admin-Shell: `BieberWorks.SDK.Admin.UI.Blazor.MudBlazor` + `AddBieberWorksAdmin()` – fuegt `/admin/**`-Routing und `AdminLayout` hinzu.
+5. Account-Shell: analog mit `BieberWorks.SDK.Account.UI.Blazor.MudBlazor` + `AddBieberWorksAccount()`.
 
 ---
 
@@ -181,13 +181,13 @@ Hinzufuegen per `PackageReference` (auskommentierte Beispiele bereits in der `.c
 
 | Paket                           | Zweck                                                        |
 |---------------------------------|--------------------------------------------------------------|
-| `BieberWorks.SDK.UI.MudBlazor`  | `BwThemeProvider`, `ILayoutThemeContext`, UI-Infrastruktur   |
+| `BieberWorks.SDK.UI.Blazor.MudBlazor`  | `BwThemeProvider`, `ILayoutThemeContext`, UI-Infrastruktur   |
 | `MudBlazor`                     | `9.*`                                                        |
 
 Hinzufuegen (auskommentiert):
-- `BieberWorks.SDK.Auth.Client` – `IAuthService` fuer WASM, JWT-Bearer-HttpClient-Handler
+- `BieberWorks.SDK.Auth.Client` – `IAuthClient` (`HttpAuthClient`) for WASM. There is no JWT-bearer `HttpClient` handler and no `IAuthService`.
 - `BieberWorks.SDK.Auth.Contracts` – `ICurrentUserService`, `IRoleProvider` (nur wenn Contracts benoetigt)
-- `BieberWorks.SDK.Auth.UI.MudBlazor` – Login/Register-Seiten als Razor-Komponenten
+- `BieberWorks.SDK.Auth.UI.Blazor.MudBlazor` – Login/Register-Seiten als Razor-Komponenten
 
 **Was im Client-Projekt NICHT referenziert wird:**
 - `BieberWorks.SDK.Auth` (Impl) – enthaelt EF Core und ASP.NET Identity, laeuft nicht im Browser
@@ -265,7 +265,7 @@ Identisch zum Client-Projekt aus `bw-wasm-api`:
 
 | Paket                           | Zweck                                             |
 |---------------------------------|---------------------------------------------------|
-| `BieberWorks.SDK.UI.MudBlazor`  | `BwThemeProvider`, `ILayoutThemeContext`, UI-Infrastruktur |
+| `BieberWorks.SDK.UI.Blazor.MudBlazor`  | `BwThemeProvider`, `ILayoutThemeContext`, UI-Infrastruktur |
 | `MudBlazor`                     | `9.*`                                             |
 
 ### WASM-spezifische Unterschiede
@@ -313,7 +313,7 @@ Wenn kein `ApiBaseUrl` gesetzt ist, faellt der Client auf `HostEnvironment.BaseA
 ### Nächste Schritte
 
 1. `wwwroot/appsettings.json`: `ApiBaseUrl` auf die laufende API setzen.
-2. Auth aktivieren: `BieberWorks.SDK.Auth.Client` + `BieberWorks.SDK.Auth.UI.MudBlazor` referenzieren, `AddBieberWorksAuthClient()` + `AddAuthorizationCore()` einkommentieren.
+2. Auth aktivieren: `BieberWorks.SDK.Auth.Client` + `BieberWorks.SDK.Auth.UI.Blazor.MudBlazor` referenzieren, `AddBieberWorksAuthClient()` + `AddAuthorizationCore()` einkommentieren.
 3. Eigene Seiten in `Components/Pages/` anlegen.
 
 ---
@@ -410,6 +410,12 @@ New-BwModuleRepo -RepoName SDK-Forum -Owner BieberWorks
 # Ohne -TargetDirectory: Repo landet im aktuellen Verzeichnis
 New-BwApiRepo -RepoName MyApi -Owner p-bieber
 ```
+
+::: info Module repos: one way
+`New-BwModuleRepo` (module `BieberWorks.RepoSetup`, `-Owner` is mandatory) is the single supported way to create a module repo. It creates `main`, `staging` and `dev` (default branch `dev`). `tooling\powershell\github\create-repo-module.ps1` is only a thin wrapper that imports the module and calls `New-BwModuleRepo`.
+
+The scaffold uses the internal template `bieberworks-module` (Contracts + Impl + Tests). The consumer template `bw-module` (single project for an existing solution) is a different template and is not used for SDK module repos.
+:::
 
 ### Parameter
 
