@@ -304,6 +304,15 @@ In an interactive circuit `BwRouter` intercepts internal links like the standard
 
 If none of these conditions apply and you have no route conflicts, the standard `Router` works without issues.
 
+### Which assemblies are routed
+
+`BwRouter` builds its route table from these module assemblies:
+
+- **Default (no `ModuleAssemblies`)** — SDK convention discovery (`BieberWorks.SDK.*.UI.*`, host excluded), plus every loaded assembly whose name starts with one of `AdditionalUiPrefixes` (for example `"SkylineNord.WebApp"`), plus the explicit `AdditionalModuleAssemblies`. The result is deduplicated and the host assembly is never included. Blank prefixes are ignored. Prefix matching uses the same predicate as `AddBwModuleAssemblies(..., additionalUiPrefixes)` on the server, so the same prefix list works for endpoint discovery and client-side routing.
+- **`ModuleAssemblies` set** — a full manual override. `AdditionalModuleAssemblies` and `AdditionalUiPrefixes` are ignored for routing (a warning is logged).
+
+Prefix matches are resolved per router instance and recomputed only when a parameter changes; they are never stored in the shared `BwModuleAssemblies` cache.
+
 ### Host-Assembly Priority
 
 `AddBieberWorksRouting(typeof(Program).Assembly)` registers the host assembly with priority 1000. When `BwRouter` encounters two `@page` directives for the same path — one in the host, one in an SDK module — the host page wins. This is the alternative to `OverridePage` for cases where the host component does declare `@page`.
