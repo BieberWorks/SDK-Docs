@@ -44,7 +44,7 @@ Only the specific conflicting endpoint is suppressed — all other routes in the
 
 ### Optional: include host-owned feature modules
 
-Pass an `additionalUiPrefixes` array to include assemblies beyond the `BieberWorks.SDK.*` convention:
+Pass an `additionalUiPrefixes` array to include assemblies beyond the `BieberWorks.SDK.*` convention. Assemblies whose name starts with one of the prefixes are eagerly loaded (unless `autoLoadUiAssemblies: false`) **and** mapped via `AddAdditionalAssemblies`, so their `@page` routes are reachable without listing them in `moduleAssemblies`. The host assembly is always excluded:
 
 ```csharp
 app.MapRazorComponents<App>()

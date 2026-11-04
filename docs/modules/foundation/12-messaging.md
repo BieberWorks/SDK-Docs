@@ -133,7 +133,7 @@ public interface IDomainEventCollector
 }
 ```
 
-Register `IDomainEventCollector` is registered automatically by `AddBieberWorksMessaging()`. Inject it into any handler that needs to raise domain events.
+`IDomainEventCollector` is registered automatically by `AddBieberWorksMessaging()`. `AddBieberWorksMessaging()` is idempotent (`TryAdd*`), so modules and hosts may both call it. Inject it into any handler that needs to raise domain events.
 
 ### IAppMessageDispatcher
 
