@@ -8,8 +8,8 @@ Detailed API and configuration reference for `BieberWorks.SDK.Export`. For a hig
 |---|---|
 | `BieberWorks.SDK.Export.Contracts` | Interfaces, DTOs, enums, domain events — referenceable by other modules |
 | `BieberWorks.SDK.Export` | Implementation: `ExportService` + built-in formatters + `DefaultPdfDocumentBuilder` |
-| `BieberWorks.SDK.Export.UI` | Blazor base classes (no UI framework dependency) |
-| `BieberWorks.SDK.Export.UI.MudBlazor` | MudBlazor components (`PdfViewer`, `ExportButton`) and JS bundle |
+| `BieberWorks.SDK.Export.UI.Blazor` | Blazor base classes (no UI framework dependency) |
+| `BieberWorks.SDK.Export.UI.Blazor.MudBlazor` | MudBlazor components (`PdfViewer`, `ExportButton`) and JS bundle |
 
 ## Supported Formats
 
@@ -37,15 +37,13 @@ Blazor assembly registration (for UI.MudBlazor):
 ```csharp
 app.MapRazorComponents<App>()
    .AddInteractiveServerRenderMode()
-   .AddAdditionalAssemblies(
-       typeof(BieberWorks.SDK.Export.UI.MudBlazor.Components.PdfViewer).Assembly,
-       typeof(BieberWorks.SDK.Export.UI.PdfViewerBase).Assembly);
+   .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 JS bundle in `App.razor`:
 
 ```html
-<script src="_content/BieberWorks.SDK.Export.UI.MudBlazor/js/bw-export.js"></script>
+<script src="_content/BieberWorks.SDK.Export.UI.Blazor.MudBlazor/js/bw-export.js"></script>
 ```
 
 ## Streaming

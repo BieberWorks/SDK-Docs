@@ -17,8 +17,8 @@ The Export module provides a uniform, format-agnostic data-export pipeline for B
 |---|---|---|
 | `BieberWorks.SDK.Export.Contracts` | Interfaces, DTOs, enums, domain events — no implementation dependency | Always when another module or service references export types |
 | `BieberWorks.SDK.Export` | Full implementation: `ExportService`, PDF/CSV/Excel formatters, `DefaultPdfDocumentBuilder` | In the host that performs exports |
-| `BieberWorks.SDK.Export.UI` | Framework-agnostic Blazor base classes (`ExportButtonBase<T>`, `PdfViewerBase`) | Transitively — pulled in by `.UI.MudBlazor` |
-| `BieberWorks.SDK.Export.UI.MudBlazor` | Ready-made MudBlazor components (`ExportButton`, `PdfViewer`) and JS bundle | When using the built-in UI components in the host |
+| `BieberWorks.SDK.Export.UI.Blazor` | Framework-agnostic Blazor base classes (`ExportButtonBase<T>`, `PdfViewerBase`) | Transitively — pulled in by `.UI.Blazor.MudBlazor` |
+| `BieberWorks.SDK.Export.UI.Blazor.MudBlazor` | Ready-made MudBlazor components (`ExportButton`, `PdfViewer`) and JS bundle | When using the built-in UI components in the host |
 
 ::: tip Versioning
 All packages are released together and share one version, computed from Conventional Commits. The latest release and full history live on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Export/releases) (see [changelog](90-changelog.md)).
@@ -30,7 +30,7 @@ All packages are released together and share one version, computed from Conventi
 |---|---|
 | Another module needs `ExportFormatId`, `ExportRequest`, or `IExportService` | `Export.Contracts` |
 | Host performs exports (any format) | `Export` |
-| Host shows download buttons or an inline PDF viewer | `Export` + `Export.UI.MudBlazor` |
+| Host shows download buttons or an inline PDF viewer | `Export` + `Export.UI.Blazor.MudBlazor` |
 | Custom PDF layout for a specific record type | `Export` + implement `IPdfDocumentBuilder<T>` |
 | Custom format (Word, OpenDocument, etc.) | `Export` + implement `IExportFormatter<T>` |
 
