@@ -18,7 +18,7 @@ Add the packages that match your host type:
 <PackageReference Include="BieberWorks.SDK.Theme" Version="*" />
 
 <!-- Blazor Server / WASM hosts with built-in UI pages -->
-<PackageReference Include="BieberWorks.SDK.Theme.UI.MudBlazor" Version="*" />
+<PackageReference Include="BieberWorks.SDK.Theme.UI.Blazor.MudBlazor" Version="*" />
 ```
 
 ## Program.cs
@@ -55,13 +55,12 @@ Place `<BwFaviconLinks />` inside `<HeadContent>` so the generated favicon and P
 
 The component renders nothing if no icon SVG has been uploaded yet.
 
-Also add the `Theme.UI.MudBlazor` assembly to `AdditionalAssemblies` so the router discovers the built-in pages:
+Use `BwRouter` (`BieberWorks.SDK.UI.Blazor.MudBlazor.Routing`) so the router discovers the built-in Theme pages automatically (with `AddBwModuleAssemblies` on the server):
 
 ```razor
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Theme.UI.MudBlazor.ThemeUiAssemblyMarker).Assembly }">
+<BwRouter AppAssembly="typeof(App).Assembly">
     …
-</Router>
+</BwRouter>
 ```
 
 ## BwThemeProvider

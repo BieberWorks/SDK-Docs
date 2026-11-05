@@ -21,8 +21,8 @@ The Theme module provides MudBlazor-based theming, branding, and visual customis
 |---|---|---|
 | `BieberWorks.SDK.Theme.Contracts` | Interfaces, records, domain events, permission constants — no dependency on implementation | Always when another module or layout reads the active theme |
 | `BieberWorks.SDK.Theme` | Full implementation: `ThemeService`, `ThemeAdminService`, `BrandingService`, SkiaSharp rasteriser, settings definitions, branding endpoints | In the host that provides the Theme feature |
-| `BieberWorks.SDK.Theme.UI` | Abstract Blazor base classes for Admin and Account pages (framework-agnostic) | Transitively — referenced by `.UI.MudBlazor` |
-| `BieberWorks.SDK.Theme.UI.MudBlazor` | Ready-made MudBlazor Razor pages (`/admin/theme`, `/admin/theme/branding`, `/account/theme`) and `<BwFaviconLinks />` | When using the built-in Theme pages in a Blazor Server / WASM host |
+| `BieberWorks.SDK.Theme.UI.Blazor` | Abstract Blazor base classes for Admin and Account pages (framework-agnostic) | Transitively — referenced by `.UI.Blazor.MudBlazor` |
+| `BieberWorks.SDK.Theme.UI.Blazor.MudBlazor` | Ready-made MudBlazor Razor pages (`/admin/theme`, `/admin/theme/branding`, `/account/theme`) and `<BwFaviconLinks />` | When using the built-in Theme pages in a Blazor Server / WASM host |
 
 ::: tip Versioning
 All packages are released together and share one version, computed from Conventional Commits. The latest release and full history live on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Theme/releases) (see [changelog](90-changelog.md)).
@@ -34,8 +34,8 @@ All packages are released together and share one version, computed from Conventi
 |---|---|
 | A layout or module reads the active palette via `IThemeService` or `ILayoutThemeProvider` | `Theme.Contracts` |
 | Host registers a custom colour preset or a custom `IThemeableLayout` | `Theme.Contracts` (implement and register in DI) |
-| Host provides the full theme and branding feature | `Theme` + `Theme.UI.MudBlazor` |
-| Host uses the built-in MudBlazor Admin/Account pages | `Theme.UI.MudBlazor` (pulls in `Theme.UI` transitively) |
+| Host provides the full theme and branding feature | `Theme` + `Theme.UI.Blazor.MudBlazor` |
+| Host uses the built-in MudBlazor Admin/Account pages | `Theme.UI.Blazor.MudBlazor` (pulls in `Theme.UI.Blazor` transitively) |
 
 ## Documentation
 

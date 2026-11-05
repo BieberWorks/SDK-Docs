@@ -191,7 +191,7 @@ The Branding page is available at `/admin/theme/branding` (accessible via Admin 
 
 ### Localization
 
-All UI strings are available in English (neutral `ThemeResources.resx`) and German (`ThemeResources.de.resx`) in `BieberWorks.SDK.Theme.UI/Resources/`. The standard `IStringLocalizer<ThemeResources>` approach is used; strings are injected into both the base class and the Razor page automatically at runtime.
+All UI strings are available in English (neutral `ThemeResources.resx`) and German (`ThemeResources.de.resx`) in `BieberWorks.SDK.Theme.UI.Blazor/Resources/`. The standard `IStringLocalizer<ThemeResources>` approach is used; strings are injected into both the base class and the Razor page automatically at runtime.
 
 ### Permissions
 
