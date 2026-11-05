@@ -7,7 +7,7 @@ A decoupled web frontend (Blazor Server, SSR, BFF or WASM) often calls protected
 | Package | Contents | Platform |
 |---|---|---|
 | `BieberWorks.SDK.Auth.Client` | `IAuthForwardingSource`, `AuthForwardCredential`, `AuthForwardingOptions`, `AuthForwardingHandler`, `AddAuthForwarding()` | No ASP.NET dependency, WASM-capable |
-| `BieberWorks.SDK.Auth.Client.Server` | `HttpContextAuthForwardingSource`, `CircuitAuthForwardingState`, `<BwAuthForwardCapture />`, `AddBieberWorksAuthForwarding()` | ASP.NET Core / Blazor Server |
+| `BieberWorks.SDK.Auth.Client.Server` | `HttpContextAuthForwardingSource`, `CircuitAuthForwardingState`, `<BwAuthForwardCapture />` (optional), `AddBieberWorksAuthForwarding()` | ASP.NET Core / Blazor Server |
 
 ## Setup (Blazor Server or SSR host)
 
@@ -18,11 +18,7 @@ builder.Services.AddHttpClient<IMyApiClient, MyApiClient>(c => c.BaseAddress = n
     .AddAuthForwarding();                                  // default allowed origin = BaseAddress
 ```
 
-For Blazor Server circuits add the capture component once, near the root of `App.razor`:
-
-```razor
-<BwAuthForwardCapture />
-```
+No component is needed in `App.razor` for Blazor Server circuits (since 3.7.1). `<BwAuthForwardCapture />` still exists for compatibility but is optional; see [Blazor Server circuits](#blazor-server-circuits).
 
 ## Cookie or bearer
 
@@ -43,11 +39,14 @@ The `bw.auth` cookie is an encrypted ASP.NET Core Data Protection ticket. Forwar
 
 ## Blazor Server circuits
 
-A circuit has no usable `HttpContext` after the first request. `<BwAuthForwardCapture />` copies the credential from the `HttpContext` into the scoped `CircuitAuthForwardingState` on initialization, if one is available. Calls run through an `AsyncLocal` bridge (a circuit handler), because `HttpClientFactory` handlers live in their own DI scope.
+A circuit runs in its own DI scope and has no usable `HttpContext` after it starts. A component in the static `App.razor` runs in the *request* scope, so anything it writes never reaches the circuit scope. Therefore the registered circuit handler fills the circuit-scoped `CircuitAuthForwardingState` itself, on `OnCircuitOpenedAsync` and again on every `OnConnectionUpAsync` (reconnect). It reads the credential from the `HttpContext` of the SignalR connection through `IHttpContextAccessor`. Circuit open runs before the root components render, so the state is filled before the first component initializes and before the first outgoing call. Calls run through an `AsyncLocal` bridge (the same handler), because `HttpClientFactory` handlers live in their own DI scope.
 
+- The credential is a **snapshot** taken at circuit open and at each reconnect. A cookie renewed while the connection stays up is not seen until the next reconnect.
+- On reconnect, if an `HttpContext` is present but carries no credential (sign-out), the state is cleared. If no `HttpContext` is available, the existing state is kept; nothing throws and a debug log entry is written (never containing credential values).
+- `IHttpContextAccessor.HttpContext` is not guaranteed during interactive rendering. It is generally available on the WebSocket connect request; verify your transport (long polling, proxies) in your host. If it is `null`, nothing is forwarded from the circuit; supply a bearer `IAuthForwardingSource` instead.
 - If the API answers a forwarded request with `401`, the credential is dropped, **no retry** happens and `CircuitAuthForwardingState.SessionExpired` is raised once. Subscribe to it to show a "session expired" notice or force a reload.
-- A cookie refreshed during a long-running circuit is not re-read; the captured value goes stale, which surfaces as the `401` above.
-- Capture works when the component initializes with an `HttpContext` (SSR, prerender). Verify in your host that it is present in your render mode; otherwise supply a bearer `IAuthForwardingSource`.
+- A stale snapshot surfaces as the `401` above.
+- Static SSR requests use the request's `HttpContext` directly and need no circuit state.
 
 ## Blazor WebAssembly
 
