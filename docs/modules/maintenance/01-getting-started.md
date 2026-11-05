@@ -9,7 +9,7 @@
 <PackageReference Include="BieberWorks.SDK.Maintenance" Version="0.*-*" />
 
 <!-- Admin UI — only when SDK-Admin shell is present -->
-<PackageReference Include="BieberWorks.SDK.Maintenance.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Maintenance.UI.Blazor.MudBlazor" Version="0.*-*" />
 ```
 
 ### Registration in Program.cs
@@ -45,13 +45,10 @@ check works as documented.
 
 ### Routes.razor
 
-Add the UI assembly to the Blazor router so `/admin/maintenance` is found:
+Use `BwRouter` (`BieberWorks.SDK.UI.Blazor.MudBlazor.Routing`) with `AddBwModuleAssemblies` on the server; the Maintenance UI assembly is discovered automatically so `/admin/maintenance` is found:
 
 ```razor
-<Router AppAssembly="@typeof(App).Assembly"
-        AdditionalAssemblies="new[] {
-            typeof(BieberWorks.SDK.Maintenance.UI.MudBlazor.MaintenancePage).Assembly
-        }">
+<BwRouter AppAssembly="typeof(App).Assembly">
 ```
 
 ---
@@ -219,7 +216,7 @@ same logo + Title/Message/Reason/ETA content as the admin preview via the shared
 `MaintenanceContentView` component. If maintenance mode is not active, the page
 redirects to `/` on first render.
 
-Add the UI assembly to the Blazor router as shown above and the page is available
+Use `BwRouter` as shown above and the page is available
 immediately; no additional Razor component to write.
 
 ### Reusing MaintenanceContentView with a custom PagePath

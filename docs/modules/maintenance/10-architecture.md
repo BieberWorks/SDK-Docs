@@ -118,7 +118,7 @@ BieberWorks.SDK.Maintenance
   ├── BieberWorks.SDK.Settings.Contracts (ISettingsService for reads)
   └── [Microsoft.AspNetCore.*]           (middleware, HttpContext — implicit via Sdk.Web)
 
-BieberWorks.SDK.Maintenance.UI.MudBlazor
+BieberWorks.SDK.Maintenance.UI.Blazor.MudBlazor
   ├── BieberWorks.SDK.Maintenance.Contracts
   ├── BieberWorks.SDK.Core               (IModule)
   ├── BieberWorks.SDK.Admin.Contracts     (IAdminSection, backed by IShellSection from SDK-Shell)

@@ -20,7 +20,7 @@ The Maintenance module puts a BieberWorks SDK host into maintenance mode at the 
 |---|---|---|
 | `BieberWorks.SDK.Maintenance.Contracts` | `IMaintenanceModeService`, `IMaintenancePathProvider`, `MaintenanceStatus` record — no implementation dependency | When another module or consumer page reads maintenance state |
 | `BieberWorks.SDK.Maintenance` | Middleware, `MaintenanceModeService`, `MaintenanceOptions`, `IModule` registration | In every host that must serve maintenance mode |
-| `BieberWorks.SDK.Maintenance.UI.MudBlazor` | Admin UI page at `/admin/maintenance`, `IAdminSection` registration | When the SDK-Admin shell is present in the host |
+| `BieberWorks.SDK.Maintenance.UI.Blazor.MudBlazor` | Admin UI page at `/admin/maintenance`, `IAdminSection` registration | When the SDK-Admin shell is present in the host |
 
 ::: tip Versioning
 All packages share one version, computed from Conventional Commits. The latest release and full history live on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Maintenance/releases) (see [changelog](90-changelog.md)).
@@ -33,7 +33,7 @@ All packages share one version, computed from Conventional Commits. The latest r
 | Consumer page or component reads current maintenance state | `Maintenance.Contracts` |
 | Reusable module contributes whitelisted paths | `Maintenance.Contracts` (implements `IMaintenancePathProvider`) |
 | Host needs the maintenance middleware | `Maintenance` |
-| Host includes the SDK-Admin shell | `Maintenance` + `Maintenance.UI.MudBlazor` |
+| Host includes the SDK-Admin shell | `Maintenance` + `Maintenance.UI.Blazor.MudBlazor` |
 
 ## Documentation
 
