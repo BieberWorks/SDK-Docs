@@ -23,11 +23,12 @@ The Auth module provides complete authentication and authorization infrastructur
 |---|---|---|
 | `BieberWorks.SDK.Auth.Contracts` | Interfaces, DTOs, domain events, permission abstraction — no dependency on implementation | Always when another module consumes Auth services |
 | `BieberWorks.SDK.Auth` | Complete implementation: Identity, EF Core, JWT/Cookie, Minimal API endpoints, CQRS handlers | In the host providing the Auth API |
-| `BieberWorks.SDK.Auth.Session` | Session validation client: cached validator, cookie hook, remote validator for web hosts without database, circuit provider, activity listener. No EF Core, no Identity | Transitively with `Auth` / `Auth.UI.MudBlazor`; directly in a decoupled web host |
+| `BieberWorks.SDK.Auth.Session` | Session validation client: cached validator, cookie hook, remote validator for web hosts without database, circuit provider, activity listener. No EF Core, no Identity | Transitively with `Auth` / `Auth.UI.Blazor.MudBlazor`; directly in a decoupled web host |
 | `BieberWorks.SDK.Auth.Management` | Separate `IModule` for admin REST endpoints under `/api/admin/users` and `/api/admin/roles` | When admin user/role management via REST is needed |
-| `BieberWorks.SDK.Auth.UI` | Abstract Blazor base classes (framework-agnostic logic, `ComponentBase` derivations) | Transitively — referenced by `.UI.MudBlazor` |
-| `BieberWorks.SDK.Auth.UI.MudBlazor` | Ready-made MudBlazor Razor components and pages | When using the built-in Auth pages in the host |
+| `BieberWorks.SDK.Auth.UI.Blazor` | Abstract Blazor base classes (framework-agnostic logic, `ComponentBase` derivations) | Transitively — referenced by `.UI.Blazor.MudBlazor` |
+| `BieberWorks.SDK.Auth.UI.Blazor.MudBlazor` | Ready-made MudBlazor Razor components and pages | When using the built-in Auth pages in the host |
 | `BieberWorks.SDK.Auth.Client` | `HttpAuthClient` — HTTP implementation of `IAuthClient` for WASM/MAUI-Hybrid | When an external client (not in-proc) calls the Auth API |
+| `BieberWorks.SDK.Auth.Client.Server` | Server-side credential sources (HttpContext, Blazor circuit) and `AddBieberWorksAuthForwarding()` for forwarding the user credential via `AuthForwardingHandler` (see [Auth forwarding](15-auth-forwarding.md)) | In a web host calling a protected backend API |
 
 ::: tip Versioning
 All packages are released together and share one version, computed from Conventional Commits. The latest release and full history live on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Auth/releases) (see [changelog](90-changelog.md)).
@@ -40,7 +41,7 @@ All packages are released together and share one version, computed from Conventi
 | Another module consumes `ICurrentUserProvider` or `IPermissionService` | `Auth.Contracts` |
 | Module registers custom permissions in the catalog | `Core.Authorization` (implements `IPermissionContributor`) |
 | Host provides Auth API | `Auth` + optional `Auth.Management` |
-| Host with ready-made Blazor interface | `Auth` + `Auth.UI.MudBlazor` |
+| Host with ready-made Blazor interface | `Auth` + `Auth.UI.Blazor.MudBlazor` |
 | External WASM/MAUI app communicates via HTTP | `Auth.Client` |
 
 ## Documentation

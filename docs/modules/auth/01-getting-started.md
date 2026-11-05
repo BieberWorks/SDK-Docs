@@ -5,7 +5,7 @@
 ```bash
 dotnet add package BieberWorks.SDK.Auth
 dotnet add package BieberWorks.SDK.Auth.Management   # optional: admin endpoints
-dotnet add package BieberWorks.SDK.Auth.UI.MudBlazor  # optional: Blazor pages
+dotnet add package BieberWorks.SDK.Auth.UI.Blazor.MudBlazor  # optional: Blazor pages
 ```
 
 Other modules that only need `ICurrentUserProvider` or permission contracts:
@@ -31,7 +31,7 @@ builder.Services.AddBieberWorksModules(builder.Configuration,
     new UserManagementModule()   // optional
 );
 
-// 1b. Optional: configure the AppBar widget (requires Auth.UI.MudBlazor)
+// 1b. Optional: configure the AppBar widget (requires Auth.UI.Blazor.MudBlazor)
 builder.Services.AddAuthUi(options =>
 {
     options.AppBar.ShowLogin = false;             // hide the Login button
@@ -39,13 +39,11 @@ builder.Services.AddAuthUi(options =>
     options.AppBar.AnonymousMode = AnonymousAppBarMode.IconOnly; // icon only, no label
 });
 
-// 2. Register Blazor component assemblies (if Auth.UI.MudBlazor is used)
+// 2. Register Razor components. Auth.UI.Blazor.MudBlazor pages are picked up
+//    automatically by MapRazorComponents<App>().AddBwModuleAssemblies(...) and <BwRouter>.
 builder.Services
     .AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Auth.UI.MudBlazor._Imports).Assembly
-    );
+    .AddInteractiveServerComponents();
 
 var app = builder.Build();
 
@@ -214,7 +212,7 @@ builder.Services.AddAuthUi(options =>
 | `AppBar.ShowRegister` | `bool` | `true` | Show the Register button for anonymous users (display-only; does not protect `/auth/register`) |
 | `AppBar.AnonymousMode` | `AnonymousAppBarMode` | `Full` | `Full` = text + icon, `IconOnly` = icon only |
 
-> `using BieberWorks.SDK.Auth.UI.Options;` is required when referencing `AnonymousAppBarMode` directly.
+> `using BieberWorks.SDK.Auth.UI.Blazor.Options;` is required when referencing `AnonymousAppBarMode` directly.
 >
 > These flags only hide buttons. To actually disable registration, use the gate in [Registration](11-registration.md).
 

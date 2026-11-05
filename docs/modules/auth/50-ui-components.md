@@ -1,42 +1,47 @@
 # UI Components
 
-The package `BieberWorks.SDK.Auth.UI.MudBlazor` contains ready-made Blazor pages and components based on MudBlazor 9. Each page consists of two layers:
+The package `BieberWorks.SDK.Auth.UI.Blazor.MudBlazor` contains ready-made Blazor pages and components based on MudBlazor 9. Each page consists of two layers:
 
-- **`Auth.UI`** — abstract `ComponentBase` base class with all logic (injections, event handlers, state)
-- **`Auth.UI.MudBlazor`** — Razor file that simply `@inherits` the base class and renders the MudBlazor markup
+- **`Auth.UI.Blazor`** — abstract `ComponentBase` base class with all logic (injections, event handlers, state)
+- **`Auth.UI.Blazor.MudBlazor`** — Razor file that simply `@inherits` the base class and renders the MudBlazor markup
 
 ## Adding to the host
 
 ### 1. Reference the NuGet package
 
 ```bash
-dotnet add package BieberWorks.SDK.Auth.UI.MudBlazor
+dotnet add package BieberWorks.SDK.Auth.UI.Blazor.MudBlazor
 ```
 
-### 2. Register assembly in Program.cs
+### 2. Register the module assemblies in Program.cs
 
 ```csharp
-builder.Services
-    .AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Auth.UI.MudBlazor._Imports).Assembly
-    );
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
-### 3. Add assembly to Router (Routes.razor)
+`AddBwModuleAssemblies` (package `BieberWorks.SDK.Core.Web`) discovers the UI assemblies of all
+installed SDK modules, including `BieberWorks.SDK.Auth.UI.Blazor.MudBlazor`, and registers them
+as additional assemblies of the Razor components endpoint.
+
+### 3. Use BwRouter in Routes.razor
 
 ```razor
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Auth.UI.MudBlazor._Imports).Assembly }">
+@using BieberWorks.SDK.UI.Blazor.MudBlazor.Routing
+
+<BwRouter AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
     </Found>
-</Router>
+</BwRouter>
 ```
 
+`BwRouter` (namespace `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing`) resolves the module
+assemblies itself, so no `AdditionalAssemblies` list is maintained by hand.
+
 ::: warning Both entries are necessary
-`AddAdditionalAssemblies` in `Program.cs` alone is not enough — the `Router` only renders pages from foreign assemblies if the assembly is also registered there. If the router entry is missing, all Auth pages show "Not found".
+`AddBwModuleAssemblies` in `Program.cs` and `BwRouter` in `Routes.razor` belong together. With a plain `Router` and no registered module assemblies, all Auth pages show "Not found".
 :::
 
 ## Included pages
@@ -117,9 +122,11 @@ builder.Services.AddAuthHttpClient("https://api.example.com/");
 
 `AddAuthHttpClient` registers `HttpAuthClient` as `IAuthClient` with a named `HttpClient`.
 
+The client sends plain HTTP requests and relies on the cookie of the browser session. It does not attach a JWT bearer token and has no `DelegatingHandler` for token handling (not implemented yet).
+
 ## Validation Attributes
 
-The `Auth.UI` package contains localized DataAnnotations attributes for form validation:
+The `Auth.UI.Blazor` package contains localized DataAnnotations attributes for form validation:
 
 | Attribute | Description |
 |---|---|
