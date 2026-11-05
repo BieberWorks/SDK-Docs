@@ -20,15 +20,19 @@ New-BwModuleRepo -RepoName SDK-MyModule -Owner BieberWorks
 
 `-Owner` is mandatory. The function creates the GitHub repo with branches `main`, `staging` and `dev` (default branch `dev`), CI/release workflows, `Directory.Build.props`, the solution file and a local clone, and scaffolds the internal template `bieberworks-module` (Contracts + Impl + Tests). `tooling\powershell\github\create-repo-module.ps1` is only a thin wrapper around it.
 
+Optional switches (template 0.8.0): `-WithClient` adds the `.Client` project (HTTP client plus contract tests over both transports), `-WithUi` adds `.Presentation`, `.UI.Blazor` and `.UI.Blazor.MudBlazor`, `-NoPersistence` creates a module without a DbContext, `-NoArchTests` omits the architecture test project (included by default) and `-NoDocs` omits the `docs/` scaffold (included by default). See [Templates](/guide/templates#module-template-switches-bieberworks-module-template-0-8-0), [Client Pattern](/guide/client-pattern) and [Testing Conventions](/guide/testing-conventions).
+
 ## Project Structure
 
 ```
 SDK-MyModule/
 ├── src/
 │   ├── MyModule.Contracts/    ← interfaces, DTOs, events, permissions
-│   └── MyModule/              ← implementation, DbContext, migrations, handlers
+│   ├── MyModule/              ← implementation, DbContext, migrations, handlers
+│   └── MyModule.Client/       ← optional (-WithClient): HTTP client
 ├── tests/
-│   └── MyModule.Tests/
+│   ├── MyModule.Tests/
+│   └── MyModule.ArchitectureTests/   ← default, strict mode
 └── docs/
     ├── index.md
     └── setup.md

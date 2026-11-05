@@ -417,9 +417,26 @@ New-BwApiRepo -RepoName MyApi -Owner p-bieber
 The scaffold uses the internal template `bieberworks-module` (Contracts + Impl + Tests). The consumer template `bw-module` (single project for an existing solution) is a different template and is not used for SDK module repos.
 :::
 
+### Module template switches (`bieberworks-module`, template 0.8.0)
+
+| `dotnet new` switch | `New-BwModuleRepo` switch | Default | Effect |
+|---|---|---|---|
+| `--WithClient` | `-WithClient` | `false` | Adds `<Module>.Client` (`Http<Module>Client` on `BwHttpClientBase`, `Add<Module>HttpClient`) and contract tests over both transports (InProc + Http). Without it the template generates an in-process client test only. |
+| `--WithUi` | `-WithUi` | `false` | Adds `<Module>.Presentation` (view model), `<Module>.UI.Blazor` and `<Module>.UI.Blazor.MudBlazor` (page + `IModule` self-registration) with a bUnit test. |
+| `--WithArchTests` | `-NoArchTests` (disables) | `true` | Adds `<Module>.ArchitectureTests` (`BieberWorks.SDK.Testing.Architecture`, strict mode). |
+| `--WithDocs` | `-NoDocs` (disables) | `true` | Adds the numbered English `docs/` scaffold (`90-changelog.md` is a pointer). |
+| `--NoDbContext` | `-NoPersistence` | `false` | Module without persistence (no DbContext, EF Core or migrations; in-memory service). For modules with volatile state such as RateLimiting. |
+
+```powershell
+New-BwModuleRepo -RepoName SDK-Forum -Owner BieberWorks -WithClient -WithUi
+New-BwModuleRepo -RepoName SDK-Limits -Owner BieberWorks -NoPersistence -NoArchTests -NoDocs
+```
+
+See [Client Pattern](/guide/client-pattern) and [Testing Conventions](/guide/testing-conventions) for what the generated client and test projects contain.
+
 ### Parameter
 
-Alle Funktionen haben dieselbe Signatur:
+Alle Funktionen haben dieselbe Signatur (`New-BwModuleRepo` zusaetzlich die Switches oben):
 
 | Parameter | Pflicht | Beschreibung |
 |---|---|---|
