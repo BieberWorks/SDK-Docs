@@ -42,6 +42,21 @@ app.MapRazorComponents<App>()
 
 Only the specific conflicting endpoint is suppressed — all other routes in the same module assembly remain fully registered.
 
+### 3. Use `BwRouter` in `Routes.razor`
+
+Use `BwRouter` (namespace `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing`) instead of the plain Blazor `<Router AdditionalAssemblies=...>`; it applies the route-override priorities and picks up module assemblies automatically:
+
+```razor
+@using BieberWorks.SDK.UI.Blazor.MudBlazor.Routing
+<BwRouter AppAssembly="typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
+    </Found>
+</BwRouter>
+```
+
+For host-owned modules with a custom assembly prefix, set `AdditionalUiPrefixes` on `BwRouter` (and `additionalUiPrefixes` on `AddBwModuleAssemblies`, below). Both route correctly since Foundation 2.3.2 / SDK-UI 1.3.2.
+
 ### Optional: include host-owned feature modules
 
 Pass an `additionalUiPrefixes` array to include assemblies beyond the `BieberWorks.SDK.*` convention. Assemblies whose name starts with one of the prefixes are eagerly loaded (unless `autoLoadUiAssemblies: false`) **and** mapped via `AddAdditionalAssemblies`, so their `@page` routes are reachable without listing them in `moduleAssemblies`. The host assembly is always excluded:
@@ -53,6 +68,8 @@ app.MapRazorComponents<App>()
        typeof(Program).Assembly,
        additionalUiPrefixes: ["MyApp.Modules"]);
 ```
+
+Mirror the same prefixes in `Routes.razor`: `<BwRouter AppAssembly="typeof(App).Assembly" AdditionalUiPrefixes="@(["MyApp.Modules"])">`.
 
 ## IRouteOverrideSource
 

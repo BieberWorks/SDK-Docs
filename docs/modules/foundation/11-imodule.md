@@ -68,8 +68,10 @@ public sealed class OrderModule : IModule, IModuleInitializer, IEndpointModule
         IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDbContext<OrderDbContext>(opts =>
-            opts.UseNpgsql(configuration.GetConnectionString("Default")));
+        // Connection-string convention: "<Module>Db" first, fallback "DefaultConnection"
+        // (resolved by SDK-Persistence's ConnectionStringResolver).
+        services.AddBieberWorksNpgsql<OrderDbContext>(
+            configuration, "orders", "OrdersDb", "DefaultConnection");
 
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<
@@ -108,8 +110,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Discovers and registers all IModule implementations in the dependency graph
 builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// Messaging infrastructure (Dispatcher + DomainEventPublisher)
-builder.Services.AddBieberWorksMessaging();
+// Messaging (Dispatcher + DomainEventPublisher + IDomainEventCollector) is registered
+// automatically by AddBieberWorksModules; no explicit AddBieberWorksMessaging() needed.
 
 var app = builder.Build();
 
@@ -127,7 +129,6 @@ await app.RunAsync();
 ```csharp
 // AddBieberWorksWeb combines AddBieberWorksModules + AddControllers + ApplicationParts
 builder.Services.AddBieberWorksWeb(builder.Configuration);
-builder.Services.AddBieberWorksMessaging();
 
 var app = builder.Build();
 await app.InitializeBieberWorksModulesAsync();
@@ -145,7 +146,7 @@ await app.RunAsync();
 | `services.AddBieberWorksModules(config)` | `Core` | Discovers all `IModule` via `DependencyContext` and calls `RegisterServices` |
 | `services.AddBieberWorksModules(config, assemblies[])` | `Core` | Like above, but with explicitly specified assemblies (test-friendly) |
 | `services.AddModule<TModule>(config)` | `Core` | Registers a single module explicitly |
-| `services.AddBieberWorksMessaging()` | `Core` | Registers `IAppMessageDispatcher` + `IDomainEventPublisher` as Scoped |
+| `services.AddBieberWorksMessaging()` | `Core` | Registers `IAppMessageDispatcher` + `IDomainEventPublisher` + `IDomainEventCollector` as Scoped. Called automatically by `AddBieberWorksModules` / `AddModule<T>`; an explicit call is optional and idempotent |
 | `services.AddBieberWorksWeb(config)` | `Core.Web` | Combination of `AddBieberWorksModules` + `AddControllers` + `ApplicationParts` |
 | `mvcBuilder.AddBieberWorksModuleControllers(services)` | `Core.Web` | Adds module assemblies as MVC `ApplicationPart` |
 

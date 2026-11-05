@@ -133,7 +133,7 @@ public interface IDomainEventCollector
 }
 ```
 
-`IDomainEventCollector` is registered automatically by `AddBieberWorksMessaging()`. `AddBieberWorksMessaging()` is idempotent (`TryAdd*`), so modules and hosts may both call it. Inject it into any handler that needs to raise domain events.
+`IDomainEventCollector` is registered automatically by `AddBieberWorksModules` (via `AddBieberWorksMessaging()`). `AddBieberWorksMessaging()` is idempotent (`TryAdd*`), so modules and hosts may both call it. Inject it into any handler that needs to raise domain events.
 
 ### IAppMessageDispatcher
 
@@ -178,8 +178,10 @@ public interface IDomainEventProcessor<in TEvent>
 
 ## Registering Messaging
 
+`AddBieberWorksModules(...)` and `AddModule<T>(...)` register the messaging infrastructure automatically, so a host that uses modules needs no extra call. An explicit `AddBieberWorksMessaging()` (host or module) is optional and idempotent (`TryAdd*`, no duplicates):
+
 ```csharp
-// In Program.cs
+// In Program.cs (optional when AddBieberWorksModules is used)
 builder.Services.AddBieberWorksMessaging();
 ```
 
