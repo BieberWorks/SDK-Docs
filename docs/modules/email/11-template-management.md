@@ -154,7 +154,7 @@ The Admin UI validates that the layout body contains `{{ content }}` before savi
 
 ## Admin UI pages
 
-The Admin UI is provided by `BieberWorks.SDK.Email.UI.MudBlazor` and registered automatically via `EmailUiModule`.
+The Admin UI is provided by `BieberWorks.SDK.Email.UI.Blazor.MudBlazor` and registered automatically via `EmailUiModule`.
 
 | Route | Description | Required permission |
 |---|---|---|

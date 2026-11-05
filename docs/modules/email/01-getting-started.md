@@ -7,7 +7,7 @@
 <PackageReference Include="BieberWorks.SDK.Email" Version="0.*-*" />
 
 <!-- Admin UI with template management (requires SDK-Admin) -->
-<PackageReference Include="BieberWorks.SDK.Email.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Email.UI.Blazor.MudBlazor" Version="0.*-*" />
 ```
 
 ::: tip Contracts for other modules
@@ -21,7 +21,7 @@ Modules that inject `IEmailSender`, register `IEmailTemplateDescriptor`, or refe
 
 `EmailModule` implements `IModule` and is automatically discovered by `AddBieberWorksModules`. No explicit call is required for the core functionality.
 
-`EmailUiModule` (in `Email.UI.MudBlazor`) is also auto-discovered and registers the Admin UI section and the live-preview endpoint.
+`EmailUiModule` (in `Email.UI.Blazor.MudBlazor`) is also auto-discovered and registers the Admin UI section and the live-preview endpoint.
 
 ```csharp
 // Loads all modules — EmailModule and EmailUiModule are automatically included.
