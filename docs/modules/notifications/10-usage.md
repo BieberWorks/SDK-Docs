@@ -121,3 +121,56 @@ The user-facing inbox is at `/account/notifications`. It requires `SDK-Account` 
 ## Admin Page
 
 Admin management UI at `/admin/notifications`. Requires `SDK-Admin` and the `notifications:notification:admin-view` permission (granted via `SDK-Auth` role management).
+
+## Client results and error codes
+
+Every `INotificationsClient` method returns `Task<Result>` / `Task<Result<T>>`. Expected failures are values, not
+exceptions; the in-process and the HTTP client return identical results. The HTTP endpoints answer failures with
+ProblemDetails carrying a `code` extension, which the HTTP client maps back to the same `DomainError`.
+
+| Situation | Type | Code |
+|---|---|---|
+| Not signed in | `Unauthorized` | `Client.Unauthenticated` |
+| Missing permission | `Forbidden` | `Client.Forbidden` |
+| Notification missing (or not the caller's) | `NotFound` | `Notifications.NotFound` |
+| Create without recipients / event key / title | `Validation` | `Notifications.RecipientsRequired` / `EventKeyRequired` / `TitleRequired` |
+| Missing channel configuration | `Validation` | `Notifications.ChannelConfigRequired` |
+| Network error, timeout, 5xx | `Unavailable` | `Client.Unavailable` |
+
+Texts for the `Notifications.*` codes ship in English and German (`NotificationsErrorResources`) and are resolved via
+`IErrorLocalizer`. The ViewModels show them in `ErrorMessage`.
+
+```csharp
+var result = await client.MarkReadAsync(id, ct);
+if (!result.Success)
+    message = errors.Localize(result.Errors!.First());
+```
+
+## Migrating from 2.x
+
+3.0.0 is a breaking release of the client contract.
+
+- **`INotificationsClient` returns `Result`.** `GetSummaryAsync`, `GetAsync`, `GetEventSettingsAsync` return
+  `Result<NotificationSummaryDto>`, `Result<PagedResult<NotificationDto>>` and
+  `Result<IReadOnlyList<NotificationEventSettingDto>>`; `MarkReadAsync`, `MarkAllReadAsync`, `CreateAsync`,
+  `DeleteAsync`, `UpdateEventSettingAsync` return `Result`. Replace `try/catch` and `EnsureSuccessStatusCode` handling
+  by checking `result.Success` and reading `result.Value` / `result.Errors`.
+- **No more exceptions for expected failures.** `HttpRequestException` (non-2xx), `InvalidOperationException`
+  ("No authenticated user in HttpContext", "Server returned no ...") are gone. A missing user yields
+  `Client.Unauthenticated`, a missing notification `Notifications.NotFound`.
+- **In-process client:** it no longer depends on `IHttpContextAccessor`; it uses `ICurrentPrincipalAccessor`
+  (`services.AddBieberWorksPrincipalAccessor()` is called by the module) and checks the permission of each call
+  (`view-own`, `mark-read`, `admin-create`, `admin-delete`, `admin-config`) before dispatching. `GetAsync` now scopes
+  non-admins to their own notifications, exactly like the HTTP endpoint (a `UserId` in the filter is ignored without
+  `admin-view`).
+- **HTTP client:** `HttpNotificationsClient` takes `(HttpClient, IErrorLocalizer, ILogger<HttpNotificationsClient>)`
+  and `AddBieberWorksNotificationsClient` registers it via `AddBwHttpClient`. Register an `IErrorLocalizer` in WASM
+  hosts. If you construct the client manually, pass the new arguments.
+- **Endpoints** return ProblemDetails with a `code` extension (previously empty 401/404 bodies). `GET /api/notifications`
+  additionally binds `from` / `to`.
+- **ViewModels:** `NotificationsAdminViewModel`, `NotificationsInboxViewModel` and `NotificationBellViewModel` take an
+  additional `IErrorLocalizer` constructor argument and set `ErrorMessage` from the localized error of a failed result.
+  Custom subclasses of the UI base classes need no change; code that mocks `INotificationsClient` must return
+  `Result.Success(...)` / `Result.Failure(...)`.
+- **Validation:** creating a notification without recipients, event key or title, and updating an event setting
+  without key or configuration now fail with a validation code instead of persisting.

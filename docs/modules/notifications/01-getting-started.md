@@ -20,7 +20,7 @@ Then add the packages:
 
 ```
 dotnet add package BieberWorks.SDK.Notifications
-dotnet add package BieberWorks.SDK.Notifications.UI.MudBlazor   # optional: Blazor UI
+dotnet add package BieberWorks.SDK.Notifications.UI.Blazor.MudBlazor   # optional: Blazor UI
 dotnet add package BieberWorks.SDK.Notifications.Client          # WASM / remote consumers only
 ```
 
@@ -45,21 +45,20 @@ await app.InitializeBieberWorksModulesAsync();
 
 ## Routes.razor
 
-Add the `UI.MudBlazor` assembly to the Router AND to `MapRazorComponents`:
+Use `BwRouter` and `AddBwModuleAssemblies` (the `UI.MudBlazor` assembly is discovered automatically):
 
 ```razor
 @* Routes.razor *@
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Notifications.UI.MudBlazor.NotificationBell).Assembly }">
+<BwRouter AppAssembly="typeof(App).Assembly">
     ...
-</Router>
+</BwRouter>
 ```
 
 ```csharp
 // Program.cs
 app.MapRazorComponents<App>()
    .AddInteractiveServerRenderMode()
-   .AddAdditionalAssemblies(typeof(BieberWorks.SDK.Notifications.UI.MudBlazor.NotificationBell).Assembly);
+   .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 ## AppBar Widget
@@ -83,8 +82,9 @@ var apiBase = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.Bas
 builder.Services.AddBieberWorksNotificationsClient(apiBase);
 ```
 
-This registers `HttpNotificationsClient` as `INotificationsClient` and
-`NullNotificationsHubTokenProvider` as `INotificationsHubTokenProvider`.
+This registers `HttpNotificationsClient` (built on `BwHttpClientBase`, registered with `AddBwHttpClient`)
+as `INotificationsClient` and `NullNotificationsHubTokenProvider` as `INotificationsHubTokenProvider`.
+The host must provide an `IErrorLocalizer`.
 
 ### Real-time Bell push in WASM
 
@@ -109,7 +109,7 @@ inject `INotificationsClient` — not the server-only `INotificationsService`.
 
 | Host | Registration | userId handling |
 |------|-------------|----------------|
-| Blazor Server | Auto via `NotificationsModule` → `InProcNotificationsClient` | Resolved from `IHttpContextAccessor` (claim) |
+| Blazor Server | Auto via `NotificationsModule` → `InProcNotificationsClient` | Resolved from `ICurrentPrincipalAccessor` (no `IHttpContextAccessor` dependency) |
 | WASM | `AddBieberWorksNotificationsClient(baseUrl)` → `HttpNotificationsClient` | Server derives from cookie/JWT; never sent on the wire |
 
 If you subclassed `NotificationBellBase`, `NotificationsInboxPageBase`, or

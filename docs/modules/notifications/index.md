@@ -23,8 +23,8 @@ The **SDK-Notifications** module provides In-App and Email notifications for Bie
 |---|---|---|
 | `BieberWorks.SDK.Notifications.Contracts` | Interfaces, DTOs, permissions, `INotifiableEvent`, `INotificationsClient`, `INotificationsHubTokenProvider` | Always when another module raises or consumes notifications |
 | `BieberWorks.SDK.Notifications` | EF Core + SignalR backend, REST endpoints, retention service, `InProcNotificationsClient`, `CookieNotificationsHubTokenProvider` | In the host providing the Notifications API |
-| `BieberWorks.SDK.Notifications.UI` | Framework-agnostic Blazor base classes (`NotificationBellBase`, `NotificationsInboxPageBase`, `NotificationsAdminPageBase`) | Transitively — referenced by `.UI.MudBlazor` |
-| `BieberWorks.SDK.Notifications.UI.MudBlazor` | Ready-made MudBlazor components: `NotificationBell`, `NotificationsInboxPage`, `NotificationsAdminPage` | When using the built-in UI in the host |
+| `BieberWorks.SDK.Notifications.UI.Blazor` | Framework-agnostic Blazor base classes (`NotificationBellBase`, `NotificationsInboxPageBase`, `NotificationsAdminPageBase`) | Transitively — referenced by `.UI.Blazor.MudBlazor` |
+| `BieberWorks.SDK.Notifications.UI.Blazor.MudBlazor` | Ready-made MudBlazor components: `NotificationBell`, `NotificationsInboxPage`, `NotificationsAdminPage` | When using the built-in UI in the host |
 | `BieberWorks.SDK.Notifications.Client` | HTTP `INotificationsClient` for Blazor WASM and remote consumers; `NullNotificationsHubTokenProvider` for graceful Bell degradation | WASM / standalone API consumers |
 
 ::: tip Versioning
@@ -37,8 +37,8 @@ All packages are released together and share one version, computed from Conventi
 |---|---|
 | Another module raises a notification via `INotifiableEvent` | `Notifications.Contracts` |
 | Host provides the Notifications API and in-app storage | `Notifications` |
-| Host with ready-made Blazor UI (Bell + Inbox + Admin) | `Notifications` + `Notifications.UI.MudBlazor` |
-| Blazor WASM / external API consumer | `Notifications.Client` + `Notifications.UI.MudBlazor` |
+| Host with ready-made Blazor UI (Bell + Inbox + Admin) | `Notifications` + `Notifications.UI.Blazor.MudBlazor` |
+| Blazor WASM / external API consumer | `Notifications.Client` + `Notifications.UI.Blazor.MudBlazor` |
 
 ## Database
 
