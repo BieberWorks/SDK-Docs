@@ -14,8 +14,8 @@ With admin UI (MudBlazor):
 ```bash
 dotnet add package BieberWorks.SDK.Audit.Contracts
 dotnet add package BieberWorks.SDK.Audit
-dotnet add package BieberWorks.SDK.Audit.UI
-dotnet add package BieberWorks.SDK.Audit.UI.MudBlazor
+dotnet add package BieberWorks.SDK.Audit.UI.Blazor
+dotnet add package BieberWorks.SDK.Audit.UI.Blazor.MudBlazor
 ```
 
 ::: info Packages from GitHub Packages
@@ -95,25 +95,19 @@ audit.AuditItems
 
 ## Blazor Router (admin UI only)
 
-For the Blazor router to find pages from the UI package, assemblies must be registered in `Program.cs` and `Routes.razor`:
+For the Blazor router to find pages from the UI package, use `BwRouter` in `Routes.razor` and `AddBwModuleAssemblies` in `Program.cs`. `BwRouter` lives in `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing` (add `@using BieberWorks.SDK.UI.Blazor.MudBlazor.Routing` to `_Imports.razor`). Together with `AddBwModuleAssemblies` on the server it discovers all `BieberWorks.SDK.*` UI assemblies automatically, so no per-module assembly list is needed.
+
 
 ```csharp
 // Program.cs
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Audit.UI.MudBlazor._Imports).Assembly,
-        typeof(BieberWorks.SDK.Audit.UI._Imports).Assembly);
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 ```razor
 <!-- Routes.razor -->
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[]
-        {
-            typeof(BieberWorks.SDK.Audit.UI.MudBlazor._Imports).Assembly,
-            typeof(BieberWorks.SDK.Audit.UI._Imports).Assembly
-        }">
+<BwRouter AppAssembly="typeof(App).Assembly">
     ...
-</Router>
+</BwRouter>
 ```

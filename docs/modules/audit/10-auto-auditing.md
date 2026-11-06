@@ -4,7 +4,7 @@
 
 SDK-Audit uses the messaging mechanism from SDK-Foundation to automatically intercept domain events:
 
-1. A domain module publishes a domain event (e.g., via `IDomainEventPublisher.PublishAsync` or as a return value from a command handler with `Result.Success(..., domainEvents: [...])`).
+1. A domain module publishes a domain event (e.g., via `IDomainEventPublisher.PublishAsync`, or by adding it to `IDomainEventCollector` inside a command handler, which the dispatcher publishes after the handler completes).
 2. The Foundation infrastructure (`DomainEventPublisher`) resolves all registered `IDomainEventProcessor<TEvent>`.
 3. If the event implements `IAuditableEvent`, the open-generic handler `AuditableEventHandler<TEvent>` kicks in.
 4. The handler calls `IAuditService.LogAsync` and persists the entry in the `audit` schema.

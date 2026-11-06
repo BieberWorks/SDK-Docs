@@ -26,8 +26,8 @@ All SDK-Audit packages are released together. See the [GitHub Releases page](htt
 |---|---|
 | `BieberWorks.SDK.Audit.Contracts` | `IAuditService` (+ segregated `IAuditWriter` / `IAuditReader` / `IAuditAdmin`), `AuditEntry`, `AuditEntryDto`, `AuditFilter`, `AuditFacets` |
 | `BieberWorks.SDK.Audit` | Implementation: `AuditModule`, `AuditService`, `AuditableEventHandler<T>`, `AuditDbContext`, migrations, endpoints, GDPR providers |
-| `BieberWorks.SDK.Audit.UI` | Framework-agnostic base class `AuditLogPageBase` |
-| `BieberWorks.SDK.Audit.UI.MudBlazor` | MudBlazor admin pages + `AddAuditUi()` |
+| `BieberWorks.SDK.Audit.UI.Blazor` | Framework-agnostic base class `AuditLogPageBase` |
+| `BieberWorks.SDK.Audit.UI.Blazor.MudBlazor` | MudBlazor admin pages + `AddAuditUi()` |
 
 ## Dependencies
 
