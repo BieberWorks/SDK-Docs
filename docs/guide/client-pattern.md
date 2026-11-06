@@ -94,7 +94,7 @@ services.AddBwHttpClient<INotesClient, HttpNotesClient>("https://api.example.com
 - **Data Protection caveat:** the auth cookie is an encrypted Data Protection ticket. Forwarding only works when the API validates the cookie itself (same auth backend, or a shared key ring and the same `ApplicationName`). If the key ring cannot be shared, use a bearer token.
 - Credentials are attached only to exactly matching origins over HTTPS, redirects are not followed, and a `401` is not retried.
 
-Full setup, circuit behaviour (`<BwAuthForwardCapture />`) and the security rules are on the Auth module page: [Auth Forwarding](/modules/auth/15-auth-forwarding).
+Full setup, circuit behaviour and the security rules are on the Auth module page: [Auth Forwarding](/modules/auth/15-auth-forwarding). From Auth 3.7.1 the circuit handler captures the credential itself, so `<BwAuthForwardCapture />` is no longer needed.
 
 ## Migration example: Notifications 3.0
 
