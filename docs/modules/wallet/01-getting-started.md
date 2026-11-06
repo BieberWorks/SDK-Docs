@@ -25,16 +25,14 @@ builder.Services.AddBieberWorksModules(builder.Configuration);
 builder.Services.AddSingleton<IAdminSection, WalletAdminSection>();
 builder.Services.AddSingleton<IAccountSection, WalletAccountSection>();
 
-// Add assembly to Razor component router:
+// Discover SDK UI assemblies (BwRouter: BieberWorks.SDK.UI.Blazor.MudBlazor.Routing):
 app.MapRazorComponents<App>()
-   .AddAdditionalAssemblies(
-       typeof(BieberWorks.SDK.Wallet.UI.Blazor.MudBlazor._Imports).Assembly);
+   .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 ```razor
 <!-- Routes.razor -->
-<Router AppAssembly="@typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Wallet.UI.Blazor.MudBlazor._Imports).Assembly }">
+<BwRouter AppAssembly="typeof(App).Assembly">
 ```
 
 ## Connection String
