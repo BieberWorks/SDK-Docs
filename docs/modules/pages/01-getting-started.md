@@ -51,23 +51,18 @@ builder.Services.AddPagesUi();
 
 ### Assembly registration (Blazor router)
 
-Both `MapRazorComponents` and `Routes.razor` need the Pages assembly:
+Both `MapRazorComponents` (`AddBwModuleAssemblies`) and `Routes.razor` (`BwRouter`) discover the Pages assembly automatically:
 
 ```csharp
 // Program.cs
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Pages.UI.Blazor.MudBlazor.Pages.PagesListPage).Assembly);
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 ```razor
 <!-- Routes.razor -->
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[]
-        {
-            typeof(BieberWorks.SDK.Pages.UI.Blazor.MudBlazor.Pages.PagesListPage).Assembly
-        }">
+<BwRouter AppAssembly="typeof(App).Assembly">
 ```
 
 ## appsettings.json
@@ -95,7 +90,7 @@ Migrations are applied automatically on startup via `IModuleInitializer.Initiali
 
 ## Assembly discovery
 
-The Blazor router must be told about the Pages assembly so it can discover `PublicPage.razor` (route `/p/{slug}`) and the admin pages. This is handled by the `AddAdditionalAssemblies` call above — no manual route registration needed.
+The Blazor router must be told about the Pages assembly so it can discover `PublicPage.razor` (route `/p/{slug}`) and the admin pages. This is handled by `AddBwModuleAssemblies` and `BwRouter` above — no manual route registration needed.
 
 The seeding of `IPageProvider` implementations is also automatic: any `IPageProvider` registered in DI before `InitializeBieberWorksModulesAsync()` is called will have its pages seeded.
 

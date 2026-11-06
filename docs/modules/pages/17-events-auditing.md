@@ -78,7 +78,7 @@ If auditing of seeded pages becomes necessary in the future, a dedicated `PageSe
 
 ## Event Publishing
 
-`PageAdminService` injects `IDomainEventPublisher` directly and calls `PublishAsync` after each successful database write. Events are not attached to `Result.DomainEvents` — the service is called from UI components directly, not via `IAppMessageDispatcher`.
+`PageAdminService` injects `IDomainEventPublisher` directly and calls `PublishAsync` after each successful database write. Events are not added to an `IDomainEventCollector` — the service is called from UI components directly, not via `IAppMessageDispatcher`.
 
 ## Auto-Audit Setup
 
