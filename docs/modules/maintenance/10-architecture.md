@@ -194,7 +194,7 @@ signature header is present:
 ```csharp
 public interface IMaintenanceBypassProvider
 {
-    ValueTask<bool> ShouldBypassAsync(HttpContext context);
+    ValueTask<bool> ShouldBypassAsync(MaintenanceRequest request);
 }
 ```
 
@@ -210,10 +210,10 @@ Example — a Stripe webhook receiver:
 ```csharp
 internal sealed class WebhookBypassProvider : IMaintenanceBypassProvider
 {
-    public ValueTask<bool> ShouldBypassAsync(HttpContext context)
+    public ValueTask<bool> ShouldBypassAsync(MaintenanceRequest request)
     {
-        var isWebhookPath = context.Request.Path.StartsWithSegments("/bw/payments/webhooks");
-        var hasSignature = context.Request.Headers.ContainsKey("Stripe-Signature");
+        var isWebhookPath = request.PathStartsWithSegments("/bw/payments/webhooks");
+        var hasSignature = request.HasHeader("Stripe-Signature");
         return ValueTask.FromResult(isWebhookPath && hasSignature);
     }
 }

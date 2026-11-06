@@ -183,15 +183,14 @@ when the expected signature header is present:
 
 ```csharp
 using BieberWorks.SDK.Maintenance.Contracts;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 internal sealed class WebhookBypassProvider : IMaintenanceBypassProvider
 {
-    public ValueTask<bool> ShouldBypassAsync(HttpContext context)
+    public ValueTask<bool> ShouldBypassAsync(MaintenanceRequest request)
     {
-        var isWebhookPath = context.Request.Path.StartsWithSegments("/bw/payments/webhooks");
-        var hasSignature = context.Request.Headers.ContainsKey("Stripe-Signature");
+        var isWebhookPath = request.PathStartsWithSegments("/bw/payments/webhooks");
+        var hasSignature = request.HasHeader("Stripe-Signature");
         return ValueTask.FromResult(isWebhookPath && hasSignature);
     }
 }
@@ -199,6 +198,9 @@ internal sealed class WebhookBypassProvider : IMaintenanceBypassProvider
 // Register in your module's AddXxx method:
 services.AddSingleton<IMaintenanceBypassProvider, WebhookBypassProvider>();
 ```
+
+Providers receive a `MaintenanceRequest` snapshot (path, method, headers, user) instead of
+`HttpContext`, so `Maintenance.Contracts` stays free of ASP.NET Core references.
 
 The middleware short-circuits on the first provider returning `true` — remaining
 providers are not invoked for that request. Provider exceptions propagate unchanged
