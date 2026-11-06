@@ -4,7 +4,9 @@
 
 Each domain module offers one or more admin pages through `IAdminSection` — an empty marker
 interface (in `Admin.Contracts`) over `BieberWorks.SDK.Shell.Contracts.IShellSection`, the
-generic navigation kernel provided by the **SDK-Shell** module:
+generic navigation kernel provided by the **SDK-Shell** module.
+
+The recommended location for the implementation is the module's `*.Presentation` project (all SDK modules do this, e.g. `Auth.Presentation/AdminSection`), not the module's `*.Contracts` project:
 
 ```csharp
 using BieberWorks.SDK.Admin.Contracts;
@@ -138,4 +140,4 @@ Host/
 └── ...
 ```
 
-Razor pages can reside in the host or in a separate RCL (Razor Class Library, e.g., `MyModule.UI.MudBlazor.dll`).
+Razor pages can reside in the host or in a separate RCL (Razor Class Library, e.g., `MyModule.UI.Blazor.MudBlazor.dll`).

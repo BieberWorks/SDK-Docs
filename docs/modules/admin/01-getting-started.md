@@ -24,7 +24,7 @@
 ```csharp
 using BieberWorks.SDK.Admin.Extensions;
 using BieberWorks.SDK.Admin.UI.Blazor.MudBlazor.Extensions;
-using BieberWorks.SDK.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.UI.Blazor.MudBlazor.Extensions;
 using BieberWorks.SDK.Core.Web.Modularity;
 
 // Discovers and registers all IModule implementations (including AdminModule and
@@ -59,8 +59,8 @@ app.MapRazorComponents<App>()
 ```razor
 @using BieberWorks.SDK.Admin.Contracts
 @using BieberWorks.SDK.Admin.UI.Blazor.MudBlazor.Layout
-@using BieberWorks.SDK.UI.MudBlazor.Components
-@using BieberWorks.SDK.UI.MudBlazor.Routing
+@using BieberWorks.SDK.UI.Blazor.MudBlazor.Components
+@using BieberWorks.SDK.UI.Blazor.MudBlazor.Routing
 
 <BwThemeProvider>
 <BwRouter AppAssembly="typeof(App).Assembly">

@@ -44,7 +44,7 @@ public sealed class MyAdminSection : IAdminSection
 }
 ```
 
-Registration: `services.AddSingleton<IAdminSection, MyAdminSection>()`.
+Registration: `services.AddSingleton<IAdminSection, MyAdminSection>()`. Place the implementation in the module's `*.Presentation` project (e.g. `Auth.Presentation/AdminSection`).
 
 ### `Key` convention
 
