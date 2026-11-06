@@ -5,7 +5,7 @@
 ```xml
 <!-- Host .csproj -->
 <PackageReference Include="BieberWorks.SDK.Localization" Version="0.*-*" />
-<PackageReference Include="BieberWorks.SDK.Localization.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Localization.UI.Blazor.MudBlazor" Version="0.*-*" />
 ```
 
 ::: tip Contracts for Other Modules
@@ -20,7 +20,7 @@ Modules that want to inject `ITranslationAdminService` reference only:
 SDK-Localization registers itself as `IModule` and is therefore automatically discovered by `AddBieberWorksModules`. Additionally, the admin UI must be explicitly added:
 
 ```csharp
-using BieberWorks.SDK.Localization.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Localization.UI.Blazor.MudBlazor.Extensions;
 
 // Load all modules (Foundation, Auth, Localization, …)
 builder.Services.AddBieberWorksModules(builder.Configuration);
@@ -31,23 +31,18 @@ builder.Services.AddLocalizationUi();
 
 ### Assembly Registration (Blazor Router)
 
-The UI package contains Razor pages — they must be made known to the Blazor router:
+The UI package contains Razor pages. `BwRouter` lives in `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing`; with `AddBwModuleAssemblies` it discovers the SDK UI assemblies automatically, so no per-module assembly list is needed.
 
 ```csharp
 // Program.cs
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Localization.UI.MudBlazor.AdminSection.LocalizationAdminSection).Assembly);
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 ```razor
 <!-- Routes.razor -->
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[]
-        {
-            typeof(BieberWorks.SDK.Localization.UI.MudBlazor.AdminSection.LocalizationAdminSection).Assembly
-        }">
+<BwRouter AppAssembly="typeof(App).Assembly">
 ```
 
 ### Optional Configuration: LocalizationScanOptions

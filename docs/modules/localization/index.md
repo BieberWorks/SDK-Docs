@@ -8,8 +8,8 @@ The module **BieberWorks.SDK.Localization** extends Foundation's localization wi
 |---|---|---|
 | `BieberWorks.SDK.Localization.Contracts` | `ITranslationAdminService`, `TranslationKeyView`, `ModuleInfo`, `LocalizationScanOptions`, Permissions | other modules (contracts only) |
 | `BieberWorks.SDK.Localization` | `LocalizationModule`, `CachedTranslationStore`, `TranslationAdminService`, `LocalizationDbContext` (schema `localization`) | Host |
-| `BieberWorks.SDK.Localization.UI` | `TranslationEditorPageBase` (MudBlazor-independent base classes) | Host with UI |
-| `BieberWorks.SDK.Localization.UI.MudBlazor` | MudBlazor rendering, `AddLocalizationUi()` | Host with MudBlazor |
+| `BieberWorks.SDK.Localization.UI.Blazor` | `TranslationEditorPageBase` (MudBlazor-independent base classes) | Host with UI |
+| `BieberWorks.SDK.Localization.UI.Blazor.MudBlazor` | MudBlazor rendering, `AddLocalizationUi()` | Host with MudBlazor |
 
 For the current release version see the [GitHub Releases page](https://github.com/BieberWorks/SDK-Localization/releases).
 
