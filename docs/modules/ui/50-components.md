@@ -121,7 +121,7 @@ public sealed class MyNotificationWidget : IAppBarWidget
 }
 ```
 
-The component `NotificationBellComponent` must be in an assembly that the host has included via `AddAdditionalAssemblies`.
+The component `NotificationBellComponent` must be in an assembly that the host's routing knows about: `BieberWorks.SDK.*` assemblies are discovered by `AddBwModuleAssemblies`; host-owned prefixes are passed via `additionalUiPrefixes` (and `BwRouter.AdditionalUiPrefixes`).
 
 ## BwShellLayout
 
@@ -273,7 +273,7 @@ All three extension methods delegate to the same `IComponentOverrideRegistry`:
 ```csharp
 // Program.cs — replace an SDK page with a host-specific page
 builder.Services.OverridePage(
-    sdkType:  typeof(BieberWorks.SDK.Localization.UI.MudBlazor.Pages.Admin.TranslationEditorPage),
+    sdkType:  typeof(BieberWorks.SDK.Localization.UI.Blazor.MudBlazor.Pages.Admin.TranslationEditorPage),
     hostType: typeof(MyApp.Pages.Admin.CustomTranslationPage));
 
 // Replace a layout
@@ -293,7 +293,7 @@ The replacement component (`hostType`) must **not** have a `@page` directive. `B
 
 ### BwRouter vs. Standard Router
 
-Use `BwRouter` (from `BieberWorks.SDK.UI.MudBlazor.Routing`) instead of the standard Blazor `Router` component when:
+Use `BwRouter` (from `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing`) instead of the standard Blazor `Router` component when:
 
 - The host has pages that share the same route as SDK module pages (the host's `@page` should always win), or
 - Any `OverridePage` / `OverrideLayout` / `OverrideComponent` registrations are used.
@@ -302,7 +302,7 @@ In an interactive circuit `BwRouter` intercepts internal links like the standard
 
 `BwRouter` consults the `IComponentOverrideRegistry` on every navigation and replaces the resolved component type before rendering. The standard Blazor `Router` ignores the registry.
 
-If none of these conditions apply and you have no route conflicts, the standard `Router` works without issues.
+`BwRouter` is the recommended setup everywhere, including hosts without route conflicts: it discovers the SDK UI assemblies automatically. A standard `Router` would need an explicit `AdditionalAssemblies` list.
 
 ### Which assemblies are routed
 
@@ -388,7 +388,7 @@ await _dataView!.ReloadAsync(); // reloads correct viewport automatically
 
 ### CSS
 
-Include `_content/BieberWorks.SDK.UI.MudBlazor/css/bw-dataview.css` in the host's `<head>` (or via `app.css` import). This file is served as a static web asset automatically when the NuGet package is referenced.
+Include `_content/BieberWorks.SDK.UI.Blazor.MudBlazor/css/bw-dataview.css` in the host's `<head>` (or via `app.css` import). This file is served as a static web asset automatically when the NuGet package is referenced.
 
 ## Anonymous access in interactive circuits
 
@@ -403,11 +403,11 @@ anonymous user stays on the protected page (navigation plus "no access") instead
 | `BwAuthorizeRouteView` | `BieberWorks.SDK.UI.Blazor.MudBlazor` | Drop-in for `AuthorizeRouteView` (`RouteData`, `DefaultLayout`, `Resource`). Anonymous: `BwRedirectToLogin`. Authenticated without permission: localized "no access" alert. `Authorizing`: spinner. |
 
 ```razor
-<Router AppAssembly="typeof(Program).Assembly">
+<BwRouter AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
         <BwAuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
     </Found>
-</Router>
+</BwRouter>
 ```
 
 `NotAuthorizedContent` (`RenderFragment<AuthenticationState>`) and `AuthorizingContent` optionally replace the
