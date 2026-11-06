@@ -139,30 +139,24 @@ The `@layout AccountLayout` directive is necessary for the page to render within
 
 ### 4. Register the assembly
 
-The assembly containing the page must be registered in the host's `AddAdditionalAssemblies`:
+Assemblies of `BieberWorks.SDK.*` modules are discovered automatically by `AddBwModuleAssemblies` and `BwRouter`. A host-owned assembly with a different prefix (e.g. `MyApp.Modules.Files`) is registered by its prefix, on the server and in the router:
 
 ```csharp
 // Program.cs
-builder.Services
-    .AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Account.UI.MudBlazor.AccountModule).Assembly,
-        typeof(MyModule.Account.MyFilesPage).Assembly
-    );
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddBwModuleAssemblies(typeof(Program).Assembly, additionalUiPrefixes: ["MyApp.Modules"]);
 ```
 
 And in `Routes.razor`:
 
 ```razor
-@code {
-    private static readonly Assembly[] _moduleAssemblies =
-    [
-        typeof(BieberWorks.SDK.Account.UI.MudBlazor.AccountModule).Assembly,
-        typeof(MyModule.Account.MyFilesPage).Assembly,
-    ];
-}
+<BwRouter AppAssembly="typeof(App).Assembly" AdditionalUiPrefixes="@(["MyApp.Modules"])">
+    ...
+</BwRouter>
 ```
+
+Setting `ModuleAssemblies` on `BwRouter` is a full override and disables this merge.
 
 ## RequiredPermission — permission-based visibility
 

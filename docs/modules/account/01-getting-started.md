@@ -30,7 +30,7 @@ Domain modules that only implement `IAccountSection` need only `BieberWorks.SDK.
 ```csharp
 using BieberWorks.SDK.Account.Extensions;
 using BieberWorks.SDK.Account.UI.Blazor.MudBlazor.Extensions;
-using BieberWorks.SDK.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.UI.Blazor.MudBlazor.Extensions;
 using BieberWorks.SDK.Core.Web.Modularity;
 
 // Discovers and registers all IModule implementations (including AccountModule and
@@ -40,14 +40,10 @@ builder.Services.AddBieberWorksModules(builder.Configuration);
 // SDK-UI must come before the Account skin (Account depends on it).
 builder.Services.AddBieberWorksUi();
 
-// Razor components: register account UI assembly
-builder.Services
-    .AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Account.UI.Blazor.MudBlazor.AccountUiMudBlazorModule).Assembly,
-        typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly
-    );
+// Razor components: SDK UI assemblies are discovered automatically
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 When using `AddBieberWorksModules`, `AccountModule` is discovered automatically and calls `AddBieberWorksAccount(configuration)` internally, including `AccountDbContext` registration and migration.
@@ -64,26 +60,19 @@ The `IAccountSection` collection is not populated by `AddBieberWorksAccount()` â
 
 ## Routes.razor
 
+`BwRouter` lives in `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing` (add `@using BieberWorks.SDK.UI.Blazor.MudBlazor.Routing` to `_Imports.razor`). Together with `AddBwModuleAssemblies` on the server it discovers all `BieberWorks.SDK.*` UI assemblies automatically, so no per-module assembly list is needed.
+
 ```razor
 @* Routes.razor *@
 <BwThemeProvider>
-    <Router AppAssembly="@typeof(App).Assembly"
-            AdditionalAssemblies="@_moduleAssemblies">
+    <BwRouter AppAssembly="typeof(App).Assembly">
         <Found Context="routeData">
             <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
-    </Router>
+    </BwRouter>
 </BwThemeProvider>
 
-@code {
-    private static readonly Assembly[] _moduleAssemblies =
-    [
-        typeof(BieberWorks.SDK.Account.UI.Blazor.MudBlazor.AccountUiMudBlazorModule).Assembly,
-        typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly,
-        // other modules...
-    ];
-}
 ```
 
 ::: warning BwThemeProvider
