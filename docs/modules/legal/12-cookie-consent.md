@@ -119,18 +119,17 @@ correct and intentional.
 
 ## Router registration
 
-Add the assembly to your host's `Program.cs` and `Routes.razor` (required for all
+Use `AddBwModuleAssemblies` in `Program.cs` and `BwRouter` in `Routes.razor` (the Legal UI assembly is discovered automatically) (required for all
 `Legal.UI.Blazor.MudBlazor` pages):
 
 **Program.cs:**
 ```csharp
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(typeof(BieberWorks.SDK.Legal.UI.Blazor.MudBlazor.LegalUiMudBlazorModule).Assembly);
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 **Routes.razor:**
 ```razor
-<Router AppAssembly="@typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Legal.UI.Blazor.MudBlazor.LegalUiMudBlazorModule).Assembly }">
+<BwRouter AppAssembly="typeof(App).Assembly">
 ```
