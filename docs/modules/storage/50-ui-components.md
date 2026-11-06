@@ -26,27 +26,21 @@ Without the `configure` parameter, `UserLinkTemplate` and `UserLinkPermission` d
 ```csharp
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Storage.UI.Blazor.MudBlazor.Pages.Admin.AllFilesPage).Assembly
-    );
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 ### 3. Router in Routes.razor
 
 ```razor
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[]
-        {
-            typeof(BieberWorks.SDK.Storage.UI.Blazor.MudBlazor.Pages.Admin.AllFilesPage).Assembly
-        }">
+<BwRouter AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
     </Found>
-</Router>
+</BwRouter>
 ```
 
 ::: warning Both entries are mandatory
-Missing the assembly entry in `MapRazorComponents` means pages won't be found. Missing the router entry causes Blazor to show "Not found" on direct navigation to the URL.
+`BwRouter` lives in `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing` (add `@using BieberWorks.SDK.UI.Blazor.MudBlazor.Routing` to `_Imports.razor`). Together with `AddBwModuleAssemblies` on the server it discovers all `BieberWorks.SDK.*` UI assemblies automatically, so no per-module assembly list is needed. Missing `AddBwModuleAssemblies` means pages won't be found; a plain `<Router>` causes "Not found" on direct navigation to SDK pages.
 :::
 
 ---

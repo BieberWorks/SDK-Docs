@@ -92,19 +92,18 @@ await app.InitializeBieberWorksModulesAsync(); // runs StorageDbContext.MigrateA
 
 ### Step 5: Register Razor assemblies (if using UI)
 
+`BwRouter` lives in `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing`; with `AddBwModuleAssemblies` it discovers the SDK UI assemblies automatically, so no per-module assembly list is needed.
+
 ```csharp
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Storage.UI.Blazor.MudBlazor.Pages.Admin.AllFilesPage).Assembly
-    );
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 And in `Routes.razor`:
 
 ```razor
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(BieberWorks.SDK.Storage.UI.Blazor.MudBlazor.Pages.Admin.AllFilesPage).Assembly }">
+<BwRouter AppAssembly="typeof(App).Assembly">
 ```
 
 ## appsettings.json
