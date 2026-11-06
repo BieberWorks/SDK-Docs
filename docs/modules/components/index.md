@@ -17,13 +17,17 @@ The Components module provides reusable, extensible rendering and editing compon
 |---|---|
 | `BieberWorks.SDK.Components.Contracts` | Interfaces and options — referenced by components and hosts |
 | `BieberWorks.SDK.Components` | Core implementation: `MarkdigParser`, `ColorCodeHighlighter`, `PassthroughRichTextSerializer`, `ComponentsModule` |
-| `BieberWorks.SDK.Components.UI` | Framework-agnostic base classes: `MarkdownViewerBase`, `MarkdownEditorBase`, `CodeBlockBase`, `RichTextEditorBase` |
-| `BieberWorks.SDK.Components.UI.MudBlazor` | MudBlazor RCL: `BwMarkdownViewer`, `BwMarkdownEditor`, `BwCodeBlock`, `BwRichTextEditor` |
+| `BieberWorks.SDK.Components.UI.Blazor` | Framework-agnostic base classes: `MarkdownViewerBase`, `MarkdownEditorBase`, `CodeBlockBase`, `RichTextEditorBase` |
+| `BieberWorks.SDK.Components.UI.Blazor.MudBlazor` | MudBlazor RCL: `BwMarkdownViewer`, `BwMarkdownEditor`, `BwCodeBlock`, `BwRichTextEditor` |
 
 For current release versions see the [GitHub Releases page](https://github.com/BieberWorks/SDK-Components/releases).
 
 ::: tip Contracts-First
-Other modules reference only `BieberWorks.SDK.Components.Contracts`. Implementations are known only to the host.
+Other modules reference only `BieberWorks.SDK.Components.Contracts`. The implementation package (`BieberWorks.SDK.Components`) is normally referenced and registered by the host.
+:::
+
+::: info Frontend usage
+`BieberWorks.SDK.Components.UI.Blazor` depends only on Contracts and Core and is WASM-capable (no `Microsoft.AspNetCore.App` framework reference). It therefore also works in a separate frontend (e.g. Blazor WebAssembly) as long as an implementation of the contracts (`IMarkdownParser`, `ICodeHighlighter`, `IRichTextSerializer`) is registered there. If a WASM frontend omits the implementation package, render on the server instead and deliver sanitized HTML in the DTO.
 :::
 
 ## Architecture
@@ -38,7 +42,7 @@ UI Base    (MarkdownViewerBase, MarkdownEditorBase, CodeBlockBase, RichTextEdito
 MudBlazor  (BwMarkdownViewer, BwMarkdownEditor, BwCodeBlock, BwRichTextEditor)
 ```
 
-Each layer is independently referenceable. When referencing `BieberWorks.SDK.Components.UI.MudBlazor`, all lower layers are automatically included and registered via the `IModule` dependency chain.
+Each layer is independently referenceable. When referencing `BieberWorks.SDK.Components.UI.Blazor.MudBlazor`, the UI base layer and the contracts are included. The implementation package `BieberWorks.SDK.Components` is registered explicitly (see [Setup](01-getting-started.md)).
 
 ## Documentation
 

@@ -110,11 +110,11 @@ The UI Base classes allow you to build components for any framework.
 
 ### Example: FluentUI implementation
 
-Add a reference to `BieberWorks.SDK.Components.UI` and create a FluentUI component:
+Add a reference to `BieberWorks.SDK.Components.UI.Blazor` and create a FluentUI component:
 
 ```csharp
 // FluentUI/FluentMarkdownViewer.razor.cs
-using BieberWorks.SDK.Components.UI.Components;
+using BieberWorks.SDK.Components.UI.Blazor.Components;
 
 public partial class FluentMarkdownViewer : MarkdownViewerBase
 {
@@ -127,7 +127,7 @@ In `FluentMarkdownViewer.razor`:
 
 ```razor
 @inherits MarkdownViewerBase
-@namespace BieberWorks.SDK.Components.UI.FluentUI
+@namespace BieberWorks.SDK.Components.UI.Blazor.FluentUI
 
 <FluentCard>
     @((MarkupString)RenderedHtml)

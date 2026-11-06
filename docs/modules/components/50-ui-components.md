@@ -1,6 +1,6 @@
 # MudBlazor Components
 
-Package: `BieberWorks.SDK.Components.UI.MudBlazor`
+Package: `BieberWorks.SDK.Components.UI.Blazor.MudBlazor`
 
 Ready-made MudBlazor Razor components for rendering and editing markdown, rich text, and code.
 

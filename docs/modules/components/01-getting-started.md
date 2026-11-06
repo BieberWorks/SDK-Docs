@@ -5,20 +5,20 @@
 ### With MudBlazor UI (recommended)
 
 ```bash
-dotnet add package BieberWorks.SDK.Components.UI.MudBlazor
+dotnet add package BieberWorks.SDK.Components.UI.Blazor.MudBlazor
 ```
 
-This automatically includes `BieberWorks.SDK.Components` and all underlying layers via dependency chain.
+This includes `BieberWorks.SDK.Components.UI.Blazor` and the contracts. The implementation package `BieberWorks.SDK.Components` (parser, highlighter) is referenced and registered separately, see `Program.cs` below.
 
 ### With custom UI framework
 
 Use the UI Base classes to implement your own framework (FluentUI, MAUI, etc.):
 
 ```bash
-dotnet add package BieberWorks.SDK.Components.UI
+dotnet add package BieberWorks.SDK.Components.UI.Blazor
 ```
 
-This also automatically pulls `BieberWorks.SDK.Components` and the contracts.
+This pulls in the contracts and `BieberWorks.SDK.Core`, but not the implementation package `BieberWorks.SDK.Components`. In a host, add `BieberWorks.SDK.Components` as well; in a separate WASM frontend you must register an implementation of `IMarkdownParser`, `ICodeHighlighter` and `IRichTextSerializer` yourself, otherwise render on the server and deliver sanitized HTML in the DTO.
 
 ### Minimal setup (services only, no UI)
 
@@ -35,7 +35,7 @@ All packages are in GitHub Packages of the `BieberWorks` organization. A `nuget.
 Add the following link to your `App.razor` (Blazor Server) or `index.html` (WASM) inside `<head>`:
 
 ```html
-<link rel="stylesheet" href="_content/BieberWorks.SDK.Components.UI.MudBlazor/bw-markdown.css" />
+<link rel="stylesheet" href="_content/BieberWorks.SDK.Components.UI.Blazor.MudBlazor/bw-markdown.css" />
 ```
 
 **Important:** MudBlazor resets all browser default styles. This stylesheet restores the rendering of Markdown elements (headings, lists, code blocks, tables, horizontal rules, blockquotes, etc.). Without this link, these elements will be displayed unstyled.
@@ -68,23 +68,17 @@ In `Program.cs`:
 ```csharp
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Components.UI.MudBlazor.BwMarkdownViewer).Assembly
-    );
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 In `Routes.razor`:
 
 ```razor
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[]
-        {
-            typeof(BieberWorks.SDK.Components.UI.MudBlazor.BwMarkdownViewer).Assembly
-        }">
+<BwRouter AppAssembly="typeof(App).Assembly">
 ```
 
 ::: warning Both entries are mandatory
-Missing the assembly entry in `MapRazorComponents` means components won't be found. Missing the router entry can cause Blazor issues on direct navigation.
+`BwRouter` lives in `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing` (add `@using BieberWorks.SDK.UI.Blazor.MudBlazor.Routing` to `_Imports.razor`). Together with `AddBwModuleAssemblies` on the server it discovers all `BieberWorks.SDK.*` UI assemblies automatically, so no per-module assembly list is needed. Missing `AddBwModuleAssemblies` means routable pages won't be found; a plain `<Router>` without `BwRouter` does not route SDK module pages from auto-discovery.
 :::
 
 ## Configuration
