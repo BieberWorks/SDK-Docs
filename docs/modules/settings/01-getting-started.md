@@ -5,7 +5,7 @@
 ```xml
 <!-- Host .csproj -->
 <PackageReference Include="BieberWorks.SDK.Settings" Version="0.*-*" />
-<PackageReference Include="BieberWorks.SDK.Settings.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Settings.UI.Blazor.MudBlazor" Version="0.*-*" />
 ```
 
 ::: tip Contracts for other modules
@@ -21,7 +21,7 @@ Modules that inject `ISettingsService` or `IFeatureFlagService`:
 
 ```csharp
 using BieberWorks.SDK.Settings.Extensions;
-using BieberWorks.SDK.Settings.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Settings.UI.Blazor.MudBlazor.Extensions;
 
 // Load all modules (Foundation, Auth, Settings, …)
 builder.Services.AddBieberWorksModules(builder.Configuration);
@@ -50,21 +50,18 @@ builder.Services.AddSettingDefinition(new AppSettingDefinition(
 
 ### Assembly registration (Blazor router)
 
+`BwRouter` lives in `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing`; with `AddBwModuleAssemblies` it discovers the SDK UI assemblies automatically, so no per-module assembly list is needed.
+
 ```csharp
 // Program.cs
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Settings.UI.MudBlazor.AdminSection.SettingsAdminSection).Assembly);
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 ```razor
 <!-- Routes.razor -->
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[]
-        {
-            typeof(BieberWorks.SDK.Settings.UI.MudBlazor.AdminSection.SettingsAdminSection).Assembly
-        }">
+<BwRouter AppAssembly="typeof(App).Assembly">
 ```
 
 ## appsettings.json

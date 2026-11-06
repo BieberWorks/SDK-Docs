@@ -8,8 +8,8 @@ The module **BieberWorks.SDK.Settings** provides database-backed application set
 |---|---|---|
 | `BieberWorks.SDK.Settings.Contracts` | `ISettingsService`, `IFeatureFlagService`, `ISettingsAdminService`, `AppSettingDefinition`, `AppSettingDto`, `AppSettingType`, events, permissions | other modules |
 | `BieberWorks.SDK.Settings` | `SettingsModule`, `CachedSettingsStore`, `SettingsAdminService`, `FeatureFlagService`, `SettingsDbContext` (schema `settings`) | host |
-| `BieberWorks.SDK.Settings.UI` | `AppSettingsPageBase`, `FeatureFlagsPageBase` (MudBlazor-independent base classes) | host with UI |
-| `BieberWorks.SDK.Settings.UI.MudBlazor` | MudBlazor rendering, `AddSettingsUi()` | host with MudBlazor |
+| `BieberWorks.SDK.Settings.UI.Blazor` | `AppSettingsPageBase`, `FeatureFlagsPageBase` (MudBlazor-independent base classes) | host with UI |
+| `BieberWorks.SDK.Settings.UI.Blazor.MudBlazor` | MudBlazor rendering, `AddSettingsUi()` | host with MudBlazor |
 
 For the current release version see the [GitHub Releases page](https://github.com/BieberWorks/SDK-Settings/releases).
 
