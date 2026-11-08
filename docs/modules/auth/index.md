@@ -29,6 +29,8 @@ The Auth module provides complete authentication and authorization infrastructur
 | `BieberWorks.SDK.Auth.UI.Blazor.MudBlazor` | Ready-made MudBlazor Razor components and pages | When using the built-in Auth pages in the host |
 | `BieberWorks.SDK.Auth.Client` | `HttpAuthClient` — HTTP implementation of `IAuthClient` for WASM/MAUI-Hybrid | When an external client (not in-proc) calls the Auth API |
 | `BieberWorks.SDK.Auth.Client.Server` | Server-side credential sources (HttpContext, Blazor circuit) and `AddBieberWorksAuthForwarding()` for forwarding the user credential via `AuthForwardingHandler` (see [Auth forwarding](15-auth-forwarding.md)) | In a web host calling a protected backend API |
+| `BieberWorks.SDK.Auth.Bff` | Backend-for-frontend for Blazor Server hosts: opaque session cookie, server-side token vault with refresh, antiforgery-protected login/logout, circuit token hook, replaceable session store (see [BFF](17-bff.md)) | In a Blazor Server frontend that signs in against a separate identity service |
+| `BieberWorks.SDK.Auth.Bff.Postgres` | PostgreSQL session store and shared Data Protection key ring for `Auth.Bff` | When BFF sessions must survive restarts or be shared by several hosts |
 
 ::: tip Versioning
 All packages are released together and share one version, computed from Conventional Commits. The latest release and full history live on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Auth/releases) (see [changelog](90-changelog.md)).

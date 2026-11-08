@@ -353,6 +353,12 @@ Confirmation and password-reset mails are delivered by a background worker (see 
 | `Capacity` | `int` | 1000 | Waiting mails; further mails are dropped, logged and counted (`bieberworks.auth.email.queue_dropped`). |
 | `MaxConcurrency` | `int` | 2 | Mails delivered in parallel. |
 | `SendTimeout` | `TimeSpan` | 30 s | Upper bound per mail; a timeout counts as a failed send. |
-| `ShutdownDrainTimeout` | `TimeSpan` | 10 s | Time to deliver the remaining mails on shutdown. |
+| `ShutdownDrainTimeout` | `TimeSpan` | 10 s | Time to deliver the remaining mails on shutdown (in-memory queue only). |
+| `Durable` | `bool` | `false` | Store mail jobs in the Auth database so a process kill does not lose them. See [Durable mail queue](10-auth-flows.md#durable-mail-queue). |
+| `PollInterval` | `TimeSpan` | 1 s | Durable only: how often due jobs are looked up. |
+| `LeaseDuration` | `TimeSpan` | 2 min | Durable only: how long a claimed job stays invisible before it is claimed again. |
+| `MaxAttempts` | `int` | 8 | Durable only: attempts (exponential backoff, 5 s to 30 min) before a job is parked as dead. |
+| `RetentionPeriod` | `TimeSpan` | 1 day | Durable only: how long delivered jobs are kept, without payload, for duplicate detection. |
+| `DeadPayloadRetention` | `TimeSpan` | 7 days | Durable only: how long a dead job keeps its payload (clear-text token) for inspection; afterwards the payload is emptied and the row stays. Zero or less keeps it. |
 
 Invalid values abort host startup (`ValidateOnStart`).

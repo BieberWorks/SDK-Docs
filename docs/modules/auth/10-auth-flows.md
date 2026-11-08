@@ -23,6 +23,8 @@ Incoming request
 
 The `Smart` scheme is the `DefaultScheme` and `DefaultChallengeScheme`. API clients send the Bearer header, Blazor Server clients use the cookie automatically.
 
+The 2FA challenge token (issued after the password step, before the second factor) is signed for its own audience (`<Audience>:2fa-challenge`) and carries a `purpose` claim. Bearer validation rejects it, so it can only be redeemed at the 2FA verify step and never authenticates a protected route.
+
 ## Login Flow (Cookie / Blazor Server)
 
 Blazor Server runs over SignalR — inside an active circuit, HTTP cookies cannot be set. The module solves this with the **Ticket Store Pattern**:
@@ -164,6 +166,17 @@ Content-Type: application/json
 
 The `RefreshTokenCommandHandler` extracts claims from the expired access token (lifetime validation intentionally disabled), checks the refresh token in the database (not revoked, not expired), revokes the old one, and issues a new token pair.
 
+### Token sign-out
+
+```http
+POST /api/auth/logout
+{ "refreshToken": "base64…" }
+```
+
+**Opt-in:** the route answers `404` unless the host sets `BieberWorks:Auth:TokenLogout:Enabled=true`. Hosts that do not serve a token client such as the BFF expose no additional anonymous route. The 256-bit random refresh token in the body is the credential (like on `POST /api/auth/refresh`); no other secret is needed to revoke it.
+
+Revokes one refresh token so a token client (for example the [BFF](17-bff.md)) can end its session for real. Anonymous and idempotent: unknown, expired or already revoked tokens answer `200` too, so the call reveals nothing about which tokens exist. Access tokens already issued stay valid until they expire.
+
 ## Registration
 
 ```http
@@ -251,12 +264,24 @@ The job kinds are:
 | `RegistrationFollowUpJob` | uniform registration | see [Registration](11-registration.md) |
 | `PasswordResetMailJob`, `ConfirmationMailJob` | the worker or the `EmailConfirmationRequestedEvent` processor | creates the link and sends the mail |
 
+### Durable mail queue
+
+The in-memory queue loses queued mails when the process is killed. For hosts that must not lose them (for example the identity service of a split deployment) set `BieberWorks:Auth:MailQueue:Durable` to `true`. Nothing else changes for the callers: the flows return as fast as before, and without the setting the in-memory queue is registered exactly as before.
+
+- Jobs are rows of `auth."MailJobs"` (added by the migration `AddMailJobs`; it is applied with the other Auth migrations, also when the option is off). `DurableAuthMailWorker` claims due rows with `FOR UPDATE SKIP LOCKED` and a lease, delivers them, and marks them delivered. A killed process leaves the lease to expire; the job is then claimed again, by this or by another host.
+- The confirmation mail job is written by the very `SaveChanges` that stores the confirmation token (`EmailConfirmationTokenService`). A crash can therefore neither leave a token without its mail intent nor a mail intent without its token, and a failed commit leaves no job. Anonymous requests (forgot password, confirmation request, uniform registration) store their job in one insert before the answer is given.
+- `EmailConfirmationRequestedEventHandler` still runs, but recognises the job by its duplicate key (user and a hash of the token) and does nothing. Events raised by other code without a stored job still produce one.
+- A failing send is no longer swallowed: the job is retried with exponential backoff and parked as dead after `MaxAttempts` (the row stays for inspection, `LastError` holds the reason). Delivered rows lose their payload (it contains the token) and are purged after `RetentionPeriod`.
+- Delivery is at-least-once towards the configured `IEmailSender`. While a durable job is delivered, `AuthMailIdempotency.Current` holds the job id. A sender that stores the mail itself, for example into an outbox, should use it as the identity of that record; then a crash between "stored" and "marked delivered" cannot produce a second mail. The identity service of the ServiceKit pilot does exactly that.
+
+Limits: two commits remain in the register flow (user, then token), so a crash between them leaves an account without a mail, as before; the user can request a new one. In the anonymous resend flows the token and the follow-up job are also separate steps of the worker. A job stays in the database for at most `RetentionPeriod` after delivery; payloads of pending jobs and of dead jobs younger than `DeadPayloadRetention` (default 7 days) contain the confirmation token like the token table does, so protect the table like `EmailConfirmationTokens`.
+
 ::: warning Behavior of event processors in the anonymous flows
 `PasswordResetRequestedEvent` (forgot password) and `EmailConfirmationRequestedEvent` (anonymous confirmation request, registration follow-up) are raised by the mail worker for these flows, not inside the request. Processors that the host (or another module, for example auditing) registered for these events therefore:
 
 - run in the worker's own DI scope, **without an `HttpContext`**, without the request scope and outside the request's transaction; resolve tenant, user or IP yourself if you need them (the culture of the request is restored as `CurrentUICulture`);
 - run for known accounts only, as before, but their cost no longer shows in the response time;
-- can be **lost**: the queue is in memory, so an event is gone when the process is killed, and when the bounded queue is full both the event and the mail are dropped (`queue_dropped` counts it). A durable outbox is not part of this module;
+- can be **lost** with the default in-memory queue: an event is gone when the process is killed, and when the bounded queue is full both the event and the mail are dropped (`queue_dropped` counts it). The [durable mail queue](#durable-mail-queue) keeps the mail, not the event;
 - cannot stop the reset mail: for forgot password the mail is queued before the event is published, and a processor that throws is logged and counted (`send_failures`, kind `password_reset_request`). The foundation publisher stops at the first processor that throws, so processors registered after a failing one do not run for that event. For `EmailConfirmationRequestedEvent` the mail is queued by a processor of the SDK; a host processor that throws before it in registration order can prevent that mail.
 
 Events raised for authenticated flows (resend, registration with `UniformResponse = false`) are unchanged and still run in the request.
