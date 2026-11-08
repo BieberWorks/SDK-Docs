@@ -93,7 +93,7 @@ Outbox store). Coarse `entity_type`/`permission_key`/`required_role` filtering h
 in this query, before ranking/paging; `ISearchService` applies the remaining `VisibilityScope`
 fine-filter (e.g. `"owner:{userId}"`) afterwards.
 
-Snippets use neutral highlight markers (`{{hl}}...{{/hl}}`) rather than raw HTML — the contract is
+Snippets use neutral highlight markers (<span v-pre>`{{hl}}...{{/hl}}`</span>) rather than raw HTML — the contract is
 deliberately HTML-free/XSS-safe; only the UI layer (`BwSearchBox`/`BwSearchResultsPage`) turns
 these into `<mark>` tags when rendering.
 
