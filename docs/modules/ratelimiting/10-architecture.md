@@ -32,14 +32,47 @@ This means a host that never adds SDK-Settings gets a fully functional, code-def
 ```csharp
 internal interface IRateLimitStore
 {
-    Task<RateLimitCounterState> IncrementAsync(string key, TimeSpan window, CancellationToken ct);
-    Task<RateLimitCounterState?> PeekAsync(string key, CancellationToken ct);
-    Task SetLockoutAsync(string key, TimeSpan duration, CancellationToken ct);
-    Task ResetAsync(string key, CancellationToken ct);
+    Task<RateLimitCounterState> IncrementAsync(RateLimitStoreKey key, TimeSpan window, CancellationToken ct);
+    Task<RateLimitCounterState?> PeekAsync(RateLimitStoreKey key, CancellationToken ct);
+    Task SetLockoutAsync(RateLimitStoreKey key, TimeSpan duration, CancellationToken ct);
+    Task ResetAsync(RateLimitStoreKey key, CancellationToken ct);
 }
 ```
 
 Only `InMemoryRateLimitStore` (a `ConcurrentDictionary`-backed, fixed-window implementation) ships in this release. It is process-local — not shared across horizontally scaled instances. A future `BieberWorks.SDK.RateLimiting.Redis` package would supply an alternative `IRateLimitStore` without touching `IRateLimiter` callers.
+
+## Gating pattern: acquire first, reset on success
+
+`PeekAsync` is advisory (display only). Gates take the slot with `TryAcquireAsync` *before* the protected check and call `ResetAsync` on success:
+
+1. `TryAcquireAsync` → rejected: return 429 with `RetryAfter`.
+2. Run the check (password, OTP, key).
+3. Success → `ResetAsync`. Failure → nothing else to do, the attempt is already counted.
+
+A peek-then-acquire gate has two defects: concurrent requests all pass the peek before any of them counts (a burst multiplies the budget), and a `LockoutDuration` never starts, because the lockout begins with the acquire that *exceeds* the limit and a peek gate stops callers one acquire earlier. Checks that fail before the protected step (unknown user, disabled feature) still consume a slot; that is intentional (fail-closed).
+
+## Algorithms
+
+Only fixed windows are evaluated. `RateLimitAlgorithm.SlidingWindow` is accepted (contract and Settings key), but evaluated as a fixed window in this release; the limiter logs a warning once per policy. Around a window boundary up to twice `PermitLimit` can pass. Counters are process-local: with N instances, each instance enforces the limit separately.
+
+## Window, lockout and peek semantics
+
+- A window is fixed: the first acquire opens it, and it resets entirely once `WindowResetAt` has passed.
+- A lockout starts with the acquire that *exceeds* `PermitLimit`. While it is active, every acquire and peek is rejected with `RetryAfter` = remaining lockout time. A lockout that outlives its window keeps the partition blocked until the lockout ends.
+- Once both the window and the lockout have expired, the old counter no longer counts. Peek reports the full quota again, and the next acquire opens a fresh window without carrying over the expired lockout.
+- When the budget is used up but no lockout is active, peek returns `Allowed = false` together with `RetryAfter` = time until the window resets, so callers can send a correct `Retry-After` header.
+- All timestamps come from `TimeProvider` (registered as `TimeProvider.System` via `TryAdd`), so a host or test can supply its own clock.
+
+## Store bounds and eviction
+
+The in-memory store is bounded, so a flood of distinct partition keys (e.g. rotating IPs) cannot exhaust memory:
+
+- **Sweep:** expired counters (window over, no active lockout) are removed at most once per `SweepInterval`. The sweep is triggered by store access, not by a timer.
+- **Caps:** `MaxEntriesPerPolicy` limits each policy, `MaxEntries` limits the whole store. A flood on one policy therefore cannot evict counters of another policy.
+- **Eviction order:** when a cap is exceeded, the store trims to 90 % of the cap, removing expired entries first, then live counters with the lowest count (earliest window end first). Partitions with an active lockout are evicted last. A flood of single-hit keys thus cannot push out a counter that already recorded several attempts.
+- **Fail-closed:** a new key is always counted; eviction runs afterwards, single-flight on a snapshot. Under heavy concurrency the store may briefly exceed a cap by about the number of concurrent writers. Each trim logs a warning.
+
+Entry counts are tracked with `Interlocked` counters, so the hot path never takes all dictionary locks.
 
 ## No DbContext
 
@@ -49,6 +82,7 @@ Rate limit state is intentionally volatile (counters with a TTL). Persisting it 
 
 - `UseBieberWorksRateLimiting()` — global middleware, one IP-based policy for all requests except an allow-list (health checks by default).
 - `RateLimiting.For(policyName, partitionKind)` — per-endpoint `IEndpointFilter` factory for Minimal APIs, declarative and composable with other filters.
+- Client partitioning (both paths): IPv4-mapped IPv6 addresses count as IPv4, and IPv6 clients are grouped by network prefix (`RateLimitingMiddlewareOptions.IPv6PrefixLength`, default 64), so rotating addresses inside one /64 cannot create new buckets. A request without a client address gets **no** IP bucket and passes the IP limit (a warning is logged once per process; configure forwarded headers behind a proxy). `UserId` partitions use the stable id claim (`NameIdentifier`, then `sub`), and anonymous callers fall back to their IP partition. There are no shared `"unknown"`/`"anonymous"` buckets that one caller could fill for everyone.
 - Both paths write the 429 response through the shared `RateLimitResponseWriter`, which resolves `IErrorLocalizer` from `HttpContext.RequestServices` (optional — falls back to a hardcoded English message) and sets the `Retry-After` header from `RateLimitResult.RetryAfter`.
 
 ## Admin UI
