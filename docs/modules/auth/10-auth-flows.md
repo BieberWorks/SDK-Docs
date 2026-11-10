@@ -136,13 +136,26 @@ The same applies to the service-token endpoint (`POST /auth/service-token`): att
 
 At startup the module logs a warning when forwarded-header processing for `X-Forwarded-For` does not appear to be configured. This check is best effort: it cannot detect the real network topology, never aborts startup, and can be ignored for hosts that are exposed directly.
 
+### Sign-in and 2FA attempt limits
+
+Login, 2FA verify and 2FA resend (policies `WellKnownRateLimitPolicies.Login`, `.TwoFactorVerify`, `.TwoFactorResend`) take a slot from `IRateLimiter.TryAcquireAsync` **before** the password, code or resend is processed (acquire first). A successful sign-in (correct password, account not locked, confirmation gate passed) resets the login counter; a successful 2FA verification resets the verify counter, for an OTP and for a recovery code alike. Parallel attempts therefore cannot multiply the budget: with the default 5 attempts, a burst of 40 wrong passwords checks at most 5 passwords and answers the rest with `429`.
+
+Defaults (hosts can override every policy): sign-in 5 attempts per 15 minutes per (client address, identifier), without a separate lockout, so the wait ends with the window; 2FA verify 5 attempts per 15 minutes per user, then a 15-minute lockout; 2FA resend 1 per 60 seconds per user.
+
+Consequences:
+
+- Every attempt counts, including attempts for unknown accounts, for locked accounts and for unconfirmed accounts (fail-closed). Only a full success gives the budget back.
+- A rejected attempt carries the wait time in `DomainError.RetryAfter` (`Identity.Login.RateLimited`, `Identity.2FA.TooManyAttempts`, `Identity.2FA.ResendThrottled`). The HTTP endpoints (`login`, `verify-2fa`, `resend-2fa`) answer `429` with a `Retry-After` header in whole seconds (rounded up, at least 1). Every Auth endpoint error that carries `DomainError.RetryAfter` gets this header.
+- `resend-2fa` reports `cooldownSeconds` from the window of the registered resend policy (default 60), so an overridden policy is reflected in the countdown.
+- `IRateLimiter.PeekAsync` is not used as a gate any more; it remains a read-only hint for display purposes.
+
 ### Account lockout
 
 A locked-out account (ASP.NET Core Identity lockout, set by an administrator or by Identity itself) is rejected consistently:
 
 | Flow | Behavior |
 |------|----------|
-| Login (`LoginCommandHandler`) | After the password has been verified, a locked account returns `Identity.Login.LockedOut` (HTTP 403, `DomainError.Forbidden`). No token and no 2FA code is issued. The attempt is not counted by the login rate limiter. |
+| Login (`LoginCommandHandler`) | After the password has been verified, a locked account returns `Identity.Login.LockedOut` (HTTP 403, `DomainError.Forbidden`). No token and no 2FA code is issued. The attempt slot taken before the password check stays consumed (see [Sign-in and 2FA attempt limits](#sign-in-and-2fa-attempt-limits)). |
 | 2FA verify | `Identity.Login.LockedOut` (403) before the recovery code or OTP is checked. |
 | Token refresh | `Identity.Login.LockedOut` (403); the submitted refresh token is revoked. |
 
@@ -313,7 +326,7 @@ Set `BieberWorks:Auth:SignIn:RequireConfirmedEmail` to `true` (default `false`) 
 
 | Flow | Behavior with the option on |
 |------|-----------------------------|
-| Login | After the password and the lockout check, an unconfirmed account returns `Identity.Login.EmailNotConfirmed` (HTTP 403, `DomainError.Forbidden`). No token, no 2FA code is sent, and the attempt is not counted by the login rate limiter. A wrong password still yields `Identity.Login.Unauthorized`, a locked account `Identity.Login.LockedOut`. |
+| Login | After the password and the lockout check, an unconfirmed account returns `Identity.Login.EmailNotConfirmed` (HTTP 403, `DomainError.Forbidden`). No token, no 2FA code is sent, and the attempt slot taken before the password check stays consumed. A wrong password still yields `Identity.Login.Unauthorized`, a locked account `Identity.Login.LockedOut`. |
 | 2FA verify | Returns `Identity.Login.EmailNotConfirmed` before the code is checked. |
 | Token refresh | Returns `Identity.Login.EmailNotConfirmed`; the submitted refresh token is revoked (same as for lockout). |
 | Register | No tokens are issued: `TokenResponse` is `null` and `RequiresEmailConfirmation` is `true`. Without the option, registration is unchanged. |

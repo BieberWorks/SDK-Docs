@@ -78,10 +78,16 @@ builder.Services.AddBieberWorksModules(builder.Configuration,
 
 - **Without** `RateLimitingModule` in the host, Auth automatically falls back to a built-in,
   in-process rate limiter (`AuthFallbackRateLimiter`). It enforces the same default policies
-  as before (5 attempts / 15 min lockout for login and 2FA-verify, 60s cooldown for
-  2FA-resend) — real, working brute-force protection with zero extra configuration. The
+  as SDK-RateLimiting (sign-in: 5 attempts per 15 minutes; 2FA verify: 5 attempts per
+  15 minutes, then a 15-minute lockout; 60s cooldown for 2FA-resend) — real, working brute-force protection with zero extra configuration. The
   fallback is volatile (in-memory, single-process) and does not support Settings-overrides or
-  the Admin UI.
+  the Admin UI. It follows the same counting semantics as SDK-RateLimiting's in-memory store:
+  `PeekAsync` reports the remaining wait time when the budget is used up, a counter from an
+  elapsed window no longer counts (also after an expired lockout), and the store is bounded
+  (100 000 keys in total, 50 000 per policy, expired counters swept about once a minute). When
+  a cap is reached, expired counters go first, then live counters with the fewest hits and the
+  earliest window end; active lockouts go last. A flood of one-off keys therefore cannot evict a
+  counter with real progress, and a flood in one policy cannot evict counters of another.
 - **With** `RateLimitingModule` registered, its central implementation is used instead, giving
   you Settings-backed policy overrides, the Admin UI, and shared limits across modules.
 - **Known gap:** if the host references the `BieberWorks.SDK.RateLimiting` NuGet package but
@@ -385,6 +391,16 @@ The three breaking changes, in short: (1) the new member `ITokenService.RevokeRe
 - **Token storage format is not backwards compatible.** Refresh tokens are stored as hashes; an instance of the previous version cannot redeem tokens issued by the new one. See the rolling-deploy notes below.
 - **Service accounts are validated at start.** An audience equal to this API's own audience, or a duplicate, empty or colon-containing `ClientId`, now fails the start (`ServiceAccounts` configuration).
 - **Mail transport** must use TLS outside Development, or `Email__AllowInsecureTransport=true`. See [Mail transport security](#mail-transport-security).
+
+### Rate-limit behaviour changes after 4.0.0
+
+These are security fixes; the public API is unchanged, so they are not marked as breaking. Clients may notice:
+
+- **Acquire-first sign-in and 2FA limits.** Login, 2FA verify and 2FA resend count every attempt before it is checked, not only failed ones. A burst of parallel attempts no longer exceeds the limit, and attempts for unknown, locked or unconfirmed accounts also use up the budget. A successful sign-in or 2FA verification (including a recovery code) resets the counter. See [Sign-in and 2FA attempt limits](10-auth-flows.md#sign-in-and-2fa-attempt-limits).
+- **Lockouts configured on these policies now take effect.** Before, a `LockoutDuration` on the login or 2FA-verify policy was only reached by parallel requests. Hosts that override these policies with a lockout should check the resulting lock time.
+- **Sign-in default is 5 attempts per 15 minutes, without a separate lockout.** Before, the code default was 5 per minute plus a 15-minute lockout that was effectively never reached, so about 5 attempts per minute were possible. The wait time now ends with the 15-minute window (the `429` carries the rest of the window as `Retry-After`). A sign-in success resets it. On shared addresses (NAT, or a proxy without trusted forwarded headers) a wrong-password burst can block an account on that address for up to 15 minutes instead of 1; configure `UseForwardedHeaders` correctly (see [Login rate limiting behind a proxy](10-auth-flows.md#login-rate-limiting-behind-a-proxy)). Hosts that override the login policy keep their values.
+- **`DomainError.RetryAfter`** is set on the `429` errors of login, 2FA verify and 2FA resend, and the HTTP endpoints now send a `Retry-After` header with it. A host middleware that adds `Retry-After` only when none is present keeps working unchanged.
+- **`resend-2fa` `cooldownSeconds`** follows the configured resend policy window instead of a fixed 60.
 
 ### Rolling deploys and the refresh-token migration
 
