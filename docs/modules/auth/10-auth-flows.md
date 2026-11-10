@@ -88,6 +88,8 @@ Content-Type: application/json
 }
 ```
 
+Unknown accounts and wrong passwords return the same `401` response. To keep the response time comparable, a sign-in for an unknown account verifies the password against a constant dummy hash created with the active password hasher (same algorithm and cost); the result is discarded.
+
 Success response (`LoginResponseDto`):
 
 ```json
