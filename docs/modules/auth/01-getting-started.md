@@ -362,3 +362,38 @@ Confirmation and password-reset mails are delivered by a background worker (see 
 | `DeadPayloadRetention` | `TimeSpan` | 7 days | Durable only: how long a dead job keeps its payload (clear-text token) for inspection; afterwards the payload is emptied and the row stays. Zero or less keeps it. |
 
 Invalid values abort host startup (`ValidateOnStart`).
+
+### Mail transport security
+
+The mail module (SDK-Email) refuses to start outside Development when the SMTP security mode is `None`. Run production with TLS (`Email:SecurityMode` = `StartTls` or `SslOnConnect`). For an internal relay on a trusted network without TLS you must accept the risk explicitly with `Email__AllowInsecureTransport=true` (environment variable) or `Email:AllowInsecureTransport`; the host then logs a warning at start. Confirmation, reset and 2FA mails contain tokens, so do not send them unencrypted over untrusted networks.
+
+## Upgrading
+
+### Which version contains what
+
+`3.8.0` was only a **hotfix release**: it contains only the fix that rejects 2FA challenge tokens as bearer access tokens. The service-oriented work (JWKS and asymmetric signing, service tokens, the BFF packages `Auth.Bff` and `Auth.Bff.Postgres`, the durable mail queue, the logout route, refresh-token hardening and the 2FA re-authentication below) ships as a **major release, `4.0.0`**, because it contains breaking changes (listed below). There is no `3.9.0`. Do not look for those features in `3.8.0`.
+
+### Breaking changes when moving to 4.0.0
+
+The three breaking changes, in short: (1) the new member `ITokenService.RevokeRefreshTokenAsync` breaks implementers, (2) `disable-2fa` and `regenerate-recovery-codes` answer 403 `Identity.2FA.ReauthRequired` to calls without proof (clients that treat any 403 as "session invalid" should special-case the `ReauthFailed` and `ReauthRequired` codes), and (3) the refresh-token storage format is not backwards compatible (see the rolling-deploy notes). Behaviour changes that clients may notice: replaying a rotated refresh token ends the whole chain, sign-out ends the whole chain, and the anonymous logout route and the 2FA re-authentication are rate limited.
+
+- **`ITokenService` gained a member.** `RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct)` was added to the public interface `BieberWorks.SDK.Auth.Tokens.ITokenService`. Code that only *uses* the interface is unaffected. A class that *implements* `ITokenService` (a replacement token service, or a hand-written test double) must implement the new member; mocking frameworks need no change.
+- **`IAuthClient`** gained overloads with a `verification` argument (default interface methods; existing implementers compile unchanged).
+- **2FA re-authentication.** `disable-2fa` and `regenerate-recovery-codes` now require a password, recovery code or current 2FA code in the request body. API clients that called them without a body receive `Identity.2FA.ReauthRequired` (403). See [Disable 2FA and regenerate recovery codes](10-auth-flows.md#disable-2fa-and-regenerate-recovery-codes).
+- **Refresh tokens are stored hashed** and reuse revokes the token family; the migration `HashRefreshTokensAddFamily` converts existing rows in place, sessions survive. See [Token Refresh](10-auth-flows.md#token-refresh).
+- **Database.** Migrations `AddMailJobs` (new table `auth."MailJobs"`, applied even without the durable queue) and `HashRefreshTokensAddFamily` run on startup. `AddMailJobs` only adds a table. `HashRefreshTokensAddFamily` is **not** purely additive: it adds three columns, rewrites every row of `auth."RefreshTokens"` (new family, hashed token) and creates two indexes, all in one transaction. The table is locked for the duration (logins and refreshes wait), which takes seconds for typical table sizes and longer for millions of rows; plan a window or delete expired tokens first. Its `Down` deletes the hashed tokens, so a rollback ends those sessions. The application database role needs DDL rights as before.
+- **Token storage format is not backwards compatible.** Refresh tokens are stored as hashes; an instance of the previous version cannot redeem tokens issued by the new one. See the rolling-deploy notes below.
+- **Service accounts are validated at start.** An audience equal to this API's own audience, or a duplicate, empty or colon-containing `ClientId`, now fails the start (`ServiceAccounts` configuration).
+- **Mail transport** must use TLS outside Development, or `Email__AllowInsecureTransport=true`. See [Mail transport security](#mail-transport-security).
+
+### Rolling deploys and the refresh-token migration
+
+The recommended order is **stop-the-world**: stop all old instances, start one new instance (it applies the migration), then start the others. Sessions survive.
+
+If old and new instances run side by side, even briefly, expect this:
+
+- After the migration an old instance looks tokens up as plain text and finds nothing, so refreshes that reach it answer 403. Clients that treat 403 as "session ended" (the BFF does) sign the user out.
+- Tokens issued by a new instance are hashed and cannot be redeemed on an old instance.
+- Plain tokens that an old instance wrote after the migration are redeemed by the new instance and rewritten as hashes, so nothing is stranded. Plain values stay in the database only until the token is used, the user logs in again, or it expires.
+
+To keep the mixed phase short, drain old instances before running the migration and shift traffic in one step. There is no supported way to run the old and the new token format in parallel for longer.

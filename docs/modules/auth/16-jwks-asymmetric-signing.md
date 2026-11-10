@@ -42,6 +42,10 @@ The default (`Symmetric`) is unchanged, so existing consumers need no changes.
    (longer than `AccessTokenExpirationMinutes`); consumers refresh the JWKS via the `kid` header.
 3. Remove the old key.
 
+::: warning Removal reaches consumers late
+Consumers cache the JWKS. Removing a signing key (for example after a compromise) only takes effect at a consumer after its next metadata refresh; until then it still accepts tokens signed with the removed key. Give consumers a bounded refresh interval, for example `AutomaticRefreshInterval` of the JWT bearer `ConfigurationManager` (or the matching ServiceKit option) of 5 to 15 minutes, and plan for that delay in your incident procedure. Unknown `kid` values trigger an immediate refresh, but a key that is merely *gone* from the set is only noticed by the periodic refresh.
+:::
+
 ## Endpoints (asymmetric mode only)
 
 | Path | Content |
@@ -95,5 +99,27 @@ For calls without a user (for example an outbox relay) configure service account
 * The token is signed like user tokens (ES256 with JWKS when asymmetric), has `sub = svc:<ClientId>`, the requested
   audience, and the configured `perm` claims. Wrong secret: `401`; audience not configured for the account: `403`.
 * Code inside the identity host can use `IServiceTokenIssuer.IssueTrustedAsync` without a secret. Never expose it over HTTP.
-* Only the SHA-256 of the secret is stored. Use high-entropy secrets (32+ random bytes); the endpoint has no
-  per-client lockout, so protect it with the host's rate limiting.
+* Only the SHA-256 of the secret is stored (it must be a 64-character hex value, anything else never authenticates). Use
+  high-entropy secrets (32+ random bytes).
+* Hardening: every attempt takes a slot before the secret is checked (so parallel guesses cannot exceed the budget) and a
+  successful call gives it back, so only failures accumulate. Attempts for a **configured** `client_id` are counted per
+  client address and client id against `auth:service-token-failures-client`; attempts with an unknown client id share one
+  bucket per address, `auth:service-token-failures-ip` (both default to 10 per 5 minutes, then `429` with `Retry-After` for
+  5 minutes). Junk requests from an address therefore cannot lock out the real services, but wrong secrets for one
+  service lock that service out for the same address, even with the correct secret afterwards. IPv6 clients are counted
+  per `/64`, and the default in-process limiter drops expired entries, so rotating source addresses neither bypasses the
+  limit nor grows memory. Counters are per process: with several instances the budget applies per instance unless a shared
+  limiter store is configured.
+* **Behind a reverse proxy** the client address is the proxy's address unless the host trusts `X-Forwarded-For` from that
+  proxy (`UseForwardedHeaders` with `KnownProxies`/`KnownNetworks`, or `Identity:ForwardedHeaders` in the Identity host).
+  Without it, failed attempts from anyone are counted against the proxy address and can lock the affected services out for
+  everyone behind it. Configure the trusted proxies whenever service accounts are used. The header is never read by Auth
+  itself, so it cannot be spoofed to evade the limit.
+* The request must be a form of at most 4 KB with a `Content-Length` header (chunked uploads without a length are rejected),
+  every field once and at most 512 characters, otherwise `400 invalid_request`. The lifetime is
+  clamped to 1..60 minutes. The audience must exactly match one configured for the account, there is no scope parameter and
+  the permissions always come from the account configuration, so a caller cannot obtain more than configured. The start
+  fails when an account has an empty, duplicate or colon-containing `ClientId`, or an audience equal to this API's own
+  audience (`JwtSettings:Audience` / `AdditionalAudiences`), because Auth would then accept the service token as a bearer
+  token. Unknown
+  clients cost the same work as wrong secrets (no timing hint). Responses carry `Cache-Control: no-store`.

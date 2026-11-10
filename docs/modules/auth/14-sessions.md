@@ -60,6 +60,7 @@ Section `BieberWorks:Auth:Sessions` (class `AuthSessionOptions`), validated at s
 | `RetentionAfterEnd` | 30 d | Ended sessions are deleted after this. Active sessions are never deleted. |
 | `CleanupInterval` | 1 h | Interval of the cleanup service (batched, safe with several instances). |
 | `CleanupBatchSize` | 1000 | Rows per delete statement. |
+| `LegacyPlainTokenGrace` | 1 day | Time after process start from which the cleanup re-writes leftover plain-text refresh tokens (from instances that predate hashing) as hashes. Set it longer than a rolling deploy. |
 | `EnableInternalValidationEndpoint` | `false` | Maps the internal endpoint for decoupled web hosts. |
 | `InternalPathPrefix` | `/_internal/auth` | Path prefix of that endpoint. |
 

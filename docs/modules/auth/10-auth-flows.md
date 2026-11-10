@@ -132,6 +132,10 @@ The login rate limiter partitions by the connection's `RemoteIpAddress` and the 
 
 Without it, all clients share the proxy's IP and therefore one bucket per identifier; the per-account counter keyed by the identifier stays effective.
 
+The same applies to the service-token endpoint (`POST /auth/service-token`): attempts are counted per (remote address, client id), and unknown client ids share one per-address bucket. Behind a proxy without trusted forwarded headers every caller has the proxy address, so anyone who knows a (non-secret) client id can lock that service out for the lockout period, and a lockout also rejects the correct secret. Mitigations: configure `UseForwardedHeaders` with `KnownProxies`/`KnownIPNetworks`, and keep the token endpoint reachable only from the internal network.
+
+At startup the module logs a warning when forwarded-header processing for `X-Forwarded-For` does not appear to be configured. This check is best effort: it cannot detect the real network topology, never aborts startup, and can be ignored for hosts that are exposed directly.
+
 ### Account lockout
 
 A locked-out account (ASP.NET Core Identity lockout, set by an administrator or by Identity itself) is rejected consistently:
@@ -166,6 +170,12 @@ Content-Type: application/json
 
 The `RefreshTokenCommandHandler` extracts claims from the expired access token (lifetime validation intentionally disabled), checks the refresh token in the database (not revoked, not expired), revokes the old one, and issues a new token pair.
 
+**Storage and reuse detection.** Refresh tokens are stored only as a SHA-256 hash (`h1:` + Base64); the plain value exists only in the response to the client, so a leaked database cannot be replayed. Every login starts a token *family*; each refresh keeps the family and marks the old token as replaced. Presenting a replaced token again is treated as theft: the whole family is revoked and the request answers `Identity.Token.Refresh.Forbidden` (403), so both the thief and the legitimate client must sign in again. A second use within `JwtSettings:RefreshTokenReuseGraceSeconds` (default 10) of the rotation, as caused by two parallel requests of one client, is only rejected and does not revoke the family. Parallel redemption is decided by an optimistic-concurrency check: exactly one request wins. Replaced tokens are kept until their own expiry, which is the refresh-token lifetime, so reuse can still be detected late (for example by a device that was offline). A background job removes expired rows of inactive users as well.
+
+**Upgrade.** The migration `HashRefreshTokensAddFamily` adds `FamilyId`, `ReplacedAt` and `Version` to `auth."RefreshTokens"`, gives every existing token its own family and replaces the stored plain value by its hash, so sessions survive a **stop-the-world** upgrade (all old instances stopped before the new version starts). It rewrites the table once and builds two indexes while holding a lock on it; see [Upgrading](01-getting-started.md#upgrading) for the rolling-deploy behaviour and the recommended order. The conversion is idempotent (converted rows carry the `h1:` prefix). Rolling back (`Down`) drops the new columns and deletes the hashed tokens: users must sign in again.
+
+Plain tokens that an older instance writes after the migration are still redeemed by the new version: it looks the value up as a hash and, for rows without the `h1:` prefix, as the plain value, then rewrites the row as a hash in its own family. The reverse does not work: an old instance cannot read hashed tokens and answers 403 for them.
+
 ### Token sign-out
 
 ```http
@@ -175,7 +185,7 @@ POST /api/auth/logout
 
 **Opt-in:** the route answers `404` unless the host sets `BieberWorks:Auth:TokenLogout:Enabled=true`. Hosts that do not serve a token client such as the BFF expose no additional anonymous route. The 256-bit random refresh token in the body is the credential (like on `POST /api/auth/refresh`); no other secret is needed to revoke it.
 
-Revokes one refresh token so a token client (for example the [BFF](17-bff.md)) can end its session for real. Anonymous and idempotent: unknown, expired or already revoked tokens answer `200` too, so the call reveals nothing about which tokens exist. Access tokens already issued stay valid until they expire.
+Revokes the login chain (token family) of the presented refresh token, so a token client (for example the [BFF](17-bff.md)) can end its session for real. Sending an older, already rotated token (for example after a lost response) ends the current chain as well; other devices keep their sessions. Anonymous, idempotent and limited to 60 calls per minute per client address (`429` with `Retry-After`). Unknown, expired or already revoked tokens answer `200` too, so the call reveals nothing about which tokens exist (a revoke that cannot be stored answers an error instead). Access tokens already issued stay valid until they expire.
 
 ## Registration
 
@@ -338,6 +348,8 @@ Sign-in related codes and their texts (English / German):
 | `Identity.2FA.InvalidToken` | 401 | Invalid two-factor authentication code. | Ungültiger Zwei-Faktor-Code. |
 | `Identity.2FA.InvalidCode` | 401 | Invalid verification code. | Ungültiger Bestätigungscode. |
 | `Identity.2FA.TooManyAttempts` | 429 | Too many failed 2FA attempts. Please wait 15 minutes. | Zu viele 2FA-Fehlversuche. Bitte 15 Minuten warten. |
+| `Identity.2FA.ReauthRequired` | 403 | Please confirm with your password or a 2FA code. | Bitte bestätige mit deinem Passwort oder einem 2FA-Code. |
+| `Identity.2FA.ReauthFailed` | 403 | The password or code is incorrect. | Das Passwort oder der Code ist falsch. |
 | `Identity.2FA.ResendThrottled` | 429 | Please wait before requesting another code. | Bitte warten Sie, bevor Sie einen neuen Code anfordern. |
 | `Identity.Token.Refresh.Forbidden` | 403 | Your session can no longer be refreshed. Please sign in again. | Ihre Sitzung kann nicht mehr erneuert werden. Bitte melden Sie sich erneut an. |
 
@@ -432,6 +444,19 @@ Enabling returns **8 single-use recovery codes**. They are shown **exactly once*
 server stores only an HMAC-SHA256 hash (salted), never the plaintext. The management UI
 on the Security page surfaces the remaining-code count and lets the user regenerate the
 set (which invalidates the previous codes) or disable 2FA again.
+
+### Disable 2FA and regenerate recovery codes
+
+```http
+POST /api/auth/disable-2fa
+POST /api/auth/regenerate-recovery-codes
+Authorization: Bearer eyJ…
+Content-Type: application/json
+
+{ "verification": "<password, unused recovery code or current 2FA code>" }
+```
+
+Both routes require re-authentication, so a stolen access token alone cannot remove the second factor. A missing proof answers `Identity.2FA.ReauthRequired` (403), a wrong one `Identity.2FA.ReauthFailed` (403). Every attempt takes a slot of its own budget (policy `auth:2fa-reauth`, 5 per 15 minutes, then `Identity.2FA.TooManyAttempts`, 429) before the proof is checked, and a valid proof resets it. The budget is separate from the 2FA sign-in counter, so someone with only a stolen access token can block further re-authentication but cannot lock the account owner out of signing in. The password is compared exactly as typed; recovery and e-mail codes are trimmed. The default limiter keeps counters per process: with several instances the budget applies per instance unless a shared limiter store is configured. `IAuthClient` gained overloads `DisableTwoFactorAsync(userId, verification, ct)` and `RegenerateRecoveryCodesAsync(userId, verification, ct)` (default interface methods, so existing implementers keep compiling); the old overloads without proof are rejected by this server. The commands `DisableTwoFactorAuthCommand` and `RegenerateRecoveryCodesCommand` carry the proof in the init property `Verification`; the Security page asks for it.
 
 ### Login with 2FA
 
