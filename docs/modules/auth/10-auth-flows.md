@@ -366,6 +366,10 @@ The in-memory queue loses queued mails when the process is killed. For hosts tha
 
 Limits: two commits remain in the register flow (user, then token), so a crash between them leaves an account without a mail, as before; the user can request a new one. In the anonymous resend flows the token and the follow-up job are also separate steps of the worker. A job stays in the database for at most `RetentionPeriod` after delivery; payloads of pending jobs and of dead jobs younger than `DeadPayloadRetention` (default 7 days) contain the confirmation token like the token table does, so protect the table like `EmailConfirmationTokens`.
 
+### Health check for dead mail jobs
+
+With `Durable` enabled, Auth registers a standard `IHealthCheck` named `auth-mail-jobs` (tag `ready`). It counts jobs that were parked as dead within `DeadJobHealthWindow` (default 24 hours) and reports `Degraded` (never `Unhealthy`) once the count reaches `DeadJobHealthThreshold` (default 1); otherwise `Healthy`. The description contains only counts, no addresses or payloads. If the database cannot be queried, the result uses the registration's `FailureStatus` (`Degraded`) and the error is logged. Expose it by mapping health checks in the host (for example `MapHealthChecks("/health/ready", new() { Predicate = r => r.Tags.Contains("ready") })`).
+
 ::: warning Behavior of event processors in the anonymous flows
 `PasswordResetRequestedEvent` (forgot password) and `EmailConfirmationRequestedEvent` (anonymous confirmation request, registration follow-up) are raised by the mail worker for these flows, not inside the request. Processors that the host (or another module, for example auditing) registered for these events therefore:
 
