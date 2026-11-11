@@ -52,6 +52,48 @@ every user shares one address unless identity learns the browser's address: list
 `Identity:ForwardedHeaders:KnownProxies` / `KnownNetworks`. Without that, a limit such as registration blocks all users behind
 the proxy together. The counters live in the process; with several instances each instance counts on its own.
 
+## Sign-in brake per client address
+
+The pair limit `auth:login` (client address plus e-mail) does not stop one address from trying a single password against
+many accounts. The Auth module therefore offers an opt-in brake for failed sign-ins per client address (policy
+`auth:login-ip`, IPv6 grouped by /64): from a threshold of failures per window the sign-in check is delayed before the
+password is verified (so known and unknown accounts answer equally slowly), concurrent checks per address are capped, and
+requests above the caps get 429 with `Retry-After`. Only failed passwords count; a successful sign-in neither counts nor
+resets. It does not help against distributed attacks (many addresses, few attempts each), and the counters live in the
+process (N instances give N times the budget).
+
+**The image ships with the brake switched off, on purpose.** Identity always honours `X-Forwarded-For` but only from the
+proxies you list. With an empty `Identity:ForwardedHeaders` list the header is ignored, every user behind the frontend shows
+up with the frontend's address, and an enabled brake would throttle all sign-ins together (a global denial of service).
+Neither Identity nor Auth can tell whether your topology is configured correctly (Auth only logs a start-up warning), so
+the decision stays with the operator.
+
+Activation checklist:
+
+1. Set `Identity__ForwardedHeaders__KnownProxies__0` (or `__KnownNetworks__0`, for example the compose network in CIDR
+   notation) to the frontend or proxy that calls identity. Verify that sign-in failures from two browsers are counted
+   separately before going on.
+2. Disable retries of `POST /api/auth/login` in the frontend's HTTP client (a retried 429 multiplies the load).
+3. Make sure the frontend's timeout for the sign-in call exceeds the brake's `MaxDelay` plus the frontend's own delay.
+4. Enable it:
+
+```
+BieberWorks__Auth__SignIn__FailureBrake__Enabled=true
+BieberWorks__Auth__SignIn__FailureBrake__DelayAfterFailures=10        # failures per window without delay
+BieberWorks__Auth__SignIn__FailureBrake__DelayStep=00:00:00.500       # delay per failure above the threshold
+BieberWorks__Auth__SignIn__FailureBrake__MaxDelay=00:00:05
+BieberWorks__Auth__SignIn__FailureBrake__MaxConcurrentPerAddress=16        # cold address
+BieberWorks__Auth__SignIn__FailureBrake__MaxConcurrentPerBrakedAddress=2   # braked address
+BieberWorks__Auth__SignIn__FailureBrake__MaxHeldRequests=256               # delayed requests in the whole process
+BieberWorks__Auth__SignIn__FailureBrake__RejectWhenSaturated=false         # true: 429 until the window ends
+RateLimiting__Policies__auth-login-ip__PermitLimit=30                 # saturation point (default 30)
+RateLimiting__Policies__auth-login-ip__Window=00:15:00
+```
+
+`RateLimiting__Policies__auth-login-ip__*` follows the same rules as the other policies above. The counter is a fixed
+window: when it expires the address gets its free attempts back. Behind a NAT the users of one address share the brake;
+keep `RejectWhenSaturated` off unless you accept that.
+
 ## Rolling back
 
 A start against a database whose `__EFMigrationsHistory` contains migrations unknown to the image logs an error naming them

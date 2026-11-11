@@ -19,6 +19,7 @@
 | `ServiceTransport:Subscriptions` | `email.mail-requested -> communication` | Event type to subscriber services |
 | `BieberWorks:Auth:MailQueue:Durable` | `true` | Auth mail jobs are stored in the Auth database (not in memory) and survive a process kill |
 | `Identity:ForwardedHeaders:KnownProxies` / `KnownNetworks` | none | Frontends or proxies (addresses / CIDR networks) that may tell identity the browser's address in `X-Forwarded-For`. Sign-in throttling and the session list use that address. Without an entry the header is ignored and every user behind a frontend shares the frontend's address (one attacker can then throttle everybody). Only `X-Forwarded-For` is honoured, never scheme or host |
+| `BieberWorks:Auth:SignIn:FailureBrake:*` | `Enabled=false` | Optional brake for failed sign-ins per client address (delay, concurrency caps). Off in the image; read the activation checklist in [operations](50-operations.md#sign-in-brake-per-client-address) before switching it on |
 | `App:PublicBaseUrl` | none | Base URL of the frontend for links in mails |
 | `Auth:Bootstrap:*` | off | Seed an administrator |
 | `ServiceTransport:Postgres:*Retention` | 7 d delivered / 30 d inbox / 90 d dead | Retention of outbox and inbox rows (see the ServiceKit docs); mail payloads are emptied on delivery |
