@@ -3,8 +3,18 @@ on:
   pull_request:
     branches: [dev, staging, main]
 jobs:
-  ci:
-    uses: BieberWorks/tooling/.github/workflows/dotnet-ci.yml@v1
-    secrets: inherit
+  # Job name is kept as "ci / build-test" because it may be a required status check.
+  build-test:
+    name: ci / build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: VitePress build
+        run: npm run docs:build
   sdk-deps:
     uses: BieberWorks/tooling/.github/workflows/check-sdk-deps.yml@v1
