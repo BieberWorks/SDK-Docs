@@ -10,22 +10,35 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
+    concurrency:
+      group: update-docs
+      cancel-in-progress: false
+    env:
+      PAYLOAD_MODULE: ${{ github.event.client_payload.module }}
+      PAYLOAD_REPO: ${{ github.event.client_payload.repo }}
+      PAYLOAD_VERSION: ${{ github.event.client_payload.version }}
     steps:
+      - name: Validate payload
+        run: |
+          [[ "$PAYLOAD_MODULE" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || { echo "::error::invalid module"; exit 1; }
+          [[ "$PAYLOAD_REPO" =~ ^SDK-[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || { echo "::error::invalid repo"; exit 1; }
+          [[ -z "$PAYLOAD_VERSION" || "$PAYLOAD_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]] || { echo "::error::invalid version"; exit 1; }
+
       - name: Checkout SDK-Docs
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           token: ${{ secrets.ORG_REPO_TOKEN }}
 
       - name: Checkout module repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          repository: BieberWorks/${{ github.event.client_payload.repo }}
+          repository: BieberWorks/${{ env.PAYLOAD_REPO }}
           token: ${{ secrets.ORG_REPO_TOKEN }}
           path: _module-source
 
       - name: Copy docs
         run: |
-          MODULE="${{ github.event.client_payload.module }}"
+          MODULE="$PAYLOAD_MODULE"
           TARGET="docs/modules/${MODULE,,}"
           if [ -d "_module-source/docs" ]; then
             mkdir -p "$TARGET"
@@ -43,7 +56,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "docs: update ${{ github.event.client_payload.module }} to ${{ github.event.client_payload.version }}"
+            git commit -m "docs: update $PAYLOAD_MODULE to $PAYLOAD_VERSION"
             for i in 1 2 3 4 5; do
               git pull --rebase origin main && git push origin main && break
               echo "Push attempt $i failed, retrying in 5s..."
