@@ -88,7 +88,7 @@ Content-Type: application/json
 }
 ```
 
-Unknown accounts and wrong passwords return the same `401` response. To keep the response time comparable, a sign-in for an unknown account verifies the password against a constant dummy hash created with the active password hasher (same algorithm and cost); the result is discarded.
+Unknown accounts and wrong passwords return the same `401` response. To keep the response time comparable, a sign-in for an unknown account verifies the password against a constant dummy hash created once per process with the active password hasher (same algorithm and cost) and then reused, so an unknown account costs exactly one verification, like a wrong password; the result is discarded.
 
 Success response (`LoginResponseDto`):
 
@@ -149,7 +149,72 @@ Consequences:
 - Every attempt counts, including attempts for unknown accounts, for locked accounts and for unconfirmed accounts (fail-closed). Only a full success gives the budget back.
 - A rejected attempt carries the wait time in `DomainError.RetryAfter` (`Identity.Login.RateLimited`, `Identity.2FA.TooManyAttempts`, `Identity.2FA.ResendThrottled`). The HTTP endpoints (`login`, `verify-2fa`, `resend-2fa`) answer `429` with a `Retry-After` header in whole seconds (rounded up, at least 1). Every Auth endpoint error that carries `DomainError.RetryAfter` gets this header.
 - `resend-2fa` reports `cooldownSeconds` from the window of the registered resend policy (default 60), so an overridden policy is reflected in the countdown.
-- `IRateLimiter.PeekAsync` is not used as a gate any more; it remains a read-only hint for display purposes.
+- `IRateLimiter.PeekAsync` is not used as a gate any more; it remains a read-only hint for display purposes (and for the delay of the sign-in brake below, which is a delay stage, not a gate).
+
+### Sign-in brake per client address (opt-in)
+
+The per-(address, identifier) limit does not stop password spraying: one address trying one password against many accounts hits a new partition every time. The optional sign-in brake counts **failed** sign-ins (unknown account or wrong password) per client address across all accounts and slows that address down. It is **off by default**.
+
+```json
+{
+  "BieberWorks": {
+    "Auth": {
+      "SignIn": {
+        "FailureBrake": {
+          "Enabled": true,
+          "DelayAfterFailures": 10,
+          "DelayStep": "00:00:00.500",
+          "MaxDelay": "00:00:05",
+          "MaxConcurrentPerAddress": 16,
+          "MaxConcurrentPerBrakedAddress": 2,
+          "MaxHeldRequests": 256,
+          "RejectWhenSaturated": false
+        }
+      }
+    }
+  }
+}
+```
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Enabled` | `false` | Main switch. |
+| `DelayAfterFailures` | `10` | Failures per address and window without a delay. |
+| `DelayStep` | 500 ms | Delay added per failure above `DelayAfterFailures`. |
+| `MaxDelay` | 5 s | Upper bound of the delay (at most 30 s). |
+| `MaxConcurrentPerAddress` | `16` | Sign-in checks of one address that may run at the same time while the address is not delayed. Caps a burst that arrives before the first failures are counted. Further parallel sign-ins get `429` with `Retry-After` (at least 1 s). |
+| `MaxConcurrentPerBrakedAddress` | `2` | Sign-in checks of one address that may run at the same time while the address is delayed (must not exceed `MaxConcurrentPerAddress`). Further parallel sign-ins get `429` with `Retry-After` (the current delay, at least 1 s). |
+| `MaxHeldRequests` | `256` | Sign-ins that may wait in a delay at the same time in this process; above it a delayed sign-in gets `429` with a short `Retry-After`. Addresses without a delay are never rejected because of it. |
+| `RejectWhenSaturated` | `false` | When `true`, an address that reached the policy's permit limit gets `429` until the window ends instead of the maximum delay. Users behind the same NAT are rejected as well. |
+
+Invalid values fail the start (`ValidateOnStart`).
+
+Behaviour:
+
+- Failures are counted in the rate-limit policy `auth:login-ip` (default 30 per 15 minutes, no lockout), partitioned by the client address: IPv4, or the /64 prefix for IPv6. Override it like every other policy (`ratelimit:auth:login-ip:limit` / `:window-seconds` with SDK-RateLimiting and SDK-Settings). The permit limit is the saturation point; the brake never locks out. A lockout configured through an override is treated as saturation.
+- The delay is applied **before** the account lookup and the password check, so it depends on the address only: known and unknown accounts, successes and failures take equally long.
+- A successful sign-in neither counts nor resets the counter (otherwise an attacker could clear it with an own account). Locked accounts, unconfirmed accounts, rejections by the per-account limit and cancelled requests are not counted. The counter expires with the window; after the window an address starts with a fresh allowance.
+- Without a known client address (for example a sign-in inside an interactive Blazor Server circuit without `HttpContext`) the brake does not apply. There is no shared "unknown" bucket.
+- Parallel sign-ins of one address are capped while the brake is enabled, also while the address is still "cold" (below `DelayAfterFailures`). A slot is taken before the delay and held until the password check has finished; it is returned on every outcome, including errors and cancelled requests. Without the cap a parallel client would not be slowed down by a delay at all, and a burst could pass before a single failure is counted. With the defaults a delayed address gets about 24 checks per minute.
+- The concurrency bookkeeping exists only for addresses with a running sign-in and is removed when the last one finishes. A defensive bound (10 x `MaxHeldRequests` tracked addresses) rejects only new, delayed addresses; addresses without a delay are never rejected because of other addresses.
+- Rejections use the existing code `Identity.Login.RateLimited` with `Retry-After`; delayed `401` responses carry no `Retry-After`.
+- Counters are per process; with several instances each has its own budget.
+
+Enable it only when the host sees the real client address (see "Login rate limiting behind a proxy" above). Behind a proxy whose forwarded headers are not trusted, every user has the proxy address and all sign-ins are slowed down together. Clients and proxies in front of Auth should not retry `POST` sign-in requests automatically.
+
+#### Honest limits of the brake
+
+The brake slows down password spraying from a single address. It is not a complete defence:
+
+- **Distributed botnets.** Many addresses with few attempts each stay below the per-address thresholds. The brake does not help here. Use a per-account counter across addresses, a CAPTCHA or proof-of-work step, or a WAF in front of the host.
+- **IPv6 rotation.** Addresses are grouped by /64. A client with a /56 or /48 prefix owns 256 or 65,536 /64 networks, and each starts with a full allowance, so the brake is weaker by that factor for such clients. There is no /48 stage.
+- **Window-end cliff.** The counter uses the fixed window of the policy (15 minutes by default). When it expires the address starts again with `DelayAfterFailures` undelayed attempts. With the defaults that is at most 10 fast attempts per address and 15 minutes.
+- **Per-instance counters.** Counters and the concurrency caps live in process memory. With N instances an address gets up to N times the budget.
+- **Shared addresses.** Users behind the same NAT share the delay while an attack from that address is running. The delay is capped by `MaxDelay` and never turns into a lockout unless `RejectWhenSaturated` is on.
+
+At startup the module also logs a warning when the brake is enabled and `KnownProxies`/`KnownIPNetworks` hold no address beyond the loopback defaults, because then `X-Forwarded-For` of a proxy is ignored. Like the other forwarded-header check this never aborts the start.
+
+See [Enable the sign-in brake](01-getting-started.md#enable-the-sign-in-brake) for the activation checklist and [Upgrading](01-getting-started.md#sign-in-brake-in-the-next-minor-release) for the version note.
 
 ### Account lockout
 

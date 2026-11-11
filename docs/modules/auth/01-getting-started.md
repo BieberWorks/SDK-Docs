@@ -324,6 +324,24 @@ The resulting link paths are:
 | Email confirmation | `{App:PublicBaseUrl}/auth/confirm-email?userId=…&token=…` |
 | Password reset | `{App:PublicBaseUrl}/auth/reset-password?email=…&token=…` |
 
+## Enable the sign-in brake
+
+The brake for failed sign-ins per client address is **off by default**. See [Sign-in brake per client address](10-auth-flows.md#sign-in-brake-per-client-address-opt-in) for behaviour and all options. Minimal activation:
+
+```json
+{ "BieberWorks": { "Auth": { "SignIn": { "FailureBrake": { "Enabled": true } } } } }
+```
+
+Defaults when enabled: 10 failures per address and window without delay, then +500 ms per failure up to 5 s; 16 parallel checks per address (2 once delayed); 256 delayed requests per process; counted in policy `auth:login-ip` (30 per 15 minutes, never a lockout).
+
+Checklist before enabling it:
+
+1. The host sees the real client address. Behind a reverse proxy or load balancer call `UseForwardedHeaders` with `XForwardedFor` **and** the proxy address in `KnownProxies` or `KnownIPNetworks`. Otherwise all users share the proxy address and are slowed down together. The module logs a warning at start when the brake is enabled and no proxy beyond loopback is trusted.
+2. With the BFF, the BFF address must be trusted by the Identity host as well (its `X-Forwarded-For` carries the browser address).
+3. Clients, HTTP handlers and proxies must **not retry** `POST` sign-in requests on `429` or timeouts; a retry multiplies the load and extends the delay. Disable resilience/retry handlers for the sign-in route.
+4. Keep proxy and client timeouts above `MaxDelay` (plus the BFF delay, see [BFF](17-bff.md#interaction-with-the-identity-sign-in-brake)).
+5. Remember the limits: the brake does not stop distributed botnets or IPv6 prefix rotation and its counters are per instance (see [Honest limits of the brake](10-auth-flows.md#honest-limits-of-the-brake)).
+
 ## Migrations
 
 The module runs its EF Core migrations automatically on startup (`IModuleInitializer.InitializeAsync`). Manual migration is not necessary. The PostgreSQL schema is named `auth`.
@@ -401,6 +419,10 @@ These are security fixes; the public API is unchanged, so they are not marked as
 - **Sign-in default is 5 attempts per 15 minutes, without a separate lockout.** Before, the code default was 5 per minute plus a 15-minute lockout that was effectively never reached, so about 5 attempts per minute were possible. The wait time now ends with the 15-minute window (the `429` carries the rest of the window as `Retry-After`). A sign-in success resets it. On shared addresses (NAT, or a proxy without trusted forwarded headers) a wrong-password burst can block an account on that address for up to 15 minutes instead of 1; configure `UseForwardedHeaders` correctly (see [Login rate limiting behind a proxy](10-auth-flows.md#login-rate-limiting-behind-a-proxy)). Hosts that override the login policy keep their values.
 - **`DomainError.RetryAfter`** is set on the `429` errors of login, 2FA verify and 2FA resend, and the HTTP endpoints now send a `Retry-After` header with it. A host middleware that adds `Retry-After` only when none is present keeps working unchanged.
 - **`resend-2fa` `cooldownSeconds`** follows the configured resend policy window instead of a fixed 60.
+
+### Sign-in brake in the next minor release
+
+The sign-in brake is additive: the new options class `AuthSignInFailureBrakeOptions` (property `AuthSignInOptions.FailureBrake`) and the rate-limit policy `auth:login-ip` are new, the brake is disabled by default, and nothing changes for existing hosts until `Enabled` is set. The policy name and the `BieberWorks:Auth:SignIn:FailureBrake` keys are stable. The policy shows up in the SDK-RateLimiting admin list even while the brake is off. See [Enable the sign-in brake](#enable-the-sign-in-brake).
 
 ### Rolling deploys and the refresh-token migration
 

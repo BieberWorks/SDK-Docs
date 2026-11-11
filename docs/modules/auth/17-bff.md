@@ -162,6 +162,19 @@ Everything is a contract. Skip `MapBff()` and call `BffSessionManager.StartAsync
 
 Postgres (`BieberWorks:Bff:Postgres`): `ConnectionString`, `Schema` (`bff`), `SweepInterval` (10 min), `ApplicationName` (`BieberWorks.Bff`, keep identical on all hosts that share sessions), `KeyEncryptionKeyFile` (required outside Development), `KeyEncryptionKey` (Development only).
 
+## Interaction with the Identity sign-in brake
+
+Two independent mechanisms can slow a sign-in that goes through the BFF:
+
+- **BFF throttle (tarpit).** Per instance: a flood limit per address, failures per (address, account), and a delay per account across all addresses (250 ms per failure above 30, at most 3 s, never a lockout). The delay happens in the BFF before the call to Identity.
+- **Identity sign-in brake** (opt-in, see [Sign-in brake per client address](10-auth-flows.md#sign-in-brake-per-client-address-opt-in)). It counts failures per client address across accounts and delays by up to `MaxDelay` (default 5 s) before it checks the password.
+
+They complement each other (per account vs. per address) and add up: the worst case of one sign-in is the BFF delay (up to 3 s) plus the Identity delay (up to 5 s). Practical consequences:
+
+- The Identity brake only sees the browser address if the BFF sends `X-Forwarded-For` (`ClientAddressHeader`) **and** the Identity host trusts the BFF address in `KnownProxies`/`KnownIPNetworks`. Otherwise all browsers appear with the BFF address and the brake throttles everybody.
+- Keep the timeout of the BFF's HTTP client to Identity above the sum (for example 15 s or more), and do not configure automatic retries for `POST api/auth/login`. A `429` from Identity is mapped to a rate-limited result without counting a failure in the BFF; a retry would only repeat it.
+- Both mechanisms are per instance. Counters are not shared between BFF or Identity instances.
+
 ## Limits
 
 - Two-factor sign-in is not driven by the BFF; it redirects with `?error=twofactor`.
