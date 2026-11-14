@@ -45,4 +45,7 @@ The service writes to the console only. Limit the container log size in your run
 | `RateLimiting:DefaultRetryAfter` | `00:01:00` | `Retry-After` of a 429 when the limiter could not tell the wait |
 | `OpenApi:Enabled` / `RequireAuthorization` | `true` / `false` | Serve `/openapi/v1.json`, optionally only to authenticated callers |
 | `ServiceHost:InfoRequiresAuthorization` | `false` | Same for `/info` |
-| `ServiceHost:Metrics:*` | off | Opt-in Prometheus endpoint (token or explicit `AllowAnonymous`) |
+| `ServiceHost:Metrics:*` | off | Opt-in Prometheus endpoint (token or explicit `AllowAnonymous`). Use it **or** OTLP metric export, not both |
+| `Observability:Enabled` | `false` | Master switch for OpenTelemetry (traces, metrics, logs over OTLP). Off: no provider, no exporter, nothing changes. See [Telemetry](50-operations.md#telemetry) |
+| `Observability:Otlp:*` | none | `Endpoint` (for example `http://collector:4318`), `Protocol` (`http/protobuf` default, `grpc`), `Headers` (secret, environment variable or file only), `Timeout`; per-signal overrides under `Traces`, `Metrics`, `Logs` |
+| `Observability:Signals:*` | all `true` | Switch `Traces`, `Metrics` or `Logs` off individually (effective once `Enabled` is set) |

@@ -94,6 +94,52 @@ RateLimiting__Policies__auth-login-ip__Window=00:15:00
 window: when it expires the address gets its free attempts back. Behind a NAT the users of one address share the brake;
 keep `RejectWhenSaturated` off unless you accept that.
 
+## Telemetry
+
+The service can push traces, metrics and logs over OTLP (OpenTelemetry) to a collector. It is **off by default**: without
+`Observability__Enabled=true` the host behaves exactly as before and no provider or exporter exists. `Observability:Enabled`
+is the only switch; `OTEL_*` variables alone never turn telemetry on.
+
+```
+Observability__Enabled=true
+Observability__Otlp__Endpoint=http://collector:4318          # http/protobuf; the /v1/{traces,metrics,logs} paths are appended
+# Observability__Otlp__Protocol=grpc                         # optional, then use the gRPC port (4317)
+# Observability__Otlp__Headers__Authorization=<from a secret> # hosted backends; never in a committed file
+# Observability__Signals__Logs=false                         # switch a signal off
+OTEL_TRACES_SAMPLER=parentbased_traceidratio                 # standard sampling variables apply
+OTEL_TRACES_SAMPLER_ARG=0.1
+```
+
+* **Identity of the service.** `service.name` and `service.version` come from `ServiceHost:ServiceName` /
+  `ServiceHost:ServiceVersion` (the image sets the version from `BW_VERSION`), so telemetry and `/info` agree.
+  `service.namespace` is `bieberworks`; `deployment.environment.name` is the hosting environment or the value in `OTEL_RESOURCE_ATTRIBUTES`.
+* **What is exported.** Every `BieberWorks.SDK.*` meter and activity source (ServiceKit outbox, Auth, RateLimiting), ASP.NET Core
+  and `HttpClient` instrumentation, runtime metrics, Npgsql spans and metrics, health check results
+  (`bieberworks.observability.health.status{check}`, Prometheus `bieberworks_observability_health_status_ratio`; checks `auth-mail-jobs` and `service-outbox`) and the logs of the host with
+  `trace_id`/`span_id`. `/health`, `/alive` and `/metrics` requests create no spans.
+* **One metric path.** Either OTLP push or the ServiceKit scrape endpoint (`ServiceHost:Metrics`), never both: that would
+  deliver every series twice.
+* **One trace per registration.** `POST /api/auth/register`, the stored mail job, `servicekit.publish` and (in the receiving
+  service) the inbox request and `servicekit.handle` share one trace id. The trace context is kept in the durable mail job.
+* **Health endpoints.** `/health` and `/alive` come from the ServiceKit host only. Do not add `MapBieberWorksHealthEndpoints`: the
+  host would refuse to start with a message naming the doubled route.
+* **Misconfiguration never stops the service.** An unknown protocol or malformed endpoint is logged as a warning and the
+  affected signal stays off.
+
+Reading the sign-in protection (Prometheus names after the OTLP translation):
+
+| Question | Series |
+| --- | --- |
+| How do sign-ins end? | `bieberworks_auth_login_attempts_total{outcome}` (`success`, `invalid_credentials`, `locked_out`, `email_unconfirmed`, `two_factor`, `rate_limited`, `brake_rejected`, `error`) |
+| Is the sign-in brake delaying? | `bieberworks_auth_login_brake_delay_seconds_bucket` |
+| Which limit rejects requests? | `bieberworks_ratelimiting_decisions_total{policy,outcome}` (`allowed`, `rejected`, `locked_out`; `policy` is for example `auth:login`, `auth:login-ip`, `auth:register-ip`) |
+| Are mails leaving? | `bieberworks_servicekit_outbox_backlog{state}`, `bieberworks_servicekit_outbox_oldest_pending_age_seconds`, `bieberworks_auth_email_send_failures_total{kind}` |
+| Is the database slow? | the Npgsql command metrics and the `service-outbox` / `auth-mail-jobs` health series |
+
+Telemetry changes of this release for dashboards and alerts: the `http_route` label and the span name of the Auth endpoints now have
+a leading slash (`/api/auth/login`, not `api/auth/login`); the ServiceKit instruments are named `bieberworks.servicekit.*`
+(Prometheus `bieberworks_servicekit_*`).
+
 ## Rolling back
 
 A start against a database whose `__EFMigrationsHistory` contains migrations unknown to the image logs an error naming them
