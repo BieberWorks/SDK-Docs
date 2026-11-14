@@ -96,3 +96,30 @@ log the policy name, the partition kind and a pseudonymous fingerprint (the firs
 characters of SHA-256 over kind, value and secondary value), so events of the same partition
 can be correlated without exposing the raw value. The fingerprint is computed only when the
 respective log level is enabled.
+
+Rejected `TryAcquireAsync` calls log at Information. Denied `PeekAsync` calls (for example a
+sign-in brake that peeks on every attempt) log at Debug only, to avoid flooding; they are
+always counted in the metric below.
+
+## Telemetry
+
+`RateLimitMetrics` lives in `RateLimiting.Contracts` and uses only the BCL `System.Diagnostics.Metrics`
+API (no OpenTelemetry or Observability reference; a unit test guards this). Every `IRateLimiter` a host
+can use should record through it, so one counter covers the module limiter and fallback limiters of other
+modules (for example the Auth fallback limiter):
+
+```csharp
+RateLimitMetrics.RecordAcquire(policyName, result); // after TryAcquireAsync
+RateLimitMetrics.RecordPeek(policyName, result);    // after PeekAsync, counts denials only
+```
+
+| Item | Value |
+|---|---|
+| Meter | `BieberWorks.SDK.RateLimiting` |
+| Instrument | `bieberworks.ratelimiting.decisions` (Counter, unit `{decision}`) |
+| Tag `policy` | the policy name; at most 128 distinct values per process (`RateLimitMetrics.MaxPolicyValues`), names that are empty, longer than 64 characters or beyond the cap are reported as `other` |
+| Tag `outcome` | `allowed`, `rejected`, `locked_out` (a result carrying a lockout, including the call that triggers it) |
+
+Partition values (IP, user id, e-mail) are never tags. Prometheus name: `bieberworks_ratelimiting_decisions_total`.
+Allowed peeks are not counted because they consume nothing and would double-count the acquire that follows;
+peek denials and acquire rejections share the `rejected` outcome.

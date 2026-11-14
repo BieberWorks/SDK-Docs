@@ -10,13 +10,14 @@ The RateLimiting module provides a generic, reusable rate limiting abstraction (
 - **Code-default policies with optional Settings override** — `IRateLimitPolicyRegistry` holds code defaults; `SettingsBackedRateLimitPolicyProvider` overrides them via `ratelimit:<policy>:<property>` keys, only when SDK-Settings is present in the host
 - **ASP.NET Core integration** — `UseBieberWorksRateLimiting()` global IP-based middleware, plus `RateLimitEndpointFilter`/`RateLimiting.For(...)` for declarative per-endpoint limits on Minimal APIs
 - **429 responses** — `Retry-After` header + `IErrorLocalizer`-backed JSON body, no domain exceptions used for control flow
+- **Telemetry** — `RateLimitMetrics` (`bieberworks.ratelimiting.decisions{policy,outcome}`) in the Contracts package, shared by every limiter implementation (see [architecture](10-architecture.md#telemetry))
 - **Admin UI** — read-only `/admin/rate-limiting` overview page showing each policy's effective values and whether they come from a code default or a Settings override
 
 ## Package overview
 
 | Package | Description | When needed |
 |---|---|---|
-| `BieberWorks.SDK.RateLimiting.Contracts` | `IRateLimiter`, `RateLimitPolicy`, `RateLimitPartitionKey`, `RateLimitResult`, `IRateLimitPolicyProvider`, `IRateLimitPolicyRegistry`, `RateLimitSettingKeys`, `WellKnownRateLimitPolicies` — no implementation dependency, only `SharedKernel` | Any module that needs to check/consume rate limit quota, or register a code-default policy |
+| `BieberWorks.SDK.RateLimiting.Contracts` | `IRateLimiter`, `RateLimitPolicy`, `RateLimitPartitionKey`, `RateLimitResult`, `IRateLimitPolicyProvider`, `IRateLimitPolicyRegistry`, `RateLimitSettingKeys`, `WellKnownRateLimitPolicies`, `RateLimitMetrics` — no implementation dependency, only `SharedKernel` | Any module that needs to check/consume rate limit quota, or register a code-default policy |
 | `BieberWorks.SDK.RateLimiting` | In-memory `IRateLimiter`, policy providers, ASP.NET middleware/endpoint filter, `IModule` registration | In every host that enforces rate limits |
 | `BieberWorks.SDK.RateLimiting.Presentation` | Framework-neutral `IAdminSection` + `RateLimitingViewModel` for the Policies overview | When the SDK-Admin shell is present in the host |
 | `BieberWorks.SDK.RateLimiting.UI.Blazor` / `.UI.Blazor.MudBlazor` | Blazor adapter base class + MudBlazor admin page at `/admin/rate-limiting` | When the SDK-Admin shell is present in the host |
