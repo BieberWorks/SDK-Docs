@@ -32,11 +32,14 @@ The service writes to the console only. Limit the container log size in your run
 | `Database:ConnectTimeout` / `CommandTimeout` | `00:00:03` / `00:00:10` | Added to `EmailDb` and `ServiceDb` unless the connection string sets `Timeout` / `Command Timeout` itself |
 | `Database:RetryCount` / `MaxRetryDelay` | `1` / `00:00:01` | Retry budget of failed database calls (the Email module alone retries 6 times for over a minute) |
 | `Database:RefuseNewerSchema` | `false` | Stop the start when the database has migrations this build does not know (rollback against a newer schema); otherwise it is logged as an error |
-| `Communication:Health:PollInterval` | `00:00:15` | How often the mail queue numbers are read |
+| `Communication:Health:PollInterval` | `00:00:15` | How often the mail queue numbers are read from the Email module |
 | `Communication:Health:PendingDegradedAfter` | `00:10:00` | A waiting mail older than this makes `/health` Degraded |
-| `Communication:Health:BacklogDegradedAt` | `1000` | Waiting mails from which `/health` is Degraded |
+| `Communication:Health:BacklogDegradedAt` | `1000` | Waiting mails (pending plus retrying) from which `/health` is Degraded |
 | `Communication:Health:FailedLookback` | `1.00:00:00` | Mails that gave up within this period make `/health` Degraded (zero ignores them) |
 | `OpenApi:Enabled` / `RequireAuthorization` | `true` / `false` | Serve `/openapi/v1.json`, optionally only to authenticated callers |
 | `ServiceHost:InfoRequiresAuthorization` | `false` | Same for `/info` |
 | `ServiceHost:Jwt:Authority` | none (required) | An empty value stops a Production start (`ServiceHost:Jwt:AllowEmptyAuthority` opts out) |
-| `ServiceHost:Metrics:*` | off | Opt-in Prometheus endpoint (token or explicit `AllowAnonymous`) |
+| `ServiceHost:Metrics:*` | off | Opt-in Prometheus endpoint (token or explicit `AllowAnonymous`); do not combine with OTLP metric export |
+| `Observability:Enabled` | `false` | Opt-in OpenTelemetry export (traces, metrics, logs); see Telemetry in the operations guide |
+| `Observability:Otlp:Endpoint` | none | OTLP collector base URL (`http://otel-collector:4318`); `OTEL_EXPORTER_OTLP_ENDPOINT` works too |
+| `Observability:Signals:Traces\|Metrics\|Logs` | `true` | Switch a single signal off |
