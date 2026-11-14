@@ -14,6 +14,7 @@ It is **opt-in** and additive: with default settings nothing is mapped and no ba
       "Enabled": true,
       "PollInterval": "00:00:05",
       "BatchSize": 20,
+      "MaxBatchesPerTick": 10,
       "MaxAttempts": 8,
       "BaseRetryDelay": "00:00:30",
       "MaxRetryDelay": "01:00:00"
@@ -25,7 +26,12 @@ It is **opt-in** and additive: with default settings nothing is mapped and no ba
 With `Enabled: true` the module maps the endpoints below and starts a dispatcher that delivers queued mails through the
 configured `IEmailSender` (SMTP, rate limiting included). Failed deliveries are retried with exponential backoff and are
 marked `Failed` after `MaxAttempts`. The queue lives in the `email.queue_messages` table (migration `AddQueueMessages`,
-purely additive). After a successful send the message body is cleared; only the content hash is kept for idempotency.
+purely additive).
+When a batch is full (`BatchSize` messages sent), the dispatcher starts the next batch immediately instead of waiting for
+`PollInterval`, sequentially and at most `MaxBatchesPerTick` batches per tick (default 10, minimum 1), so a backlog drains
+quickly without parallel sends. After a successful send the message body is cleared; only the content hash is kept for idempotency.
+
+Metrics, spans, trace propagation and the `IEmailQueueStatistics` contract are described in [Telemetry](14-telemetry.md).
 
 Retention: the dispatcher removes finished rows hourly (`RetentionSweepInterval`). `SentRetention` (default 7 days) deletes
 sent messages, `FailedRetention` (default 30 days) deletes failed ones, which still hold their body. A row is the

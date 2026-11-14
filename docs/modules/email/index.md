@@ -27,6 +27,7 @@ All packages are released together and share one version, computed from Conventi
 | `IEmailTemplateAdminService` | Scoped | Admin CRUD: list/get/save/reset template overrides, manage layouts, render preview |
 | `IEmailTemplateDescriptor` | Singleton, multiple | Describe a transactional email (key, display name, variables, default HTML) for Admin UI discovery |
 | `ISubmissionNotifier` | Scoped | Render + send customer and admin emails in one call; faults are caught and logged |
+| `IEmailQueueStatistics` | Singleton | Read-only queue numbers (pending, retrying, recently failed, oldest age); see [Telemetry](14-telemetry.md) |
 
 ## Template Provider priority
 
