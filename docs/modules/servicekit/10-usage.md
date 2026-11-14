@@ -44,7 +44,7 @@ A handler exception answers HTTP 500 and the sender retries. A handler that find
 (undecodable payload) throws `PermanentEventException` (a `JsonException` counts too): the host answers 422 and the
 sender dead-letters the event at once. An event type without a handler is answered 422 as well, so it is dead-lettered
 visibly instead of being lost; set `ServiceHost:IgnoreUnknownEventTypes=true` to acknowledge (202) it with a warning and the
-`servicekit.events.unhandled` metric instead (rolling upgrades with mixed event versions).
+`bieberworks.servicekit.events.unhandled` metric instead (rolling upgrades with mixed event versions).
 The host itself answers 422 before any handler runs when the envelope's `payload` is missing, empty or not a JSON
 document. A payload that is valid JSON but unusable for the handler (for example `{}`) is the handler's decision: it must
 throw `PermanentEventException` for content that can never succeed (validation errors), and let only transient faults

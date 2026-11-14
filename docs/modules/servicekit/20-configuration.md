@@ -19,12 +19,12 @@
 | `ServiceHost:Jwt` | `WarmupRetry` | 5 s | Delay between attempts to load the issuer keys at start. `/health` reports the `jwks` check as `Degraded` until the keys were loaded once (tokens get 401 until then); afterwards it stays `Healthy` even while the issuer is down (cached keys) |
 | | `InboxEnabled` | `true` | `false` does not map `/internal/events` at all; set it on a service that receives no events |
 | | `InboxRequiresAuthorization` | `true` | Protects `/internal/events` |
-| | `IgnoreUnknownEventTypes` | `false` | `false`: an event type without handler is answered 422 (dead-lettered at the sender). `true`: acknowledged (202) with a warning and the `servicekit.events.unhandled` metric |
+| | `IgnoreUnknownEventTypes` | `false` | `false`: an event type without handler is answered 422 (dead-lettered at the sender). `true`: acknowledged (202) with a warning and the `bieberworks.servicekit.events.unhandled` metric |
 | | `InboxPolicy` | none | Authorization policy of the inbox (for example `perm:email:send`). Without it every valid token with this service's audience may post events, so set it whenever user tokens carry the same audience |
 | | `Jwt:Authority` / `Audience` / `MetadataAddress` | | Issuer, expected audience (service name), OpenID discovery document address (default `<Authority>/.well-known/openid-configuration`, which must serve `issuer` and `jwks_uri`; a raw JWKS URL does not work) |
 | | `HealthCheckTimeout` / `DependencyRetryAfter` | 1.5 s / 5 s | Hard bound per health check (also for checks that ignore cancellation); `Retry-After` of the 503 during a database outage (see [operations](50-operations.md)) |
 | | `InfoRequiresAuthorization` / `InfoPolicy` | `false` / none | Restrict `/info` to authenticated callers |
-| | `Metrics:Enabled` / `Path` / `BearerToken` / `AllowAnonymous` / `Meters` | `false` / `/metrics` / none / `false` / see doc | Opt-in Prometheus endpoint; needs a token or an explicit `AllowAnonymous` |
+| | `Metrics:Enabled` / `Path` / `BearerToken` / `AllowAnonymous` / `Meters` | `false` / `/metrics` / none / `false` / see doc | Opt-in Prometheus **pull** endpoint; needs a token or an explicit `AllowAnonymous`. A service has one metric path: pull here or OTLP **push** via `Observability:*` (see [operations](50-operations.md#one-metric-path-per-service)) |
 | | `Jwt:AllowEmptyAuthority` | `false` | An empty `Authority` stops a Production start unless set |
 | | `Jwt:ValidAlgorithms` | `ES256`, `RS256` | Accepted signature algorithms; a configured list replaces the default |
 | | `Jwt:AllowInsecureMetadata` | `false` | Allow plain http JWKS (internal networks only) |

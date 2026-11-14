@@ -24,7 +24,8 @@ set as environment variables (`ServiceHost__HealthCheckTimeout=00:00:01`) or as 
 * A request that fails because the database or another network dependency is unreachable (open circuit, transient
   `DbException`, timeout, socket error) is answered `503` with `Retry-After` (`ServiceHost:DependencyRetryAfter`, default
   5 s, matching the default break) instead of hanging or returning a bare 500. Logic errors and constraint violations stay
-  500. In `Development` the developer exception page answers first.
+  500. In `Development` the developer exception page sits inside this middleware and would answer with 500; the host registers an
+  `IDeveloperPageExceptionFilter` that gives the same 503 answer there.
 * `/health` bounds every check at `ServiceHost:HealthCheckTimeout` (default 1.5 s), also a check that ignores its
   cancellation token (for example a connect stuck in a name lookup); the abandoned check finishes in the background. A
   check that does not finish in time reports its failure status, so an orchestrator probe with a 3 s timeout sees a clean
@@ -62,23 +63,76 @@ you either set `ServiceHost:Metrics:BearerToken` (supply it as a secret file suc
 `ServiceHost:Metrics:AllowAnonymous=true` for a port that is only reachable inside a private network.
 
 The Prometheus text format is rendered by the host itself (no extra package) from the meters listed in
-`ServiceHost:Metrics:Meters` (default: `BieberWorks.*`, ASP.NET Core hosting and Kestrel, `System.Runtime`; a configured list replaces the default). Transport metrics
-on meter `BieberWorks.SDK.ServiceKit`:
+`ServiceHost:Metrics:Meters` (default: `BieberWorks.*`, ASP.NET Core hosting and Kestrel, `System.Runtime`; a configured list replaces the default).
+
+**Names are the OpenTelemetry names.** One component translates every instrument exactly as the OTLP path (collector or
+Prometheus OTLP receiver) does, so a series has the same name whether it is scraped here or pushed over OTLP: `.` becomes
+`_`, the unit becomes a suffix (`s` to `_seconds`, `By` to `_bytes`, a gauge with unit `1` to `_ratio`; `{event}`
+annotations add nothing), counters get `_total`, up-down counters are gauges. Histograms use the bucket bounds the instrument
+declares (bucket advice); an instrument without advice gets the OpenTelemetry default bounds, like on the OTLP path. The
+service identity is rendered as `target_info` (`service_name`, `service_version`, `service_namespace`=`bieberworks`,
+`service_instance_id`, `deployment_environment_name`), the same resource attributes the OTLP path attaches. Lines end with
+`\n`. A test compares the families, types and bucket bounds with the OpenTelemetry Prometheus exporter. One known difference:
+the .NET exporter does not add `_ratio` to a gauge with unit `1`, the OTel specification and the Prometheus OTLP translation
+do, and so does this endpoint (no ServiceKit instrument uses unit `1`).
+
+Transport metrics on meter `BieberWorks.SDK.ServiceKit`, instruments `bieberworks.servicekit.*` (naming convention of the SDK):
 
 | Metric | Type | Meaning |
 | --- | --- | --- |
-| `servicekit_outbox_enqueued_total`, `_delivered_total`, `_retried_total`, `_deferred_total`, `_dead_lettered_total` | counter | outbox flow by `event_type`; `dead_lettered` is the alarm counter |
-| `servicekit_outbox_delivery_duration_seconds` | histogram | one delivery attempt (`result` = ok, deferred, failed) |
-| `servicekit_outbox_delivery_latency_seconds` | histogram | enqueue to successful delivery |
-| `servicekit_outbox_backlog` | gauge | entries by `state` (pending, blocked, dead), refreshed every `ServiceTransport:Postgres:MetricsInterval` (15 s) |
-| `servicekit_outbox_oldest_pending_age_seconds` | gauge | age of the oldest undelivered entry |
-| `servicekit_inbox_received_total`, `servicekit_inbox_handle_duration_seconds` | counter, histogram | received events by `outcome` (processed, duplicate, failed) |
+| `bieberworks_servicekit_outbox_enqueued_total`, `_delivered_total`, `_retried_total`, `_deferred_total`, `_dead_lettered_total` | counter | outbox flow by `event_type`; `dead_lettered` is the alarm counter |
+| `bieberworks_servicekit_outbox_delivery_duration_seconds` | histogram | one delivery attempt (`result` = ok, deferred, failed); bounds 5 ms to 60 s |
+| `bieberworks_servicekit_outbox_delivery_latency_seconds` | histogram | enqueue to successful delivery; bounds 1 s to 24 h |
+| `bieberworks_servicekit_outbox_backlog` | gauge | entries by `state` (pending, blocked, dead), refreshed every `ServiceTransport:Postgres:MetricsInterval` (15 s) |
+| `bieberworks_servicekit_outbox_oldest_pending_age_seconds` | gauge | age of the oldest undelivered entry |
+| `bieberworks_servicekit_inbox_received_total` | counter | received events by `outcome` (processed, duplicate, failed) |
+| `bieberworks_servicekit_inbox_handle_duration_seconds` | histogram | handling of a received event by `outcome`; bounds 5 ms to 60 s |
+| `bieberworks_servicekit_events_unhandled_total` | counter | events without a handler (`event_type` is always `other`) |
+| `bieberworks_servicekit_dependency_unavailable_total` | counter | requests answered 503 because a dependency was unreachable, by `reason` (`fail_fast` circuit open, `timeout` write timed out, `unavailable` other connectivity failure) |
+| `bieberworks_servicekit_metrics_dropped_series_total` | counter | only on `/metrics`: measurements dropped at the series cap |
+
+The backlog gauges and the polling behind them exist only in a host that delivers events (`AddServiceKitOutboxRelay`). A
+service that merely holds the tables, such as one that only receives events, exposes no backlog series instead of a
+constant zero.
 
 Gauges read cached numbers; a scrape never queries the database. The number of series is capped at 2000; the first
-dropped measurement is logged and further drops are counted in `servicekit_metrics_dropped_series_total`. The label
+dropped measurement is logged and further drops are counted in `bieberworks_servicekit_metrics_dropped_series_total`. The label
 `event_type` only carries types this service produces or handles; an unknown type received from outside is counted as
 `other` and is cut to 64 characters in the log. `/health` reads a snapshot of the outbox backlog that is at most
 `ServiceTransport:Postgres:HealthCacheDuration` (default 5 s) old, so repeated probes cost one query per interval.
+
+### Migration from 0.1.x (telemetry changes)
+
+Instruments and scrape names changed; update dashboards and alerts.
+
+| Before | After |
+| --- | --- |
+| `servicekit_outbox_*`, `servicekit_inbox_*`, `servicekit_events_unhandled_total` | `bieberworks_servicekit_outbox_*`, `bieberworks_servicekit_inbox_*`, `bieberworks_servicekit_events_unhandled_total` |
+| `servicekit_metrics_dropped_series_total` | `bieberworks_servicekit_metrics_dropped_series_total` |
+| `dotnet_process_memory_working_set`, `dotnet_gc_last_collection_*_size`, `dotnet_gc_heap_total_allocated_total`, `dotnet_jit_compiled_il_size_total` | `..._bytes` / `dotnet_gc_heap_total_allocated_bytes_total` / `dotnet_jit_compiled_il_size_bytes_total` |
+| histogram bounds: one fixed list (5 ms to 60 s) for all | per instrument; histograms without advice use the OpenTelemetry default bounds |
+
+New: `target_info`, `bieberworks_servicekit_dependency_unavailable_total`. The `servicekit.outbox.backlog` gauges are gone
+from hosts without an outbox relay.
+
+### One metric path per service
+
+`ServiceHost:Metrics` (pull, this endpoint) and the OTLP push of SDK-Observability (`Observability:*` or the standard
+`OTEL_EXPORTER_OTLP_*` variables) deliver the same series under the same names. Use one of them per service; both at once
+report everything twice. The host logs a warning at start when the pull endpoint is enabled and metrics are also exported
+over OTLP. `ServiceHost:ServiceName` and `ServiceVersion` stay the single source of the service identity for both paths.
+The warning reads `Observability:Enabled`, `Observability:Signals:Metrics`, `Observability:Otlp:Endpoint`,
+`Observability:Otlp:Metrics:Endpoint` and the variables `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`,
+`OTEL_SDK_DISABLED`, `OTEL_METRICS_EXPORTER` as plain configuration; the package is not referenced.
+
+### Probe endpoints and route guard
+
+`ServiceHostPaths` names the fixed paths: `/health`, `/alive`, `/info` (`ProbePaths`), `/internal/events` and the default
+`/metrics`. Orchestrators and scrapers call them every few seconds, so tracing should skip them (SDK-Observability does by
+default). Mapping one of these paths a second time (for example `MapBieberWorksHealthEndpoints` of SDK-Observability next
+to `MapBieberWorksServiceHost`) would make every request fail with an ambiguous match (HTTP 500). The host refuses the
+start with an `InvalidOperationException` that names both endpoints, whatever the order of the mapping calls; an endpoint
+for another HTTP method on the same path is no collision.
 
 ## Tracing and correlation
 
@@ -88,6 +142,14 @@ used; a background worker (for example the mail queue of a service) gets a fresh
 `traceparent` header, and the receiving dispatcher continues it in `servicekit.handle`. Both sides log `TraceId`,
 `CorrelationId` and `MessageId` in a logging scope (enable scopes in the console logger to see them). Span export needs an
 OpenTelemetry SDK in the host; the activity source is `BieberWorks.SDK.ServiceKit`.
+
+Spans carry the messaging attributes `messaging.system` (`bieberworks.servicekit`), `messaging.operation.type`
+(`publish` or `process`), `messaging.destination.name` (event type) and `messaging.message.id`, plus `result`
+(publish: ok, deferred, failed) or `outcome` (handle: processed, duplicate, failed). A delivery that is not `ok` and a
+handler that throws set the span status to Error with `error.type`; the exception message is never recorded because it can
+contain personal data. `servicekit.handle` is a child of the active span of the same trace (the inbox request span, which
+continues the sender's trace); without an active span it continues the trace stored in the envelope; an active span of
+another trace is linked, not used as parent.
 
 ## Signing key rotation and removal
 
