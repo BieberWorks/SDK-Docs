@@ -15,6 +15,7 @@ The Auth module provides complete authentication and authorization infrastructur
 - **Profile Self-Service** — users can change their username, display name, and resend their confirmation email
 - **Self-Registration Control** — registration can be disabled via host config (hard lock) and/or a runtime admin toggle, gated by the `auth:registration:manage` permission
 - **Rate Limiting** — login attempts and two-factor verify/resend are limited through `IRateLimiter` (SDK-RateLimiting)
+- **Telemetry** — login, token, registration and brake metrics plus a trace across the mail queue, BCL-only (see [Telemetry](18-telemetry.md))
 - **Ready-made MudBlazor Pages** — login, registration, password forgotten, password reset, profile, security, avatar, and admin pages for user, role, and registration management
 
 ## Package overview
