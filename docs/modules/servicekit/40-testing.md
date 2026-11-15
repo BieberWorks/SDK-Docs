@@ -7,7 +7,7 @@ package: never reference it from a production host and never ship it in a servic
 |---|---|
 | `MockIssuer` / `MapMockIssuer` | Token issuer double: OIDC discovery, JWKS (ES256, public part only), `POST /token` (free `sub`, `aud`, `perm`, lifetime, `kid`), key rotation (`POST /admin/keys`, `DELETE /admin/keys/{kid}`) |
 | `AddEventSink` / `MapEventSink` | Subscriber double for publishing services: the real inbox endpoint with token validation and the `perm:email:send` policy, records envelopes under `GET /received` |
-| `IssuerConformance` | The contract check every token issuer must pass: discovery fields, JWKS shape (EC P-256, `kid`, no private part), token header (ES256, published `kid`), claims (`iss`, `aud`, `sub`, `perm`, lifetime derived from `nbf`/`iat`) and signature against the published keys |
+| `IssuerConformance` | The contract check every token issuer must pass: discovery fields, JWKS shape (EC P-256 with ES256 or RSA of at least 2048 bits with RS256, `use=sig`, `kid`, no private part; mixed sets are fine), token header (ES256 or RS256, published `kid`), claims (`iss`, `aud`, `sub`, `perm`, lifetime derived from `nbf`/`iat`) and signature against the published keys |
 
 `IssuerConformance` runs against the mock issuer (ServiceKit tests) **and** against the real identity service (Identity tests).
 That is what keeps the double from drifting away from the real thing: a behaviour the mock accepts but identity never produces
