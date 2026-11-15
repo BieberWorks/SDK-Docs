@@ -23,8 +23,12 @@ and the user appears logged out every time.
 | `Oidc:Issuer must be ...` | Issuer not an absolute, normalized https URL. |
 | `Oidc:DefaultAudiences needs ...` | No default audience. |
 | `Oidc:EncryptionKeyFile is required in Production` | Secret file not configured. |
-| `No IJwtKeyProvider is registered` / `No active key for RS256` | Auth runs without asymmetric signing or without an RSA key. |
+| `No IJwtKeyProvider is registered` | Auth runs without asymmetric signing. |
+| `... Auth has no active RSA signing key ... 'ActiveRsaKid'` | No RSA key is active. Add an RSA key with a private part to the Auth signing keys and set `ActiveRsaKid` to its kid; an EC key alone is not enough. The host checks this at start. |
 | `Oidc:Clients '<id>': secret file ... does not exist` | Client secret file missing. |
+
+A call to discovery or JWKS over plain http is rejected in Production; see [Usage](./10-usage.md). If a health probe fails this
+way, probe over https or through the proxy that sets `X-Forwarded-Proto: https`.
 
 ## Telemetry
 

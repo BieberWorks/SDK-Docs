@@ -10,6 +10,11 @@
 | `/connect/token` | POST | Token endpoint (`authorization_code`, `refresh_token`). |
 | `/connect/userinfo` | GET, POST | Userinfo. |
 
+> **Discovery and JWKS need https requests in Production.** The module only answers requests that arrive over https (directly or,
+> behind a reverse proxy, with a trusted forwarded `Proto: https`). A plain `http://` call, for example a health probe or a
+> `curl` against the container port, is rejected. Call the public https address, or let the proxy forward `X-Forwarded-Proto: https`
+> and run the host with the ServiceKit profile `ServiceHost:ReverseProxy`. Only the `Development` environment may use plain http.
+
 The discovery document advertises `response_types_supported=[code]`, `response_modes_supported=[query]`,
 `code_challenge_methods_supported=[S256]` and `id_token_signing_alg_values_supported=[RS256]`.
 Implicit, hybrid, password and device flows are off.
