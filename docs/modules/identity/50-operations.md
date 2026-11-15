@@ -3,6 +3,90 @@
 See also the ServiceKit operations guide (database outage behaviour, metrics, tracing, signing key rotation, `/info`
 exposure); the settings below are specific to the identity image.
 
+## Exposure
+
+The image carries the sign-in UI and the machine endpoints. Publish only what browsers and relying parties need and keep the rest
+on an internal network:
+
+| Public | Internal only |
+| --- | --- |
+| `/auth/*` (sign-in pages), `/`, `/_blazor`, `/_framework/*`, `/_content/*`, `/bw/set-culture`, exactly `/api/auth/finalize-login`, `/connect/*` (authorize, consent page, token, userinfo), `/.well-known/*` | `/api/*` (all other API routes, **including the client administration API `/api/v1/oidc/*`**), `/info`, `/openapi`, `/metrics`, `/health`, `/internal/*` |
+
+There is no `/admin`. The client administration API creates and rotates client secrets and returns them in the response; keep it on
+a trusted internal network (behind the proxy's internal router or an address allowlist) and treat the transport as sensitive: a
+plain-http hop inside a container network is acceptable only when that network is trusted, otherwise re-encrypt to the service.
+Bearer tokens only; the session cookie never works there.
+A working reference is the compose project `docker-compose.oidc-p2.yml` of the Sandbox repository: Traefik with a public and an
+internal router (the lists above), TLS with a self-signed development certificate, a rate limit on `/auth/*` and `/_blazor`, a key ring
+volume and `ServiceHost:ReverseProxy` for the proxy address; `services/oidc-p2-smoke.ps1` checks the exposure and the flows against it.
+Set `AllowedHosts` to the public host names. Anonymous visitors of the sign-in pages each open a Blazor circuit
+(`/_blazor`); rate limit that path and the `/auth/*` pages at the proxy.
+
+## Response headers
+
+Responses of the pages (everything except `/api`, `/internal`, `/openapi`, `/health`, `/alive`, `/info`, `/metrics`) carry
+`Content-Security-Policy: frame-ancestors 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and
+`Referrer-Policy: no-referrer`; `/auth/*` and `/connect/*` are additionally `Cache-Control: no-store`. There is no script CSP:
+Blazor and MudBlazor need inline script and style. Do not weaken the framing rule at the proxy.
+
+## OpenID Connect provider
+
+* **Secrets.** Besides the signing keys the provider needs `Oidc__EncryptionKeyFile` (a Docker secret holding 32 random bytes in
+  Base64). It must be the same on every start: authorization codes and refresh tokens are stored encrypted with it, so a new key
+  invalidates them (users sign in again). Back it up with the signing keys; never commit it. Confidential clients in `Oidc:Clients`
+  take their secret from a file as well (`ClientSecretFile`).
+* **Database.** The provider's tables live in schema `oidc` of the identity database (`ConnectionStrings:OidcDb`, default `AuthDb`).
+  They follow the same outage behaviour as the rest: 503 with `Retry-After`, short retry budget, and a start against a schema with
+  unknown migrations is reported (or refused with `Database:RefuseNewerSchema`). Back them up with the `auth` schema.
+* **Issuer.** `Oidc:Issuer` is the public https address and appears in every token and the discovery document. Changing it
+  invalidates the trust of every relying party; forward `Proto` and `Host` from the proxy (`ServiceHost:ReverseProxy`), because the
+  endpoint URLs of the discovery document follow the request.
+* **Consent.** Consent decisions are stored per user, client and scope set in the database. Deleting a client removes them.
+* **Audit.** Admin and consent events are not persisted in this version (see [configuration](20-configuration.md#openid-connect-provider)).
+
+## Client address in the sign-in pages
+
+The sign-in limits count per client address. A Blazor circuit that runs over the long polling transport (a browser or proxy
+without WebSockets, or an attacker who disables them) has no request context, so the address read during the prerender is carried
+into the circuit as persisted component state (`BwClientAddressCapture` in `Routes.razor`, protected by data protection). The
+address in that state is the one the server saw for the prerender request, with your `ServiceHost:ReverseProxy` settings applied;
+a browser cannot choose another one, and a tampered state leaves an inert page. Properties to know: the state is not bound to the
+browser, so whoever holds the state of a prerender response acts under its address (the sign-in pages are `no-store`; do not cache
+or log them), and the key ring (below) must be stable, otherwise a state issued before a restart is refused. Without
+`ServiceHost:ReverseProxy` every user behind the frontend has the frontend's address, as for the API.
+
+**Remote hosts see the host address.** A host that signs users in through the identity API with `HttpAuthClient` (a Blazor Server
+frontend, another service) is, for identity, one caller with the address of that host: the address-based limits (`auth:register-ip`,
+the per-address part of the sign-in brake, forgot-password) then count all its users together, so one visitor can use up the budget
+of everybody. `HttpAuthClient` does not forward the visitor's address by itself. Either list the host in
+`ServiceHost:ReverseProxy:KnownProxies` / `KnownNetworks` and let it send `X-Forwarded-For` (the BFF of `Auth.Bff` does, header name
+`BieberWorks:Bff:ClientAddressHeader`), or accept that these limits are shared. The pair limit `auth:login` (address plus e-mail) still
+separates accounts. The sign-in pages served by this image are not affected: they read the address of the browser's own request.
+
+## Data protection key ring
+
+The key ring protects the `bw.auth` session cookie, the antiforgery tokens (also those of the consent form), the client address state of the sign-in circuits and the Blazor circuit state. It is stored in the
+directory `Identity__DataProtection__KeyRingPath` (the image sets `/var/lib/identity/keys`, owned by the container user, declared as
+a volume). **Mount a persistent volume there.** Without one every container replacement signs all users out and invalidates
+forms that are open in browsers. Outside Development the host refuses to start without the setting.
+
+The application name is fixed (`BieberWorks.Identity`), so the keys stay valid when the content path or image layout changes.
+The key files are not encrypted at rest: restrict the volume to the service and back it up like the signing key, never commit it.
+Keys rotate on their own (90 days); old keys stay in the ring to read older data. The ring is registered in one place
+(`AddIdentityDataProtection`); moving it to another store (shared volume, database, key vault) changes that method only.
+
+## One instance per database
+
+The sign-in ticket store (30 seconds between the sign-in page and the cookie) and the Blazor circuits are held in process
+memory, and so are the rate limit counters and the token endpoint limits of the OpenID Connect provider. Run **one** identity instance. More instances need sticky sessions plus a shared
+ticket store, which this version does not provide.
+
+## No sign-out in this version
+
+The user entry has no sign-out. `GET /api/auth/signout` exists but is an internal route (not in the public list above), and the
+sign-out page `/auth/logout` is closed. A session therefore ends only by its idle or absolute timeout. Sign-out and end-session
+come with a later version of the OpenID Connect provider; until then relying parties cannot end the session at the provider.
+
 ## Database outage
 
 Connections time out after 3 s and commands after 10 s (`Database:*`), failed calls are retried once. A request that cannot

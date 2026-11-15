@@ -1,5 +1,9 @@
 # Standalone operation and contract suite
 
+> **Not yet adapted to the OpenID Connect provider.** The provider needs an https issuer, an RSA signing key, an encryption key
+> secret and TLS in front of the service (it refuses plain-http requests outside Development), none of which this plain-http,
+> single-network stack provides. Until the stack gets a TLS entry point, `run-standalone.ps1` does not start the current image.
+
 The identity service starts, becomes healthy and passes its own contract suite **without the communication service**. It needs
 PostgreSQL and the signing key file, nothing else. The subscriber address (`ServiceEndpoints:Services:communication`) is optional.
 

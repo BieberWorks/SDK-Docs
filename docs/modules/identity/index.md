@@ -17,6 +17,7 @@ It owns users, roles, permissions and tokens; every other service only validates
   registration still succeeds and the mails follow later. The mail intent itself is durable too: Auth stores it in its
   database in the same commit as the confirmation token (`BieberWorks:Auth:MailQueue:Durable`), and the job id is the
   message id of the outbox event, so a process kill between registration and delivery loses no mail. Delivery is at-least-once; the message id lets the receiver drop repeats.
+* Serves the interactive sign-in pages (`/auth/login`, registration, password reset, e-mail confirmation) as a slim Blazor Server host, see [configuration](20-configuration.md#sign-in-ui). No admin area, no account pages.
 * `/health` (outbox backlog: dead letters or long-waiting entries make it `Degraded`), `/alive`, `/info`.
 
 Database overrides and branding layouts of the Email module apply to mails sent by the communication service itself,

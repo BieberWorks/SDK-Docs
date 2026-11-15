@@ -2,7 +2,7 @@
 
 The identity image is built from exact package versions, so two builds of the same commit contain the same SDK packages.
 
-* **Exact pins.** `Directory.Build.props` defines the SDK versions as `[x.y.z]` ranges (BwAuthVersion, BwEmailContractsVersion, BwObservabilityVersion, BwServiceKitVersion); the project
+* **Exact pins.** `Directory.Build.props` defines the SDK versions as `[x.y.z]` ranges (BwAuthVersion, BwEmailContractsVersion, BwObservabilityVersion, BwServiceKitVersion, BwUiVersion); the project
   references them. There are no floating ranges in the service project. Raising a pin is a deliberate commit.
 * **Lock file.** `dotnet restore src/BieberWorks.SDK.Identity.Api/Identity.Api.csproj -p:BwLock=true --force-evaluate` writes
   `packages.lock.json` (also pins the transitive packages). Commit it together with a pin change. When the file exists the
