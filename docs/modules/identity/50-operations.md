@@ -49,7 +49,7 @@ RateLimiting__Policies__auth-login__LockoutDuration=00:05:00   # 00:00:00 remove
 Every 429 carries `Retry-After`: the remaining lockout or window when the limiter knows it, otherwise
 `RateLimiting:DefaultRetryAfter`. The limits are counted per client address. Behind a frontend, a NAT or a reverse proxy
 every user shares one address unless identity learns the browser's address: list the frontend in
-`Identity:ForwardedHeaders:KnownProxies` / `KnownNetworks`. Without that, a limit such as registration blocks all users behind
+`ServiceHost:ReverseProxy:KnownProxies` / `KnownNetworks`. Without that, a limit such as registration blocks all users behind
 the proxy together. The counters live in the process; with several instances each instance counts on its own.
 
 ## Sign-in brake per client address
@@ -62,15 +62,15 @@ requests above the caps get 429 with `Retry-After`. Only failed passwords count;
 resets. It does not help against distributed attacks (many addresses, few attempts each), and the counters live in the
 process (N instances give N times the budget).
 
-**The image ships with the brake switched off, on purpose.** Identity always honours `X-Forwarded-For` but only from the
-proxies you list. With an empty `Identity:ForwardedHeaders` list the header is ignored, every user behind the frontend shows
+**The image ships with the brake switched off, on purpose.** Identity honours `X-Forwarded-*` only from the
+proxies you list in `ServiceHost:ReverseProxy`. Without the profile the header is ignored, every user behind the frontend shows
 up with the frontend's address, and an enabled brake would throttle all sign-ins together (a global denial of service).
 Neither Identity nor Auth can tell whether your topology is configured correctly (Auth only logs a start-up warning), so
 the decision stays with the operator.
 
 Activation checklist:
 
-1. Set `Identity__ForwardedHeaders__KnownProxies__0` (or `__KnownNetworks__0`, for example the compose network in CIDR
+1. Set `ServiceHost__ReverseProxy__Enabled=true` and `ServiceHost__ReverseProxy__KnownProxies__0` (or `__KnownNetworks__0`, for example the compose network in CIDR
    notation) to the frontend or proxy that calls identity. Verify that sign-in failures from two browsers are counted
    separately before going on.
 2. Disable retries of `POST /api/auth/login` in the frontend's HTTP client (a retried 429 multiplies the load).
