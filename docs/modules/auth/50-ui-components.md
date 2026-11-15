@@ -78,6 +78,8 @@ The registration page toggles self-registration at runtime; see [Registration](1
 
 Admin pages implement `IAdminPage` and automatically appear in admin navigation when `SDK-Admin` is also installed.
 
+The user pages (`/admin/users`, `/admin/users/{userId}`) and the account deletion page (`/account/delete`) need `IUserManagementService` from the optional package `BieberWorks.SDK.Auth.Management`. Their ViewModels are registered by a factory, so a host without that package starts with `ValidateOnBuild` enabled; opening one of these pages there fails with an error that names the missing package. Such hosts should not route these pages.
+
 ## Included components
 
 ### UserMenu.razor
@@ -106,6 +108,17 @@ builder.Services.AddAuthUi(options =>
 `ShowLogin` and `ShowRegister` are **display-only** — they hide the buttons but do not protect the `/auth/login` or `/auth/register` routes. For a real registration lock, use the gate described in [Registration](11-registration.md); for a single-user setup, see its [portfolio recipe](11-registration.md#recipe-single-user--portfolio-setup).
 
 See [Setup → AppBar widget configuration](01-getting-started.md#appbar-widget-configuration) for all available options.
+
+### BwClientAddressCapture
+
+Renders nothing. Captures the client address during the prerender and restores it in the Blazor Server circuit, so the sign-in, registration and forgot-password limits work per client even with the long-polling transport (no `HttpContext` in the circuit). The Auth pages and `UserMenu` already capture; place the component once in `Routes.razor` when a circuit can start on another page and navigate to an Auth page in-circuit. See [Client address in Blazor Server circuits](10-auth-flows.md#client-address-in-blazor-server-circuits).
+
+```razor
+@using BieberWorks.SDK.Auth.UI.Blazor.Components
+
+<BwClientAddressCapture />
+<BwRouter AppAssembly="typeof(Program).Assembly">...</BwRouter>
+```
 
 ## Localization
 
