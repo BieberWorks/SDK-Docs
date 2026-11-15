@@ -35,6 +35,18 @@ The default (`Symmetric`) is unchanged, so existing consumers need no changes.
 - Storage is swappable: register your own `IJwtSigningKeyStore` (e.g. database- or vault-backed)
   before or after the module (this is the seam for a later vault/KMS integration); the config/file-backed `ConfigJwtSigningKeyStore` is registered with `TryAdd`.
 
+## RSA key (RS256) and shared key access
+
+Since 4.2.0 `Keys` may also contain **RSA** keys (at least 3072 bit; the type follows from the PEM). Set `ActiveRsaKid` to the `Kid`
+of an RSA key with a private part to make RS256 available: `IJwtKeyProvider` (in `Auth.Contracts`) then offers credentials
+for `ES256` and `RS256`, and the JWKS publishes the EC and the RSA key. Without `ActiveRsaKid` RSA keys are only published and validated.
+`ActiveKid` must stay an EC key: it signs Auth's own tokens. Modules that issue tokens themselves (for example an OpenID Connect
+server) take their credentials from `IJwtKeyProvider` and never hold key material.
+
+`IOidcDiscoveryOwner` (marker, `Auth.Contracts`): when a module registers it, Auth maps neither the discovery document nor
+`/.well-known/jwks.json`, because that module serves them. `IUserClaimsReader` reads `sub`, e-mail (+ verified flag), user name,
+display name, locale, roles, permissions and an `IsActive` flag (locked out, or e-mail confirmation required but missing) of a user by id.
+
 ## Rotation
 
 1. Generate a new key and add it to `Keys`; set `ActiveKid` to its `Kid`.
@@ -64,7 +76,8 @@ Consumers using `JwtBearer` should point `MetadataAddress` (or `Authority`) at t
 ## Validation inside Auth
 
 Auth keeps validating its own bearer tokens, refresh path and 2FA challenge tokens with the
-configured keys. In asymmetric mode only `ES256` is accepted (no `alg=none`, no HS256 tokens).
+configured keys. In asymmetric mode `ES256` and `RS256` are accepted (no `alg=none`, no HS256 tokens). Auth's own
+tokens stay `ES256`; `RS256` is accepted so that tokens of an OpenID Connect server on the same host (signed with the RSA key) are valid bearer tokens here too.
 Token claims (`sub`, `email`, `role`, `jti`) are unchanged; access and service tokens additionally carry `iat` so that consumers can derive the lifetime.
 
 ## Audiences and permission claims for services
