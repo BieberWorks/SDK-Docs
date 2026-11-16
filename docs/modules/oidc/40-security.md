@@ -15,6 +15,14 @@
 | Cache | Userinfo and OpenIddict token responses are `no-store`. |
 | Transport | HTTPS is mandatory (only `Development` may relax it). The issuer is fixed by configuration. The endpoint URLs in the discovery document follow the request, so the host must trust the forwarded `Proto` and `Host` of its proxy only. |
 
+## Permission catalog in admin-only hosts
+
+`AddOidcAdminPresentation()` (called by the admin UI module) contributes `oidc:clients:manage` to the Core.Authorization
+catalog itself. A host that runs only the admin UI with `BieberWorks.SDK.Oidc.Client` (no `BieberWorks.SDK.Oidc`
+implementation) therefore needs no `IPermissionContributor` of its own: a `*` grant expands to the permission and the
+admin pages no longer answer 403. In a host that also runs the implementation the permission is listed once (the
+catalog de-duplicates by key).
+
 ## Known limits of this phase
 
 - Access tokens stay valid until `exp` (default 15 min) after revocation or rotation; resource servers validate offline.
