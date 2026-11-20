@@ -1,4 +1,4 @@
-# SDK-Storage
+# Storage
 
 The Storage module provides complete, provider-independent file management for BieberWorks SDK applications. It includes upload, download, metadata management, visibility control, automatic auditing, and ready-made MudBlazor UI.
 
@@ -49,9 +49,9 @@ Other modules reference only `BieberWorks.SDK.Storage.Contracts`. Implementation
 
 | Topic | File |
 |---|---|
-| Setup & Configuration | [setup.md](./setup.md) |
-| Providers (FileSystem, DB-Blob, S3, Azure) | [providers.md](./providers.md) |
-| Key Strategy & Visibility | [key-strategy.md](./key-strategy.md) |
-| Public Image Streaming Endpoint | [public-image-endpoint.md](./public-image-endpoint.md) |
-| UI Components (MudBlazor) | [ui-components.md](./ui-components.md) |
-| GDPR / Privacy | [gdpr-privacy.md](./gdpr-privacy.md) |
+| Setup & Configuration | [01-getting-started.md](./01-getting-started.md) |
+| Providers (FileSystem, DB-Blob, S3, Azure) | [10-providers.md](./10-providers.md) |
+| Key Strategy & Visibility | [11-key-strategy.md](./11-key-strategy.md) |
+| Public Image Streaming Endpoint | [12-public-image-endpoint.md](./12-public-image-endpoint.md) |
+| UI Components (MudBlazor) | [50-ui-components.md](./50-ui-components.md) |
+| GDPR / Privacy | [80-gdpr-privacy.md](./80-gdpr-privacy.md) |

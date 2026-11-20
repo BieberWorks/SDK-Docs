@@ -1,4 +1,4 @@
-# SDK-Email
+# Email
 
 The module **BieberWorks.SDK.Email** provides a MailKit-based SMTP send facility, a Scriban-powered template system with database overrides and layout support, an Admin UI for managing templates and layouts, and a dual-recipient submission notifier. Without SMTP configuration (`UseSmtp: false`) the module automatically falls back to a `LoggingEmailSender` — practical for local development.
 
@@ -8,11 +8,12 @@ The module **BieberWorks.SDK.Email** provides a MailKit-based SMTP send facility
 |---|---|---|
 | `BieberWorks.SDK.Email.Contracts` | `IEmailSender`, `IEmailTemplateProvider`, `IEmailTemplateRenderer`, `IEmailRenderingPipeline`, `IEmailTemplateAdminService`, `IEmailTemplateDescriptor`, `ISubmissionNotifier`, `EmailMessage`, `EmailAttachment`, `EmailSettings`, `EmailRateLimitOptions`, `EmailRateLimitExceededException`, `DualNotification`, `IEmailGlobalVariableProvider`, `EmailTemplateProviderOrder`, `EmailPermissions` | Other modules that inject email services or register descriptors |
 | `BieberWorks.SDK.Email` | `EmailModule`, `SmtpEmailSender`, `LoggingEmailSender`, `RateLimitedEmailSender`, `FileSystemEmailTemplateProvider`, `DatabaseEmailTemplateProvider`, `EmbeddedEmailTemplateProvider` (+ `AddEmbeddedEmailTemplates`), `EmailTemplateRenderer`, `EmailTemplateAdminService`, `CachedEmailTemplateStore`, `SubmissionNotifier` | Host application |
-| `BieberWorks.SDK.Email.UI` | Framework-agnostic Blazor base classes: `EmailTemplatesPageBase`, `EmailTemplateEditorPageBase`, `EmailLayoutsPageBase`, `EmailLayoutEditorPageBase`; `IEmailTemplateEditorFactory` | Transitively — referenced by `.UI.MudBlazor` |
-| `BieberWorks.SDK.Email.UI.MudBlazor` | `EmailUiModule` (auto-discovered), `EmailAdminSection`, `TextareaEmailTemplateEditorFactory`, live-preview POST endpoint `/admin/email/preview` | Host with the built-in Email Admin pages |
+| `BieberWorks.SDK.Email.Client` | `HttpEmailSubmissionClient` (`IEmailSubmissionClient`), `HttpEmailSender` (remote `IEmailSender`), `AddBieberWorksEmailClient` — see [Queued sending API](13-queued-sending-api.md) | Consumers that send mail through a separate email service |
+| `BieberWorks.SDK.Email.UI.Blazor` | Framework-agnostic Blazor base classes: `EmailTemplatesPageBase`, `EmailTemplateEditorPageBase`, `EmailLayoutsPageBase`, `EmailLayoutEditorPageBase`; `IEmailTemplateEditorFactory` | Transitively — referenced by `.UI.Blazor.MudBlazor` |
+| `BieberWorks.SDK.Email.UI.Blazor.MudBlazor` | `EmailUiModule` (auto-discovered), `EmailAdminSection`, `TextareaEmailTemplateEditorFactory`, live-preview POST endpoint `/admin/email/preview` | Host with the built-in Email Admin pages |
 
 ::: tip Versioning
-All packages are released together and share one version, computed from Conventional Commits. The latest release and full history live on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Email/releases) (see [Changelog](CHANGES.md)).
+All packages are released together and share one version, computed from Conventional Commits. The latest release and full history live on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Email/releases) (see [Changelog](90-changelog.md)).
 :::
 
 ## Interfaces at a glance
@@ -26,6 +27,7 @@ All packages are released together and share one version, computed from Conventi
 | `IEmailTemplateAdminService` | Scoped | Admin CRUD: list/get/save/reset template overrides, manage layouts, render preview |
 | `IEmailTemplateDescriptor` | Singleton, multiple | Describe a transactional email (key, display name, variables, default HTML) for Admin UI discovery |
 | `ISubmissionNotifier` | Scoped | Render + send customer and admin emails in one call; faults are caught and logged |
+| `IEmailQueueStatistics` | Singleton | Read-only queue numbers (pending, retrying, recently failed, oldest age); see [Telemetry](14-telemetry.md) |
 
 ## Template Provider priority
 
@@ -56,8 +58,8 @@ The module depends on no other domain module (no Auth, no Audit). It requires `B
 
 | Topic | Document |
 |---|---|
-| Installation, `Program.cs`, `appsettings.json`, SMTP, rate limiting, UI packages setup | [Setup & Configuration](setup.md) |
-| `IEmailSender`, `IEmailTemplateRenderer`, `IEmailTemplateProvider`, `ISubmissionNotifier` | [Usage](usage.md) |
-| DB-backed template overrides, layouts, `IEmailTemplateDescriptor`, Admin UI, live preview, Scriban | [Template Management](template-management.md) |
-| Auto-injected branding variables (`LogoUrl`, `BrandColor`, …), caching, cache invalidation | [Branding Integration](branding-integration.md) |
-| Release history | [Changelog](CHANGES.md) |
+| Installation, `Program.cs`, `appsettings.json`, SMTP, rate limiting, UI packages setup | [Setup & Configuration](01-getting-started.md) |
+| `IEmailSender`, `IEmailTemplateRenderer` (incl. `locale` parameter — **breaking change**), `IEmailTemplateProvider`, `ISubmissionNotifier` (incl. `DualNotification.Locale`) | [Usage](10-usage.md) |
+| DB-backed template overrides, layouts, `IEmailTemplateDescriptor`, Admin UI, live preview, Scriban | [Template Management](11-template-management.md) |
+| Auto-injected branding variables (`LogoUrl`, `BrandColor`, …), caching, cache invalidation | [Branding Integration](12-branding-integration.md) |
+| Release history | [Changelog](90-changelog.md) |

@@ -1,4 +1,4 @@
-# SDK-Legal
+# Legal
 
 SDK-Legal provides versioned legal documents with consent tracking, cookie-consent activation, and a complete GDPR data-subject rights implementation for BieberWorks SDK hosts.
 
@@ -34,13 +34,13 @@ SDK-Legal provides versioned legal documents with consent tracking, cookie-conse
 
 | Topic | Document |
 |---|---|
-| Service registration, router setup, migrations, connection string | [Getting Started](getting-started.md) |
-| `LegalDocument` and `UserConsent` entity model, schema, append-only design | [Content Model](content-model.md) |
-| `IConsentEnforcementService`, `LegalConsentGuard`, exempt paths, HTTP middleware | [Consent Enforcement](consent-enforcement.md) |
-| Cookie registrations, `CookieConsentMirror`, `/legal/cookies` settings page | [Cookie Consent](cookie-consent.md) |
-| `IUserDataPrivacyOrchestrator`, erasure saga, `AccountDeletionErasureHandler`, admin UI `/admin/legal/gdpr`, implementing erasers in other modules | [GDPR Data-Subject Rights](gdpr-data-subject-rights.md) |
-| `LegalPermissions.Admin`, `LegalPermissionContributor` | [Permissions](permissions.md) |
-| Public and admin routes, literal speaking routes, culture resolution | [Routing](routing.md) |
-| Resource files, `IStringLocalizer<LegalResources>`, document content cultures | [Localization](localization.md) |
-| All domain events, `IAuditableEvent`, audit actions, publication order | [Domain Events & Auditing](events-auditing.md) |
-| Release history | [Changelog](CHANGES.md) |
+| Service registration, router setup, migrations, connection string | [Getting Started](01-getting-started.md) |
+| `LegalDocument` and `UserConsent` entity model, schema, append-only design | [Content Model](10-content-model.md) |
+| `IConsentEnforcementService`, `LegalConsentGuard`, exempt paths, HTTP middleware | [Consent Enforcement](11-consent-enforcement.md) |
+| Cookie registrations, `CookieConsentMirror`, `/legal/cookies` settings page | [Cookie Consent](12-cookie-consent.md) |
+| `IUserDataPrivacyOrchestrator`, erasure saga, `AccountDeletionErasureHandler`, admin UI `/admin/legal/gdpr`, implementing erasers in other modules | [GDPR Data-Subject Rights](80-gdpr-data-subject-rights.md) |
+| `LegalPermissions.Admin`, `LegalPermissionContributor` | [Permissions](13-permissions.md) |
+| Public and admin routes, literal speaking routes, culture resolution | [Routing](14-routing.md) |
+| Resource files, `IStringLocalizer<LegalResources>`, document content cultures | [Localization](15-localization.md) |
+| All domain events, `IAuditableEvent`, audit actions, publication order | [Domain Events & Auditing](16-events-auditing.md) |
+| Release history | [Changelog](90-changelog.md) |
