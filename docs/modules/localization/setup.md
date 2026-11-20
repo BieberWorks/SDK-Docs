@@ -1,6 +1,6 @@
 # Setup — SDK-Localization
 
-## NuGet-Pakete installieren
+## Install NuGet Packages
 
 ```xml
 <!-- Host .csproj -->
@@ -8,8 +8,8 @@
 <PackageReference Include="BieberWorks.SDK.Localization.UI.MudBlazor" Version="0.*-*" />
 ```
 
-::: tip Contracts für andere Module
-Module, die `ITranslationAdminService` injizieren wollen, referenzieren nur:
+::: tip Contracts for Other Modules
+Modules that want to inject `ITranslationAdminService` reference only:
 ```xml
 <PackageReference Include="BieberWorks.SDK.Localization.Contracts" Version="0.*-*" />
 ```
@@ -17,21 +17,21 @@ Module, die `ITranslationAdminService` injizieren wollen, referenzieren nur:
 
 ## Program.cs
 
-SDK-Localization registriert sich als `IModule` und wird daher automatisch von `AddBieberWorksModules` erfasst. Zusätzlich muss die Admin-UI explizit hinzugefügt werden:
+SDK-Localization registers itself as `IModule` and is therefore automatically discovered by `AddBieberWorksModules`. Additionally, the admin UI must be explicitly added:
 
 ```csharp
 using BieberWorks.SDK.Localization.UI.MudBlazor.Extensions;
 
-// Alle Module laden (Foundation, Auth, Localization, …)
+// Load all modules (Foundation, Auth, Localization, …)
 builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// Localization Admin-UI im Admin-Shell registrieren
+// Register Localization Admin UI in the Admin Shell
 builder.Services.AddLocalizationUi();
 ```
 
-### Assembly-Registrierung (Blazor Router)
+### Assembly Registration (Blazor Router)
 
-Das UI-Paket enthält Razor-Seiten — sie müssen dem Blazor-Router bekannt gemacht werden:
+The UI package contains Razor pages — they must be made known to the Blazor router:
 
 ```csharp
 // Program.cs
@@ -50,24 +50,24 @@ app.MapRazorComponents<App>()
         }">
 ```
 
-### Optionale Konfiguration: LocalizationScanOptions
+### Optional Configuration: LocalizationScanOptions
 
-Wenn eigene (nicht `BieberWorks.SDK.*`-) Assemblies in der Key-Discovery berücksichtigt werden sollen:
+If own (non-`BieberWorks.SDK.*`) assemblies should be included in key discovery:
 
 ```csharp
 builder.Services.Configure<LocalizationScanOptions>(options =>
 {
     options.AdditionalAssemblyPrefixes.Add("MyApp.");
 
-    // Optionale Anzeigenamen in der Admin-UI:
-    options.SetDisplayName("Auth", "Authentifizierung")
-           .SetDisplayName("MyApp", "Eigene Texte");
+    // Optional display names in the admin UI:
+    options.SetDisplayName("Auth", "Authentication")
+           .SetDisplayName("MyApp", "Custom Texts");
 });
 ```
 
 ## appsettings.json
 
-Das Modul sucht den Connection String in dieser Reihenfolge: `LocalizationDb` → `DefaultConnection` → `AuthDb`.
+The module searches for the connection string in this order: `LocalizationDb` → `DefaultConnection` → `AuthDb`.
 
 ```json
 {
@@ -77,7 +77,7 @@ Das Modul sucht den Connection String in dieser Reihenfolge: `LocalizationDb` �
 }
 ```
 
-Alternativ mit eigenem Connection String:
+Alternatively with a dedicated connection string:
 
 ```json
 {
@@ -89,25 +89,25 @@ Alternativ mit eigenem Connection String:
 
 ## Migrations
 
-Das Modul wendet seine Migrations beim Start automatisch an (`IModuleInitializer.InitializeAsync`). Ein manueller `dotnet ef database update` ist im Normal-Betrieb nicht erforderlich.
+The module applies its migrations automatically at startup (`IModuleInitializer.InitializeAsync`). Manual `dotnet ef database update` is not required during normal operation.
 
-**PostgreSQL-Schema:** `localization`
+**PostgreSQL Schema:** `localization`
 
-**Tabellen:**
+**Tables:**
 
-| Tabelle | Zweck |
+| Table | Purpose |
 |---|---|
-| `localization.Translations` | Gespeicherte DB-Overrides (Module, Key, Culture, Value) |
-| `localization.__EFMigrationsHistory` | EF-Migrations-Tracking |
+| `localization.Translations` | Stored DB overrides (modules, keys, cultures, values) |
+| `localization.__EFMigrationsHistory` | EF migrations tracking |
 
-### Migrations manuell generieren (nur Modul-Entwicklung)
+### Generate Migrations Manually (module development only)
 
 ```bash
 dotnet ef migrations add <Name> \
-  --project src/BieberWorks.SDK.Localization.Contracts \
+  --project src/BieberWorks.SDK.Localization \
   --startup-project <HostProject>
 ```
 
-::: warning --no-build vermeiden
-Immer ohne `--no-build` ausführen, damit EF die aktuelle DLL verwendet. Andernfalls entstehen fehlerhafte Migrations aus veralteten Assemblies.
+::: warning Avoid --no-build
+Always run without `--no-build` so EF uses the current DLL. Otherwise, faulty migrations result from outdated assemblies.
 :::

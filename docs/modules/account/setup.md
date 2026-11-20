@@ -1,52 +1,65 @@
 # SDK-Account — Setup
 
-## NuGet-Pakete
+## NuGet packages
 
 ```xml
-<PackageReference Include="BieberWorks.SDK.Account.Contracts"    Version="0.*-*" />
-<PackageReference Include="BieberWorks.SDK.Account.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Account.Contracts"           Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Account"                     Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.Account.UI.Blazor.MudBlazor" Version="0.*-*" />
 ```
 
 ::: tip Contracts only
-Fachmodule, die nur `IAccountSection` implementieren, brauchen ausschließlich `BieberWorks.SDK.Account.Contracts`. `BieberWorks.SDK.Account.UI.MudBlazor` wird nur vom Host referenziert.
+Domain modules that only implement `IAccountSection` need only `BieberWorks.SDK.Account.Contracts`. `BieberWorks.SDK.Account` and `BieberWorks.SDK.Account.UI.Blazor.MudBlazor` are referenced only by the host.
 :::
 
-## Voraussetzungen
+`BieberWorks.SDK.Account` is the implementation package. It contains `AccountModule`, `AccountDbContext`, `IAccountNavigationService`, and `AddBieberWorksAccount()`. The skin package (`UI.Blazor.MudBlazor`) contains only layouts, Razor components, and `AddBieberWorksAccountUi()`.
 
-SDK-Account setzt SDK-UI voraus. Stelle sicher, dass `AddBieberWorksUi()` vor `AddBieberWorksAccount()` aufgerufen wird.
+## Prerequisites
+
+1. **SDK-UI** must be registered (`AddBieberWorksUi()`) before the Account skin is used.
+2. A **`DefaultConnection`** connection string must be present in configuration — `AddBieberWorksAccount()` registers `AccountDbContext` via `AddBieberWorksNpgsql` using it (schema `account`). Migrations are applied automatically at startup.
 
 ```xml
-<!-- Auch im Host -->
-<PackageReference Include="BieberWorks.SDK.UI.MudBlazor" Version="0.*-*" />
+<!-- Also in the host -->
+<PackageReference Include="BieberWorks.SDK.UI.Blazor.MudBlazor" Version="2.*-*" />
 ```
 
 ## Program.cs
 
 ```csharp
-using BieberWorks.SDK.Account.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Account.Extensions;
+using BieberWorks.SDK.Account.UI.Blazor.MudBlazor.Extensions;
 using BieberWorks.SDK.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Core.Web.Modularity;
 
-// Reihenfolge wichtig: UI zuerst
+// Discovers and registers all IModule implementations (including AccountModule and
+// AccountUiMudBlazorModule) from the dependency graph. Call once — covers all modules.
+builder.Services.AddBieberWorksModules(builder.Configuration);
+
+// SDK-UI must come before the Account skin (Account depends on it).
 builder.Services.AddBieberWorksUi();
-builder.Services.AddBieberWorksAccount();
 
-// Razor Components: Assembly der Account-UI einbinden
+// Razor components: register account UI assembly
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.Account.UI.MudBlazor.AccountModule).Assembly,
+        typeof(BieberWorks.SDK.Account.UI.Blazor.MudBlazor.AccountUiMudBlazorModule).Assembly,
         typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly
     );
 ```
 
-`AddBieberWorksAccount()` registriert:
+When using `AddBieberWorksModules`, `AccountModule` is discovered automatically and calls `AddBieberWorksAccount(configuration)` internally, including `AccountDbContext` registration and migration.
 
-| Service | Lifetime | Beschreibung |
+`AddBieberWorksAccount()` registers:
+
+| Service | Lifetime | Description |
 |---|---|---|
-| MudBlazor Services | — | via `AddMudServices()` |
+| `AccountDbContext` | — | via `AddBieberWorksNpgsql` (schema `"account"`, `DefaultConnection`) |
+| `IAccountNavigationService` | Scoped | Resolves the final nav tree with overrides applied |
+| `INavOverrideTarget` | Scoped | Exposes the account shell to the Admin navigation editor |
 
-Die `IAccountSection`-Sammlung wird nicht durch `AddBieberWorksAccount()` befüllt — das übernehmen die einzelnen Fachmodule, die ihre Sektionen via `services.AddSingleton<IAccountSection, MySection>()` eintragen.
+The `IAccountSection` collection is not populated by `AddBieberWorksAccount()` — domain modules do that by registering their sections via `services.AddSingleton<IAccountSection, MySection>()`.
 
 ## Routes.razor
 
@@ -65,25 +78,32 @@ Die `IAccountSection`-Sammlung wird nicht durch `AddBieberWorksAccount()` befül
 @code {
     private static readonly Assembly[] _moduleAssemblies =
     [
-        typeof(BieberWorks.SDK.Account.UI.MudBlazor.AccountModule).Assembly,
+        typeof(BieberWorks.SDK.Account.UI.Blazor.MudBlazor.AccountUiMudBlazorModule).Assembly,
         typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly,
-        // weitere Module...
+        // other modules...
     ];
 }
 ```
 
 ::: warning BwThemeProvider
-`BwThemeProvider` muss in `Routes.razor` stehen, nicht innerhalb von `AccountLayout`. Siehe [SDK-UI Setup](../ui/setup.md).
+`BwThemeProvider` must be in `Routes.razor`, not inside `AccountLayout`. See [SDK-UI Setup](../ui/setup.md).
 :::
 
-## IModule-basierter Ansatz (alternativ)
+## AccountDbContext and Migrations
+
+`AccountDbContext` uses schema `"account"` and is registered by `AddBieberWorksAccount()` via `AddBieberWorksNpgsql`. Migrations are applied idempotently at startup via `InitializeBieberWorksModulesAsync()`. No manual migration steps are required after deployment.
+
+## IModule-based approach (alternative explicit registration)
 
 ```csharp
-// Program.cs
-builder.Services.AddBieberWorksModules(builder.Configuration);
+// Impl: DbContext, navigation service
+services.AddBieberWorksAccount(builder.Configuration);
+
+// Skin: MudBlazor services
+services.AddBieberWorksAccountUi();
 
 app.MapBieberWorksModules();
 await app.InitializeBieberWorksModulesAsync();
 ```
 
-`AccountModule` implementiert `IModule` und `IEndpointModule` (ohne eigene Endpoints) und ruft intern `AddBieberWorksAccount()` auf.
+`AccountModule` (in `BieberWorks.SDK.Account`) implements `IModule`, `IEndpointModule`, and `IModuleInitializer` and calls `AddBieberWorksAccount(configuration)` internally.

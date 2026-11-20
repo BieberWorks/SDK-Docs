@@ -1,55 +1,55 @@
-# Module Integration — Checkliste
+# Module Integration — Checklist
 
-Diese Seite beschreibt Schritt für Schritt, wie ein neues SDK-Modul in einen bestehenden Host eingebunden wird. Alle Cross-Cutting-Concerns (DI, Permissions, Localization, Auditing, UI, Messaging) sind berücksichtigt.
+This page describes step-by-step how to integrate a new SDK module into an existing host. All cross-cutting concerns (DI, Permissions, Localization, Auditing, UI, Messaging) are covered.
 
-::: info Voraussetzung
-Der Host nutzt `AddBieberWorksModules` aus `SDK-Foundation`. Alle Module registrieren sich über `IModule.RegisterServices` selbst — manuelle `services.Add…`-Aufrufe sind nur für optionale Erweiterungen nötig.
+::: info Prerequisite
+The host uses `AddBieberWorksModules` from `SDK-Foundation`. All modules register themselves via `IModule.RegisterServices` — manual `services.Add…` calls are only needed for optional extensions.
 :::
 
-## Schritt 1 — NuGet-Pakete hinzufügen
+## Step 1 — Add NuGet Packages
 
-Füge das Modul-Paket und (falls vorhanden) das Contracts-Paket in die Host-`.csproj` ein:
+Add the module package and (if present) the contracts package to the host `.csproj`:
 
 ```xml
-<!-- Contracts — wird auch von anderen Modulen referenziert -->
+<!-- Contracts — referenced by other modules too -->
 <PackageReference Include="BieberWorks.SDK.<ModuleName>.Contracts" Version="0.*-*" />
 
-<!-- Implementierung — nur der Host -->
+<!-- Implementation — host only -->
 <PackageReference Include="BieberWorks.SDK.<ModuleName>" Version="0.*-*" />
 
-<!-- UI (optional) — nur wenn MudBlazor-Seiten genutzt werden -->
+<!-- UI (optional) — only if MudBlazor pages are used -->
 <PackageReference Include="BieberWorks.SDK.<ModuleName>.UI.MudBlazor" Version="0.*-*" />
 ```
 
-Alle Pakete kommen aus GitHub Packages der `BieberWorks`-Org. Stelle sicher, dass `nuget.config` den Feed mit einem PAT (Scope `read:packages`) enthält.
+All packages come from GitHub Packages of the `BieberWorks` org. Ensure that `nuget.config` contains the feed with a PAT (scope `read:packages`).
 
-## Schritt 2 — `AddBieberWorksModules` reicht für die Basis
+## Step 2 — `AddBieberWorksModules` is Enough for the Basics
 
-`IModule`-Implementierungen werden per Assembly-Scan automatisch entdeckt:
+`IModule` implementations are automatically discovered by assembly scan:
 
 ```csharp
 // Program.cs
 builder.Services.AddBieberWorksModules(builder.Configuration);
 ```
 
-Das ist der einzige Pflicht-Aufruf. Alles weitere ist modular optional.
+This is the only mandatory call. Everything else is modularly optional.
 
-## Schritt 3 — Messaging-Infrastruktur sicherstellen
+## Step 3 — Ensure Messaging Infrastructure
 
-Wenn das Modul Commands/Queries über `IAppMessageDispatcher` versendet oder `IDomainEventProcessor<T>` registriert, muss Messaging aktiv sein:
+If the module sends commands/queries via `IAppMessageDispatcher` or registers `IDomainEventProcessor<T>`, messaging must be active:
 
 ```csharp
-// Program.cs — einmalig für den gesamten Host
+// Program.cs — once for the entire host
 builder.Services.AddBieberWorksMessaging();
 ```
 
 ::: tip Idempotent
-`AddBieberWorksMessaging()` kann mehrfach aufgerufen werden — nachfolgende Aufrufe sind No-Ops.
+`AddBieberWorksMessaging()` can be called multiple times — subsequent calls are no-ops.
 :::
 
-### Handler im Modul registrieren
+### Register Handlers in the Module
 
-Jeder Command-/Query-Handler muss in der `*Module.cs` des Moduls explizit registriert werden:
+Each command/query handler must be explicitly registered in the module's `*Module.cs`:
 
 ```csharp
 // In MyModule.RegisterServices()
@@ -57,15 +57,15 @@ services.AddScoped<
     IAppMessageRequestHandler<MyCommand, Result<Guid>>,
     MyCommandHandler>();
 
-// Domain-Event-Processor
+// Domain event processor
 services.AddScoped<
     IDomainEventProcessor<MyDomainEvent>,
     MyDomainEventProcessor>();
 ```
 
-## Schritt 4 — Permissions registrieren (falls das Modul Permissions definiert)
+## Step 4 — Register Permissions (if the module defines them)
 
-Wenn das Modul eigene Permissions schützt, implementiere `IPermissionContributor` und registriere ihn als Singleton. Das Auth-Modul liest alle Contributors beim Start aus:
+If the module protects permissions, implement `IPermissionContributor` and register it as a singleton. The Auth module reads all contributors at startup:
 
 ```csharp
 // In MyModule.RegisterServices()
@@ -80,31 +80,31 @@ public sealed class MyModulePermissionContributor : IPermissionContributor
     {
         yield return new PermissionDefinition(
             Key:         "mymodule:resource:read",
-            DisplayName: "Resource anzeigen",
+            DisplayName: "View Resource",
             Module:      "MyModule",
             Group:       "Resource");
 
         yield return new PermissionDefinition(
             Key:         "mymodule:resource:manage",
-            DisplayName: "Resource verwalten",
+            DisplayName: "Manage Resource",
             Module:      "MyModule",
             Group:       "Resource");
     }
 }
 ```
 
-Anschließend die Permission in der Admin-UI der Admin-Rolle zuweisen (`/admin/roles`).
+Then assign the permission to the admin role in the Admin UI (`/admin/roles`).
 
-::: warning Auth-Modul Pflicht
-`IPermissionContributor` ist ein Vertrag aus `BieberWorks.SDK.Auth.Contracts`. Das Auth-Modul muss im Host installiert sein, damit die Contributors verarbeitet werden.
+::: warning Auth Module Required
+`IPermissionContributor` is a contract from `BieberWorks.SDK.Auth.Contracts`. The Auth module must be installed in the host for contributors to be processed.
 :::
 
-## Schritt 5 — Auto-Auditing aktivieren (falls Domain-Events auditiert werden sollen)
+## Step 5 — Activate Auto-Auditing (if domain events should be audited)
 
-Installiere `SDK-Audit` im Host. Kein weiterer Code im Fachmodul nötig — das Event muss nur `IAuditableEvent` implementieren:
+Install `SDK-Audit` in the host. No additional code in the domain module is needed — the event only needs to implement `IAuditableEvent`:
 
 ```csharp
-// MyDomainEvent.cs — im Contracts-Paket des Moduls
+// MyDomainEvent.cs — in the module's Contracts package
 using BieberWorks.SDK.SharedKernel;
 
 public sealed record MyResourceCreatedEvent(
@@ -119,25 +119,25 @@ public sealed record MyResourceCreatedEvent(
 }
 ```
 
-Der Open-Generic-Handler `AuditableEventHandler<TEvent>` in SDK-Audit übernimmt den Rest automatisch.
+The open-generic handler `AuditableEventHandler<TEvent>` in SDK-Audit takes care of the rest automatically.
 
-::: info Nur SharedKernel-Referenz nötig
-`IAuditableEvent` lebt in `BieberWorks.SDK.SharedKernel`. Das Fachmodul braucht keine Abhängigkeit auf `BieberWorks.SDK.Audit` oder `BieberWorks.SDK.Audit.Contracts`.
+::: info Only SharedKernel Reference Required
+`IAuditableEvent` lives in `BieberWorks.SDK.SharedKernel`. The domain module needs no dependency on `BieberWorks.SDK.Audit` or `BieberWorks.SDK.Audit.Contracts`.
 :::
 
-## Schritt 6 — Localization hinzufügen (falls das Modul lokalisierbare Texte hat)
+## Step 6 — Add Localization (if the module has localizable texts)
 
-### resx-Dateien anlegen
+### Create resx Files
 
-Lege pro Modul eine oder mehrere Resource-Dateien an:
+Create one or more resource files per module:
 
 ```
 src/MyModule.Contracts/Resources/
-    MyModuleResources.resx        ← Neutral/Englisch
-    MyModuleResources.de.resx     ← Deutsch
+    MyModuleResources.resx        ← Neutral/English
+    MyModuleResources.de.resx     ← German
 ```
 
-### IStringLocalizer in Komponenten verwenden
+### Use IStringLocalizer in Components
 
 ```csharp
 [Inject] IStringLocalizer<MyModuleResources> Loc { get; set; } = default!;
@@ -145,29 +145,29 @@ src/MyModule.Contracts/Resources/
 string label = Loc["MyModule_Label_Title"];
 ```
 
-### Key-Discovery konfigurieren (für Admin-UI-Übersetzungseditor)
+### Configure Key Discovery (for Admin UI Translation Editor)
 
-Damit SDK-Localization die Keys des Moduls im Translation-Editor anzeigt, muss der Assembly-Prefix bekannt gemacht werden. Das geschieht einmalig im Host:
+For SDK-Localization to display the module's keys in the translation editor, the assembly prefix must be known. This is done once in the host:
 
 ```csharp
 // Program.cs
 builder.Services.Configure<LocalizationScanOptions>(options =>
 {
-    // Nötig für Assemblies, deren Name NICHT mit "BieberWorks.SDK." beginnt:
+    // Required for assemblies whose name does NOT start with "BieberWorks.SDK.":
     options.AdditionalAssemblyPrefixes.Add("MyApp.");
 
-    // Optionaler Anzeigename im Translation-Editor:
-    options.SetDisplayName("MyModule", "Mein Modul");
+    // Optional display name in the translation editor:
+    options.SetDisplayName("MyModule", "My Module");
 });
 ```
 
-::: tip BieberWorks.SDK.*-Assemblies
-Assemblies mit dem Prefix `BieberWorks.SDK.` werden automatisch gescannt — kein Eintrag in `AdditionalAssemblyPrefixes` nötig.
+::: tip BieberWorks.SDK.* Assemblies
+Assemblies with the prefix `BieberWorks.SDK.` are scanned automatically — no entry in `AdditionalAssemblyPrefixes` needed.
 :::
 
-## Schritt 7 — UI-Assembly-Wiring (falls das Modul Razor-Seiten enthält)
+## Step 7 — UI Assembly Wiring (if the module contains Razor pages)
 
-Wenn das Modul ein `*.UI.MudBlazor`-Paket liefert, müssen dessen Seiten dem Blazor-Router bekannt gemacht werden. **Beide** Stellen müssen aktualisiert werden:
+If the module provides a `*.UI.MudBlazor` package, its pages must be made known to the Blazor router. **Both** places must be updated:
 
 ### Program.cs
 
@@ -177,7 +177,7 @@ builder.Services
     .AddInteractiveServerComponents()
     .AddAdditionalAssemblies(
         typeof(BieberWorks.SDK.MyModule.UI.MudBlazor.SomeAnchorType).Assembly,
-        // weitere Modul-Assemblies...
+        // additional module assemblies...
     );
 ```
 
@@ -188,7 +188,7 @@ builder.Services
     private static readonly Assembly[] _moduleAssemblies =
     [
         typeof(BieberWorks.SDK.MyModule.UI.MudBlazor.SomeAnchorType).Assembly,
-        // weitere...
+        // additional...
     ];
 }
 
@@ -204,30 +204,30 @@ builder.Services
 ```
 
 ::: warning BwThemeProvider
-`BwThemeProvider` muss genau einmal in `Routes.razor` existieren — nicht in einzelnen Layouts. Andernfalls wird der Theme-Zustand bei jedem Navigationswechsel zurückgesetzt.
+`BwThemeProvider` must exist exactly once in `Routes.razor` — not in individual layouts. Otherwise, theme state is reset on every navigation.
 :::
 
-### Admin-Shell-Integration (IAdminSection)
+### Admin Shell Integration (IAdminSection)
 
-Wenn das Modul Admin-Seiten unter dem Admin-Shell anzeigen soll:
+If the module should display admin pages under the admin shell:
 
 ```csharp
 // In MyModule.RegisterServices()
 services.AddSingleton<IAdminSection, MyModuleAdminSection>();
 ```
 
-### Account-Shell-Integration (IAccountSection)
+### Account Shell Integration (IAccountSection)
 
-Analog für Account-bezogene Seiten:
+Analogously for account-related pages:
 
 ```csharp
 // In MyModule.RegisterServices()
 services.AddSingleton<IAccountSection, MyModuleAccountSection>();
 ```
 
-## Schritt 8 — Migrations und Startup
+## Step 8 — Migrations and Startup
 
-Wenn das Modul einen eigenen `DbContext` hat, implementiere `IModuleInitializer`:
+If the module has its own `DbContext`, implement `IModuleInitializer`:
 
 ```csharp
 public sealed class MyModule : IModule, IModuleInitializer
@@ -255,14 +255,14 @@ public sealed class MyModule : IModule, IModuleInitializer
 }
 ```
 
-`InitializeBieberWorksModulesAsync()` im Host ruft alle `IModuleInitializer` in einem eigenen DI-Scope auf:
+`InitializeBieberWorksModulesAsync()` in the host calls all `IModuleInitializer` in a dedicated DI scope:
 
 ```csharp
 // Program.cs
 await app.InitializeBieberWorksModulesAsync();
 ```
 
-## Komplette Program.cs — Referenz
+## Complete Program.cs — Reference
 
 ```csharp
 using BieberWorks.SDK.Admin.UI.MudBlazor.Extensions;
@@ -273,23 +273,23 @@ using BieberWorks.SDK.UI.MudBlazor.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Alle IModule automatisch laden (Foundation, Auth, Email, Audit, Localization, Settings, …)
+// 1. Load all IModule automatically (Foundation, Auth, Email, Audit, Localization, Settings, …)
 builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// 2. Messaging-Infrastruktur
+// 2. Messaging infrastructure
 builder.Services.AddBieberWorksMessaging();
 
-// 3. UI-Pakete (Reihenfolge: UI zuerst)
+// 3. UI packages (order: UI first)
 builder.Services.AddBieberWorksUi();
 builder.Services.AddBieberWorksAdmin();
-builder.Services.AddBieberWorksAccount();  // falls genutzt
+builder.Services.AddBieberWorksAccount();  // if used
 
-// 4. Optionale Modul-UIs
+// 4. Optional module UIs
 builder.Services.AddAuditUi();
 builder.Services.AddLocalizationUi();
 builder.Services.AddSettingsUi();
 
-// 5. Blazor + alle Modul-Assemblies
+// 5. Blazor + all module assemblies
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -300,7 +300,7 @@ builder.Services
         typeof(BieberWorks.SDK.Audit.UI.MudBlazor._Imports).Assembly,
         typeof(BieberWorks.SDK.Localization.UI.MudBlazor.AdminSection.LocalizationAdminSection).Assembly,
         typeof(BieberWorks.SDK.Settings.UI.MudBlazor.AdminSection.SettingsAdminSection).Assembly
-        // + eigene Modul-Assemblies
+        // + own module assemblies
     );
 
 var app = builder.Build();
@@ -308,10 +308,10 @@ var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 6. Migrations + Startup-Tasks aller IModuleInitializer
+// 6. Migrations + startup tasks of all IModuleInitializer
 await app.InitializeBieberWorksModulesAsync();
 
-// 7. Endpoints aller IEndpointModule mappen
+// 7. Map endpoints of all IEndpointModule
 app.MapBieberWorksModules();
 app.MapRazorComponents<App>()
    .AddInteractiveServerRenderMode();
@@ -319,20 +319,20 @@ app.MapRazorComponents<App>()
 await app.RunAsync();
 ```
 
-## Checkliste
+## Checklist
 
-| # | Aufgabe | Gilt wenn |
+| # | Task | Applies if |
 |---|---|---|
-| 1 | NuGet-Pakete (`*.Contracts` + Impl + optional `*.UI.MudBlazor`) hinzufügen | immer |
-| 2 | `AddBieberWorksModules` im Host vorhanden | immer |
-| 3 | `AddBieberWorksMessaging` im Host vorhanden | Modul hat Handler/Processors |
-| 4 | Handler in `Module.cs` als `IAppMessageRequestHandler<…>` registriert | Modul hat Command-/Query-Handler |
-| 5 | EventProcessor in `Module.cs` als `IDomainEventProcessor<…>` registriert | Modul hat Event-Prozessoren |
-| 6 | `IPermissionContributor` registriert und Permission in Admin-Rolle vergeben | Modul schützt Seiten/Endpoints |
-| 7 | Domain-Events implementieren `IAuditableEvent` | Modul soll auditiert werden |
-| 8 | `resx`-Dateien angelegt; `AdditionalAssemblyPrefixes` konfiguriert | Modul hat lokalisierbare Texte |
-| 9 | Assembly in `Program.cs` (`AddAdditionalAssemblies`) eingetragen | Modul hat Razor-Seiten |
-| 10 | Assembly in `Routes.razor` (`AdditionalAssemblies`) eingetragen | Modul hat Razor-Seiten |
-| 11 | `IAdminSection` registriert | Modul hat Admin-Seiten |
-| 12 | `IAccountSection` registriert | Modul hat Account-Seiten |
-| 13 | `IModuleInitializer` implementiert; `InitializeBieberWorksModulesAsync` aufgerufen | Modul hat DbContext/Migrations |
+| 1 | Add NuGet packages (`*.Contracts` + Impl + optional `*.UI.MudBlazor`) | always |
+| 2 | `AddBieberWorksModules` present in host | always |
+| 3 | `AddBieberWorksMessaging` present in host | Module has handlers/processors |
+| 4 | Handler in `Module.cs` registered as `IAppMessageRequestHandler<…>` | Module has command/query handlers |
+| 5 | EventProcessor in `Module.cs` registered as `IDomainEventProcessor<…>` | Module has event processors |
+| 6 | `IPermissionContributor` registered and permission assigned to admin role | Module protects pages/endpoints |
+| 7 | Domain events implement `IAuditableEvent` | Module should be audited |
+| 8 | `resx` files created; `AdditionalAssemblyPrefixes` configured | Module has localizable texts |
+| 9 | Assembly registered in `Program.cs` (`AddAdditionalAssemblies`) | Module has Razor pages |
+| 10 | Assembly registered in `Routes.razor` (`AdditionalAssemblies`) | Module has Razor pages |
+| 11 | `IAdminSection` registered | Module has admin pages |
+| 12 | `IAccountSection` registered | Module has account pages |
+| 13 | `IModuleInitializer` implemented; `InitializeBieberWorksModulesAsync` called | Module has DbContext/Migrations |

@@ -1,31 +1,69 @@
 # SDK-Admin
 
-Das Modul `SDK-Admin` stellt eine vollständige Admin-Shell für BieberWorks-Hosts bereit. Andere Module klinken sich über `IAdminSection` in den Navigations-Drawer ein — ohne dass der Host Änderungen vornehmen muss.
+The admin shell module for the BieberWorks SDK. Provides central navigation and extensible admin UI for all domain modules.
 
-## Pakete
+## Packages
 
-| Paket | Inhalt |
+| Package | Contents |
 |---|---|
-| `BieberWorks.SDK.Admin.Contracts` | `IAdminPage`, `IAdminSection`, `AdminNavItem`, `AdminPermissions` |
-| `BieberWorks.SDK.Admin.UI.MudBlazor` | `AdminLayout`, `AdminShell`, `AdminModule` (`IModule` + `IEndpointModule`), `AddBieberWorksAdmin()` |
+| `BieberWorks.SDK.Admin.Contracts` | `IAdminSection`, `IAdminPage`, `AdminNavItem`, `IAdminNavigationService`, `INavOverrideTarget`. Dependency-free; implemented by other modules. |
+| `BieberWorks.SDK.Admin` | `AdminModule` (`IModule` + `IEndpointModule` + `IModuleInitializer`), `AdminDbContext` (schema `"admin"`), `IAdminNavigationService` impl, `AdminPermissionContributor`, `AddBieberWorksAdmin()`. Requires `DefaultConnection`. |
+| `BieberWorks.SDK.Admin.UI.Blazor.MudBlazor` | `AdminLayout`, `AdminShell`, `AdminUiMudBlazorModule`, navigation editor pages. UI skin only. `AddBieberWorksAdminUi()` registers MudBlazor services. |
 
-## AdminShell-Konzept
+The host must reference **both** `BieberWorks.SDK.Admin` and `BieberWorks.SDK.Admin.UI.Blazor.MudBlazor`. `AddBieberWorksModules(config)` discovers `AdminModule` from the impl package and `AdminUiMudBlazorModule` from the skin automatically.
 
-`AdminLayout` ist ein MudBlazor-`LayoutComponentBase`, der `BwShellLayout` (aus SDK-UI) als responsive Basis nutzt. Er:
+## Version
 
-- rendert alle registrierten `IAdminSection`-Implementierungen als `MudNavGroup` im Drawer,
-- erlaubt per Drag-and-Drop-Edit-Mode das Umsortieren der Sektionen (Reihenfolge wird via SDK-Settings persistiert, sofern das Modul vorhanden ist),
-- schützt den gesamten Body-Bereich durch die Policy `perm:admin:shell:access` (`AdminPermissions.ShellAccess`),
-- rendert alle registrierten `IAppBarWidget`-Instanzen (aus SDK-UI) in der AppBar.
+See the [GitHub Releases page](https://github.com/BieberWorks/SDK-Admin/releases) for the latest stable version and changelog.
 
-`AdminShell` ist ein leichter Wrapper, der `AdminLayout` als `ChildContent` einschließt — nützlich als `DefaultLayout` in einem Blazor-Router-Scope.
+## Features
 
-::: info Sektionen werden von Fachmodulen registriert
-`AddBieberWorksAdmin()` registriert kein eigenes `IAdminSection`. Andere Module (z. B. SDK-Settings, SDK-Storage) registrieren ihre Sektionen über `services.AddSingleton<IAdminSection, MySection>()` in ihrer eigenen `IModule.RegisterServices`-Implementierung.
-:::
+### IAdminSection — Extension Point
 
-## Versions-Referenz
+Each domain module implements `IAdminSection` and registers it via DI to offer one or more pages in the admin navigation. Properties:
 
-Aktuelle stabile Version: **v0.3.0**
+- **`Key`** — Stable lower-kebab-case identifier (e.g. `"auth"`, `"storage"`). Used as the persistence key in the override store. Must be unique across all registered modules.
+- **`Title`** — Display name in the drawer (e.g., `"Audit Logs"`)
+- **`Icon`** — MudBlazor icon (e.g., `Icons.Material.Filled.History`)
+- **`Order`** — Default sort position (ascending, lower = first)
+- **`NavItems`** — List of navigation links
+- **`IsEnabled(IServiceProvider)`** — Runtime condition (feature flags, permissions); returns `true` by default
 
-Paket-IDs: `BieberWorks.SDK.Admin.Contracts` und `BieberWorks.SDK.Admin.UI.MudBlazor`.
+### Navigation Override System
+
+The admin nav supports persistent overrides (order, title, icon, visibility, item reassignment) stored via SDK-Settings. See [navigation.md](./navigation.md) for the full override model.
+
+### Navigation Editor — `/admin/navigation`
+
+A built-in editor page that lets admins manage navigation overrides through the UI. Requires `admin:shell:access` permission.
+
+### Persistence via SDK-Settings
+
+Overrides are stored in SDK-Settings. The admin shell functions without SDK-Settings (code-default order is used, no overrides applied).
+
+### Permission Protection
+
+The admin shell is protected by `admin:shell:access` permission. Only authorized users see the admin area.
+
+## Setup
+
+See [setup.md](./setup.md)
+
+## Custom Pages
+
+See [custom-pages.md](./custom-pages.md)
+
+## Navigation Features
+
+See [navigation.md](./navigation.md)
+
+---
+
+## Documentation
+
+| Topic | File |
+|---|---|
+| Installation and registration | [setup.md](./setup.md) |
+| Adding custom admin pages | [custom-pages.md](./custom-pages.md) |
+| Navigation override system and editor | [navigation.md](./navigation.md) |
+| Changelog | [CHANGES.md](./CHANGES.md) |

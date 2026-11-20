@@ -1,44 +1,51 @@
 # SDK-Audit
 
-Das **SDK-Audit**-Modul bietet automatisches, konfigurationsfreies Audit-Logging für alle BieberWorks-Module. Jedes Domain-Event, das `IAuditableEvent` implementiert, wird ohne zusätzlichen Code im auslösenden Modul in der Audit-Datenbank persistiert.
+The **SDK-Audit** module provides automatic, configuration-free audit logging for all BieberWorks modules. Every domain event implementing `IAuditableEvent` is persisted in the audit database without additional code in the triggering module.
 
-## Was das Modul bietet
+## What the module offers
 
-- **Auto-Auditing** via `IAuditableEvent`: Ein generischer Open-Generic-Handler (`AuditableEventHandler<TEvent>`) fängt automatisch alle auditfähigen Domain-Events ab und schreibt sie in das Audit-Log. Kein Audit-Code im jeweiligen Fachmodul notwendig.
-- **`IAuditService`** mit Methoden zum Lesen, Filtern und Löschen von Audit-Einträgen.
-- **REST-Endpunkte** unter `/api/audit` (GET, GET `/facets`, DELETE).
-- **Admin-UI** (MudBlazor) unter `/admin/audit` mit Paginierung, Freitextsuche und Multiselect-Filtern.
-- Eigenes **PostgreSQL-Schema** `audit` — vollständige Isolation, kein DB-JOIN mit anderen Modulen.
+- **Auto-Auditing** via `IAuditableEvent`: A generic open-generic handler (`AuditableEventHandler<TEvent>`) automatically intercepts all auditable domain events and writes them to the audit log. No audit code in the respective domain module necessary.
+- **`IAuditService`** with methods for reading, filtering, and deleting audit entries.
+- **REST endpoints** under `/api/audit` (GET, GET `/facets`, DELETE).
+- **Admin UI** (MudBlazor) under `/admin/audit` with pagination, full-text search, and multi-select filters.
+- **GDPR / privacy support**: implements `IUserDataExporter` (exports all audit entries for a user as JSON) and `IUserDataEraser` (anonymises the `UserId` column with a tombstone — rows are retained as forensic evidence regardless of erasure mode).
+- Separate **PostgreSQL schema** `audit` — complete isolation, no DB-JOIN with other modules.
 
-::: info Keine Kernabhängigkeit zu Auth
-SDK-Audit hängt in seiner Kern-Logik nur von **SDK-Foundation** ab (`BieberWorks.SDK.SharedKernel` + `BieberWorks.SDK.Core`). Der Open-Generic-Handler `AuditableEventHandler<TEvent>` wird per MS.DI-Reflection auf konkrete Event-Typen aufgelöst — zur Laufzeit, nicht zur Compile-Zeit. Auth oder Auth.Contracts werden vom Handler nicht referenziert.
+::: info No core dependency on Auth
+SDK-Audit's core logic only depends on **SDK-Foundation** (`BieberWorks.SDK.SharedKernel` + `BieberWorks.SDK.Core`). The open-generic handler `AuditableEventHandler<TEvent>` is resolved via MS.DI reflection to concrete event types — at runtime, not compile time. Auth or Auth.Contracts are not referenced by the handler.
 :::
 
-## Pakete
+::: tip Current version
+All SDK-Audit packages are released together. See the [GitHub Releases page](https://github.com/BieberWorks/SDK-Audit/releases) for the latest stable version.
+:::
 
-| Paket | Beschreibung |
+## Packages
+
+| Package | Description |
 |---|---|
-| `BieberWorks.SDK.Audit.Contracts` | `IAuditService`, `AuditEntry`, `AuditEntryDto`, `AuditFilter`, `AuditFacets`, `PagedResult<T>`, `AuditPermissions` |
-| `BieberWorks.SDK.Audit` | Implementierung: `AuditModule`, `AuditService`, `AuditableEventHandler<T>`, `AuditDbContext`, Migrations, Endpoints |
-| `BieberWorks.SDK.Audit.UI` | Framework-agnostische Basisklasse `AuditLogPageBase` |
-| `BieberWorks.SDK.Audit.UI.MudBlazor` | MudBlazor-Admin-Seiten + `AddAuditUi()` |
+| `BieberWorks.SDK.Audit.Contracts` | `IAuditService` (+ segregated `IAuditWriter` / `IAuditReader` / `IAuditAdmin`), `AuditEntry`, `AuditEntryDto`, `AuditFilter`, `AuditFacets` |
+| `BieberWorks.SDK.Audit` | Implementation: `AuditModule`, `AuditService`, `AuditableEventHandler<T>`, `AuditDbContext`, migrations, endpoints, GDPR providers |
+| `BieberWorks.SDK.Audit.UI` | Framework-agnostic base class `AuditLogPageBase` |
+| `BieberWorks.SDK.Audit.UI.MudBlazor` | MudBlazor admin pages + `AddAuditUi()` |
 
-## Abhängigkeiten
+## Dependencies
 
 ```
-BieberWorks.SDK.Audit
+BieberWorks.SDK.Audit                    (impl — references Auth.Contracts for AuditPermissions)
   └─ BieberWorks.SDK.Audit.Contracts
-       └─ BieberWorks.SDK.SharedKernel   (IAuditableEvent, IDomainEvent)
-       └─ BieberWorks.SDK.Core           (IDomainEventProcessor<T>)
-       └─ BieberWorks.SDK.Auth.Contracts (IPermissionContributor — nur für AuditPermissions)
+       └─ BieberWorks.SDK.SharedKernel    (IAuditableEvent, IDomainEvent, PagedResult<T>)
+       └─ BieberWorks.SDK.Core            (IDomainEventProcessor<T>)
 ```
 
-::: warning AuditPermissions und Auth.Contracts
-`AuditPermissions` in `Audit.Contracts` implementiert `IPermissionContributor` aus `Auth.Contracts`. Das macht `Auth.Contracts` zu einer transitiven Abhängigkeit von `Audit.Contracts`. Die eigentliche Audit-Kern-Logik (`AuditableEventHandler`, `AuditService`) ist davon unberührt.
+::: info Contracts has no Auth dependency
+`Audit.Contracts` depends only on SDK-Foundation. `AuditPermissions` (the `IPermissionContributor` that pulls in `Auth.Contracts`) lives in the `BieberWorks.SDK.Audit` **implementation** assembly, so modules that reference `Audit.Contracts` to consume `IAuditService` do not transitively pull in `Auth.Contracts`.
 :::
 
-## Weiterführende Seiten
+## Documentation
 
-- [Setup & Konfiguration](./setup.md)
-- [Auto-Auditing](./auto-auditing.md)
-- [IAuditService](./audit-service.md)
+| Topic | Description |
+|---|---|
+| [Setup & Configuration](./setup.md) | NuGet packages, `Program.cs` wiring, connection string, Blazor router |
+| [Auto-Auditing](./auto-auditing.md) | How `IAuditableEvent` works, open-generic handler, making events auditable |
+| [IAuditService](./audit-service.md) | Service interface, filter model, REST endpoints, permissions, GDPR |
+| [Changelog](./CHANGES.md) | Pointer to GitHub Releases |

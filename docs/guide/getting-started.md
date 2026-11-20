@@ -1,46 +1,42 @@
 # Getting Started
 
-## Prerequisites
+Der schnellste Einstieg ist ein Template — es scaffoldet einen lauffähigen Startpunkt inklusive des vollständigen SDK-Startup-Flows (`AddBieberWorksModules`, `MapBieberWorksModules`, `BwThemeProvider`) und einem Beispiel-Modul als Orientierung.
 
-- .NET 10 SDK
-- PostgreSQL
-- NuGet feed access to `BieberWorks` GitHub Packages
+## Voraussetzungen
 
-## Installation
+- **.NET 10 SDK** — `dotnet --version` muss `10.x` zeigen
+- **GitHub PAT** mit Scope `read:packages` für die Org `BieberWorks` — wird für `dotnet restore` benötigt
 
-Add the BieberWorks GitHub Packages feed to your `nuget.config`:
+## Templates installieren
 
-```xml
-<packageSources>
-  <add key="bieberworks" value="https://nuget.pkg.github.com/BieberWorks/index.json" />
-</packageSources>
-<packageSourceCredentials>
-  <bieberworks>
-    <add key="Username" value="YOUR_GITHUB_USERNAME" />
-    <add key="ClearTextPassword" value="YOUR_PAT_WITH_READ_PACKAGES" />
-  </bieberworks>
-</packageSourceCredentials>
+```powershell
+dotnet new install BieberWorks.Templates
 ```
 
-## Minimal Setup
+Danach stehen alle fünf Templates unter `dotnet new bw-*` zur Verfügung.
 
-Install Foundation:
+## Repos anlegen (optional)
 
-```bash
-dotnet add package BieberWorks.SDK.Core
-dotnet add package BieberWorks.SDK.Core.Web
+Um ein neues GitHub-Repo mit vollständiger Infrastruktur (Branches, CI, Docker-Workflow) anzulegen, gibt es das `BieberWorks.RepoSetup`-PowerShell-Modul:
+
+```powershell
+Install-Module BieberWorks.RepoSetup -Repository BieberWorks -Credential $cred
+New-BwAppRepo -RepoName MeinProjekt -Owner p-bieber
 ```
 
-Wire up in `Program.cs`:
+Details: [Repos anlegen — PowerShell-Modul](./templates#repos-anlegen--powershell-modul)
 
-```csharp
-builder.Services.AddBieberWorksModules(builder.Configuration);
-// ...
-app.MapBieberWorksModules();
-await app.InitializeBieberWorksModulesAsync();
-```
+## Verfügbare Templates
 
-## Next Steps
+| Template | Anwendungsfall | Befehl |
+|---|---|---|
+| `bw-api` | REST-API ohne UI | `dotnet new bw-api -n MeinProjekt` |
+| `bw-blazor` | Blazor Server App | `dotnet new bw-blazor -n MeinProjekt` |
+| `bw-wasm-api` | WASM Frontend + API Backend | `dotnet new bw-wasm-api -n MeinProjekt` |
+| `bw-wasm` | WASM Client für externe API | `dotnet new bw-wasm -n MeinClient` |
+| `bw-module` | Einzelnes Modul in bestehender Solution | `dotnet new bw-module -n MeinModul` |
 
-- [Auth Module](/modules/auth/)
-- [Storage Module](/modules/storage/)
+## Weiterführende Seiten
+
+- [Template-Referenz](./templates) — vollständige Dokumentation aller Templates inkl. Projektstruktur, enthaltene Pakete und Nächste-Schritte-Listen
+- [Manuelle Integration](./manual-setup) — Schritt-für-Schritt-Anleitung für die Integration ohne Template (z.B. in eine bestehende Solution)

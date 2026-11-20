@@ -1,6 +1,6 @@
-# Provider
+# Providers
 
-Das Storage-Modul trennt die logische Datei-API (`IStorageService`) von der physischen Speicherung (`IFileStorage`). Der Provider ist austauschbar, ohne dass Domain- oder Service-Code angepasst werden muss.
+The Storage module separates logical file API (`IStorageService`) from physical storage (`IFileStorage`). The provider is exchangeable without changing domain or service code.
 
 ## IFileStorage
 
@@ -14,15 +14,15 @@ public interface IFileStorage
 }
 ```
 
-`SaveAsync` gibt den tatsächlich verwendeten Key zurück (beim FileSystem-Provider identisch mit dem Eingabe-Key). `OpenReadAsync` wirft `FileNotFoundException` wenn kein Objekt unter dem Key existiert. `DeleteAsync` ist ein No-Op wenn der Key nicht vorhanden ist.
+`SaveAsync` returns the actually used key (for FileSystem provider, identical to input key). `OpenReadAsync` throws `FileNotFoundException` if no object exists under the key. `DeleteAsync` is a no-op if the key doesn't exist.
 
 ---
 
-## FileSystem-Provider
+## FileSystem Provider
 
-**Standard-Provider.** Kein zusätzliches Paket nötig — in `BieberWorks.SDK.Storage` enthalten.
+**Default provider.** No additional package needed — included in `BieberWorks.SDK.Storage`.
 
-### Konfiguration
+### Configuration
 
 ```json
 {
@@ -34,17 +34,17 @@ public interface IFileStorage
 }
 ```
 
-`RootPath` wird beim Start zu einem absoluten Pfad aufgelöst (`Path.GetFullPath`). Das Verzeichnis wird automatisch erstellt falls es nicht existiert.
+`RootPath` is resolved to absolute path on startup (`Path.GetFullPath`). The directory is automatically created if it doesn't exist.
 
-### Path-Traversal-Schutz
+### Path-traversal protection
 
-Der FileSystem-Provider wehrt Path-Traversal-Angriffe auf zwei Ebenen ab:
+The FileSystem provider defends against path-traversal attacks on two levels:
 
-1. Backslashes im Key werden zu Forward-Slashes normalisiert (schützt auf Linux gegen `..\\..\\`-Angriffe).
-2. Nach `Path.GetFullPath` wird geprüft, ob der aufgelöste Pfad innerhalb von `RootPath` liegt. Ein Sibling-Verzeichnis wie `/storage-root-evil/` wird dabei korrekt abgelehnt, weil der Trennzeichen-Suffix explizit geprüft wird.
+1. Backslashes in keys are normalized to forward slashes (protects on Linux against `..\\..\\` attacks).
+2. After `Path.GetFullPath`, it checks whether the resolved path is inside `RootPath`. A sibling directory like `/storage-root-evil/` is correctly rejected because the separator suffix is checked explicitly.
 
 ```csharp
-// Interne Prüfung (vereinfacht):
+// Internal check (simplified):
 if (!fullPath.StartsWith(_rootPath + Path.DirectorySeparatorChar, StringComparison.Ordinal)
     && fullPath != _rootPath)
 {
@@ -52,53 +52,53 @@ if (!fullPath.StartsWith(_rootPath + Path.DirectorySeparatorChar, StringComparis
 }
 ```
 
-### Wann verwenden
+### When to use
 
-- Lokale Entwicklung
-- Einzelner Server mit persistentem Volume (Docker, VM)
-- Deployments ohne Cloud-Abhängigkeit
+- Local development
+- Single server with persistent volume (Docker, VM)
+- Deployments without cloud dependency
 
 ---
 
-## DB-Blob-Provider
+## DB-Blob Provider
 
-Speichert Datei-Bytes in der Tabelle `storage.file_blobs` derselben PostgreSQL-Datenbank, in der auch die Metadaten liegen.
+Stores file bytes in the `storage.file_blobs` table of the same PostgreSQL database as metadata.
 
-### Aktivieren
+### Activation
 
 ```csharp
 builder.Services.AddDatabaseStorage();
 ```
 
-Kein `appsettings.json`-Eintrag nötig — nutzt denselben `StorageDbContext`.
+No `appsettings.json` entry needed — uses the same `StorageDbContext`.
 
-### Wie es funktioniert
+### How it works
 
-Beim Speichern wird der Stream vollständig in einen `byte[]`-Puffer geladen und als eine Zeile in `storage.file_blobs` gespeichert. Beim Lesen wird ein `MemoryStream` über die Bytes zurückgegeben.
+On save, the stream is fully buffered into a `byte[]` and saved as one row in `storage.file_blobs`. On read, a `MemoryStream` over the bytes is returned.
 
-::: warning RAM-Limitierung
-Da jede Datei vollständig in den RAM geladen wird, eignet sich der DB-Blob-Provider nur für kleine Dateien. Avatare (typisch < 1 MB) sind der Hauptanwendungsfall.
+::: warning RAM limitation
+Since each file is fully loaded into RAM, the DB-Blob provider suits only small files. Avatars (typically < 1 MB) are the main use case.
 :::
 
-### Wann verwenden
+### When to use
 
-- Avatare und kleine Binärdateien
-- Deployments ohne Filesystem-Volume oder Cloud-Storage-Account
-- Wenn atomares Backup (DB-Dump sichert Bytes und Metadaten gemeinsam) wichtig ist
+- Avatars and small binary files
+- Deployments without filesystem volume or cloud storage account
+- When atomic backup (DB dump safeguards bytes and metadata together) is important
 
 ---
 
 ## AWS S3 Provider
 
-Paket: `BieberWorks.SDK.Storage.Aws`
+Package: `BieberWorks.SDK.Storage.Aws`
 
-### Aktivieren
+### Activation
 
 ```csharp
 builder.Services.AddS3Storage(builder.Configuration);
 ```
 
-### Konfiguration
+### Configuration
 
 ```json
 {
@@ -116,45 +116,45 @@ builder.Services.AddS3Storage(builder.Configuration);
 }
 ```
 
-| Option | Beschreibung | Standard |
+| Option | Description | Default |
 |---|---|---|
-| `BucketName` | Name des S3-Buckets (Pflicht) | `""` |
-| `KeyPrefix` | Optionaler Prefix vor jedem Object-Key | `""` |
-| `Region` | AWS-Region | `"us-east-1"` |
-| `AccessKeyId` | AWS Access Key ID (leer = Credential Chain) | `""` |
-| `SecretAccessKey` | AWS Secret Access Key (leer = Credential Chain) | `""` |
-| `ServiceUrl` | Custom Endpoint (MinIO, Hetzner, etc.) | `null` |
-| `ForcePathStyle` | Path-Style Addressing statt Virtual-Hosted | `false` |
+| `BucketName` | S3 bucket name (required) | `""` |
+| `KeyPrefix` | Optional prefix before each object key | `""` |
+| `Region` | AWS region | `"us-east-1"` |
+| `AccessKeyId` | AWS access key ID (empty = credential chain) | `""` |
+| `SecretAccessKey` | AWS secret access key (empty = credential chain) | `""` |
+| `ServiceUrl` | Custom endpoint (MinIO, Hetzner, etc.) | `null` |
+| `ForcePathStyle` | Path-style addressing vs. virtual-hosted | `false` |
 
-::: tip S3-kompatible Dienste
-`ServiceUrl` und `ForcePathStyle: true` ermöglichen den Einsatz mit MinIO, Hetzner Object Storage und anderen S3-kompatiblen Backends.
+::: tip S3-compatible services
+`ServiceUrl` and `ForcePathStyle: true` enable use with MinIO, Hetzner Object Storage, and other S3-compatible backends.
 :::
 
-::: warning Secrets nicht in appsettings.json
-`AccessKeyId` und `SecretAccessKey` gehören in einen Secret Store (z.B. User Secrets, Azure Key Vault, AWS Secrets Manager) oder in die AWS-Credential-Chain (IAM Role) — nicht in versionierte Konfigurationsdateien.
+::: warning Secrets not in appsettings.json
+`AccessKeyId` and `SecretAccessKey` belong in a secret store (User Secrets, Azure Key Vault, AWS Secrets Manager) or AWS credential chain (IAM role) — not in versioned config files.
 :::
 
-### Wann verwenden
+### When to use
 
-- Produktions-Deployments mit horizontaler Skalierung
-- Bestehende AWS-Infrastruktur
-- S3-kompatible On-Premises-Lösung (MinIO)
+- Production deployments with horizontal scaling
+- Existing AWS infrastructure
+- S3-compatible on-premises solution (MinIO)
 
 ---
 
 ## Azure Blob Storage Provider
 
-Paket: `BieberWorks.SDK.Storage.Azure`
+Package: `BieberWorks.SDK.Storage.Azure`
 
-### Aktivieren
+### Activation
 
 ```csharp
 builder.Services.AddAzureBlobStorage(builder.Configuration);
 ```
 
-### Konfiguration
+### Configuration
 
-**Option A: Connection String**
+**Option A: Connection string**
 
 ```json
 {
@@ -167,7 +167,7 @@ builder.Services.AddAzureBlobStorage(builder.Configuration);
 }
 ```
 
-**Option B: Managed Identity (empfohlen für Azure-Deployments)**
+**Option B: Managed identity (recommended for Azure deployments)**
 
 ```json
 {
@@ -180,17 +180,17 @@ builder.Services.AddAzureBlobStorage(builder.Configuration);
 }
 ```
 
-| Option | Beschreibung | Standard |
+| Option | Description | Default |
 |---|---|---|
-| `ConnectionString` | Storage Account Connection String | `null` |
-| `ServiceUri` | Service URI für Managed Identity | `null` |
-| `ContainerName` | Ziel-Container (wird erstellt falls nicht vorhanden) | `"storage"` |
+| `ConnectionString` | Storage account connection string | `null` |
+| `ServiceUri` | Service URI for managed identity | `null` |
+| `ContainerName` | Target container (created if missing) | `"storage"` |
 
 ::: info ConnectionString vs. ServiceUri
-Wenn `ConnectionString` gesetzt ist, wird es bevorzugt. `ServiceUri` zusammen mit Managed Identity ist die empfohlene Variante für Azure-Deployments — kein Key im Code oder in der Konfiguration nötig.
+If `ConnectionString` is set, it takes precedence. `ServiceUri` with managed identity is the recommended approach for Azure deployments — no key in code or config.
 :::
 
-### Wann verwenden
+### When to use
 
-- Produktions-Deployments auf Azure
-- Azure-Infrastruktur mit Managed Identity
+- Production deployments on Azure
+- Azure infrastructure with managed identity

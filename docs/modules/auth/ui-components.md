@@ -1,19 +1,19 @@
-# UI-Komponenten
+# UI Components
 
-Das Paket `BieberWorks.SDK.Auth.UI.MudBlazor` enthält fertige Blazor-Seiten und -Komponenten auf Basis von MudBlazor 9. Jede Seite besteht aus zwei Schichten:
+The package `BieberWorks.SDK.Auth.UI.MudBlazor` contains ready-made Blazor pages and components based on MudBlazor 9. Each page consists of two layers:
 
-- **`Auth.UI`** — abstrakte `ComponentBase`-Basisklasse mit der gesamten Logik (Injections, Event-Handler, State)
-- **`Auth.UI.MudBlazor`** — Razor-Datei, die nur `@inherits` auf die Basisklasse setzt und das MudBlazor-Markup rendert
+- **`Auth.UI`** — abstract `ComponentBase` base class with all logic (injections, event handlers, state)
+- **`Auth.UI.MudBlazor`** — Razor file that simply `@inherits` the base class and renders the MudBlazor markup
 
-## Einbinden in den Host
+## Adding to the host
 
-### 1. NuGet-Paket referenzieren
+### 1. Reference the NuGet package
 
 ```bash
 dotnet add package BieberWorks.SDK.Auth.UI.MudBlazor
 ```
 
-### 2. Assembly in Program.cs registrieren
+### 2. Register assembly in Program.cs
 
 ```csharp
 builder.Services
@@ -24,7 +24,7 @@ builder.Services
     );
 ```
 
-### 3. Assembly im Router eintragen (Routes.razor)
+### 3. Add assembly to Router (Routes.razor)
 
 ```razor
 <Router AppAssembly="typeof(App).Assembly"
@@ -35,81 +35,99 @@ builder.Services
 </Router>
 ```
 
-::: warning Beide Einträge notwendig
-`AddAdditionalAssemblies` in `Program.cs` allein reicht nicht — der `Router` rendert Seiten aus fremden Assemblies nur, wenn die Assembly auch dort eingetragen ist. Fehlt der Router-Eintrag, erscheint "Not Found" für alle Auth-Seiten.
+::: warning Both entries are necessary
+`AddAdditionalAssemblies` in `Program.cs` alone is not enough — the `Router` only renders pages from foreign assemblies if the assembly is also registered there. If the router entry is missing, all Auth pages show "Not found".
 :::
 
-## Enthaltene Seiten
+## Included pages
 
-### Öffentliche Seiten
+### Public pages
 
-| Seite | Route | Beschreibung |
+| Page | Route | Description |
 |---|---|---|
-| `Login.razor` | `/auth/login` | Login-Formular mit E-Mail/Benutzername, Passwort, "Angemeldet bleiben"; unterstützt `?returnUrl=` |
-| `Register.razor` | `/auth/register` | Registrierungsformular (E-Mail, Passwort, Bestätigung) |
-| `ForgotPassword.razor` | `/auth/forgot-password` | E-Mail-Eingabe für den Passwort-Reset-Link |
-| `ResetPassword.razor` | `/auth/reset-password` | Neues Passwort setzen via `?email=&token=` aus dem Reset-Link |
-| `Logout.razor` | `/auth/logout` | Ruft `IAuthClient.LogoutAsync()` auf und navigiert zur Startseite |
+| `Login.razor` | `/auth/login` | Login form with email/username, password, "remember me"; supports `?returnUrl=` |
+| `Register.razor` | `/auth/register` | Registration form (email, password, confirmation) |
+| `ForgotPassword.razor` | `/auth/forgot-password` | Email input for password reset link |
+| `ResetPassword.razor` | `/auth/reset-password` | Set new password via `?email=&token=` from reset link |
+| `Logout.razor` | `/auth/logout` | Calls `IAuthClient.LogoutAsync()` and navigates to home |
 
-### Account-Seiten (erfordern Login)
+### Account pages (require login)
 
-| Seite | Route | IAccountPage |
+| Page | Route | IAccountPage |
 |---|---|---|
-| `Profile.razor` | `/auth/profile`, `/account/profile` | Ja — erscheint in der Account-Navigation |
-| `Security.razor` | `/account/security` | Ja — Passwort ändern |
-| `AvatarPage.razor` | `/account/avatar` | Ja — Avatar hochladen (benötigt `SDK-Storage`) |
+| `Profile.razor` | `/auth/profile`, `/account/profile` | Yes — change username, change display name, resend confirmation email (see [Profile Self-Service](auth-flows.md#profile-self-service)) |
+| `Security.razor` | `/account/security` | Yes — change password and manage two-factor auth (enable/disable, recovery codes; see [Two-Factor](auth-flows.md#two-factor-authentication)) |
+| `AvatarPage.razor` | `/account/avatar` | Yes — upload avatar (requires `SDK-Storage`) |
 
-### Admin-Seiten (erfordern Permissions)
+### Admin pages (require permissions)
 
-| Seite | Route | Benötigte Permission |
+| Page | Route | Required permission |
 |---|---|---|
 | `UserListPage.razor` | `/admin/users` | `auth:users:read` |
 | `UserDetailPage.razor` | `/admin/users/{userId}` | `auth:users:read` |
 | `RoleListPage.razor` | `/admin/roles` | `auth:roles:read` |
 | `RoleEditPage.razor` | `/admin/roles/{roleId}` | `auth:roles:manage` |
+| `RegistrationSettingsPage.razor` | `/admin/auth/registration` | `auth:registration:manage` |
 
-Admin-Seiten implementieren `IAdminPage` und erscheinen automatisch in der Admin-Navigation, wenn `SDK-Admin` ebenfalls installiert ist.
+The registration page toggles self-registration at runtime; see [Registration](registration.md) for the full host-config + admin-toggle gate.
 
-## Enthaltene Komponenten
+Admin pages implement `IAdminPage` and automatically appear in admin navigation when `SDK-Admin` is also installed.
+
+## Included components
 
 ### UserMenu.razor
 
-Zeigt ein Benutzer-Menü in der AppBar an (Name, Avatar-Initialen, Logout-Link). Implementiert `IAppBarComponent` aus `SDK-UI`.
+Renders a user menu in the app bar (avatar/initials, name, email, logout link). Implements `IAppBarWidget` from `SDK-UI` and is wired automatically via DI discovery — no manual Razor code required.
 
-```razor
-@* Einbinden in die eigene AppBar-Komponente: *@
-@foreach (var component in AppBarComponents)
+#### Behavior
+
+| State | Default | Configurable |
+|---|---|---|
+| Authenticated | Avatar icon with dropdown (profile, admin, logout) | — |
+| Anonymous | Login + Register as text buttons | `AnonymousMode`, `ShowLogin`, `ShowRegister` |
+
+#### Configuration via `AddAuthUi()`
+
+```csharp
+// Program.cs
+builder.Services.AddAuthUi(options =>
 {
-    <DynamicComponent Type="component.GetType()" />
-}
+    options.AppBar.ShowLogin = false;     // hide the Login button (route stays reachable)
+    options.AppBar.ShowRegister = false;  // hide the Register button
+    options.AppBar.AnonymousMode = AnonymousAppBarMode.IconOnly;
+});
 ```
 
-## Lokalisierung
+`ShowLogin` and `ShowRegister` are **display-only** — they hide the buttons but do not protect the `/auth/login` or `/auth/register` routes. For a real registration lock, use the gate described in [Registration](registration.md); for a single-user setup, see its [portfolio recipe](registration.md#recipe-single-user--portfolio-setup).
 
-Alle Texte werden über `IStringLocalizer<AuthResources>` geladen. Das Modul liefert eingebettete `.resx`-Dateien für Deutsch und Englisch. Mit `SDK-Localization` können einzelne Texte zur Laufzeit aus der Datenbank überschrieben werden.
+See [Setup → AppBar widget configuration](setup.md#appbar-widget-configuration) for all available options.
+
+## Localization
+
+All text is loaded via `IStringLocalizer<AuthResources>`. The module provides embedded `.resx` files for German and English. With `SDK-Localization`, individual texts can be overridden from the database at runtime.
 
 ## IAuthClient
 
-Die UI-Seiten kommunizieren ausschließlich über `IAuthClient` (aus `Auth.Contracts`) mit dem Backend. Im selben Prozess (Blazor Server) ist `InProcAuthClient` registriert. Für externe Clients (WASM/MAUI) liefert `Auth.Client` die `HttpAuthClient`-Implementierung:
+The UI pages communicate exclusively with the backend via `IAuthClient` (from `Auth.Contracts`). In the same process (Blazor Server), `InProcAuthClient` is registered. For external clients (WASM/MAUI), `Auth.Client` provides the `HttpAuthClient` implementation:
 
 ```csharp
-// In einer WASM-/MAUI-App:
+// In a WASM/MAUI app:
 builder.Services.AddAuthHttpClient("https://api.example.com/");
 ```
 
-`AddAuthHttpClient` registriert `HttpAuthClient` als `IAuthClient` mit einem benannten `HttpClient`.
+`AddAuthHttpClient` registers `HttpAuthClient` as `IAuthClient` with a named `HttpClient`.
 
-## Validierungs-Attribute
+## Validation Attributes
 
-Das Paket `Auth.UI` enthält lokalisierte DataAnnotations-Attribute für Formular-Validierungen:
+The `Auth.UI` package contains localized DataAnnotations attributes for form validation:
 
-| Attribut | Beschreibung |
+| Attribute | Description |
 |---|---|
-| `LocalizedRequiredAttribute` | Pflichtfeld mit lokalisierter Fehlermeldung |
-| `LocalizedEmailAddressAttribute` | E-Mail-Format-Prüfung |
-| `LocalizedMinLengthAttribute` | Mindestlänge |
-| `LocalizedStringLengthAttribute` | Min-/Maxlänge |
-| `LocalizedCompareAttribute` | Zwei Felder vergleichen (z. B. Passwort-Bestätigung) |
-| `LocalizedRegexAttribute` | Regex-Prüfung |
+| `LocalizedRequiredAttribute` | Required field with localized error message |
+| `LocalizedEmailAddressAttribute` | Email format check |
+| `LocalizedMinLengthAttribute` | Minimum length |
+| `LocalizedStringLengthAttribute` | Min/max length |
+| `LocalizedCompareAttribute` | Compare two fields (e.g., password confirmation) |
+| `LocalizedRegexAttribute` | Regex check |
 
-Diese Attribute lesen ihre Fehlermeldungen aus `IStringLocalizer<AuthResources>` und sind damit vollständig in das Lokalisierungssystem integriert.
+These attributes read their error messages from `IStringLocalizer<AuthResources>` and are fully integrated into the localization system.

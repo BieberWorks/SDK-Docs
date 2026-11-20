@@ -1,8 +1,8 @@
-# SDK-UI — Komponenten
+# SDK-UI — Components
 
 ## BwThemeProvider
 
-`BwThemeProvider` ist die Wurzel-Komponente für MudBlazor-Theming. Sie rendert `MudThemeProvider`, `MudPopoverProvider`, `MudDialogProvider` und `MudSnackbarProvider` und schließt `BwViewport` ein.
+`BwThemeProvider` is the root component for MudBlazor theming. It renders `MudThemeProvider`, `MudPopoverProvider`, `MudDialogProvider`, and `MudSnackbarProvider`, and wraps `BwViewport`.
 
 ```razor
 <BwThemeProvider>
@@ -10,26 +10,26 @@
 </BwThemeProvider>
 ```
 
-**Interna:** Die Komponente injiziert `ILayoutThemeContext`, `IThemeService` und `ILayoutThemeProvider`. Bei `OnChanged`-Events beider Services baut sie das `MudTheme` aus `ILayoutThemeProvider.GetThemeData(layoutKey, userId)` neu und ruft `StateHasChanged` auf. Der aktuelle Benutzer wird über `AuthenticationStateProvider` ermittelt.
+**Internals:** The component injects `ILayoutThemeContext`, `IThemeService`, and `ILayoutThemeProvider`. On `OnChanged` events from both services, it rebuilds `MudTheme` from `ILayoutThemeProvider.GetThemeData(layoutKey, userId)` and calls `StateHasChanged`. The current user is obtained via `AuthenticationStateProvider`.
 
-::: warning Einmaligkeitsregel
-`BwThemeProvider` muss **einmal** in `Routes.razor` stehen — nie innerhalb einzelner Layouts. Mehrfache Instanzen führen zu konkurrierenden Theme-Zuständen.
+::: warning Uniqueness rule
+`BwThemeProvider` must exist **once** in `Routes.razor` — never inside individual layouts. Multiple instances lead to competing theme states.
 :::
 
 ## ILayoutThemeContext
 
-Verwaltet den aktuellen Layout-Key (z. B. `"admin"`, `"account"`). Layouts rufen `Set(key)` beim Initialisieren auf. `BwThemeProvider` lauscht auf `OnChanged` und wechselt die Palette entsprechend.
+Manages the current layout key (e.g. `"admin"`, `"account"`). Layouts call `Set(key)` during initialization. `BwThemeProvider` listens to `OnChanged` and switches the palette accordingly.
 
 ```csharp
 public interface ILayoutThemeContext
 {
     string? CurrentLayoutKey { get; }
     void Set(string? key);
-    event Action? OnChanged;
+    event Action<LayoutThemeChangedArgs>? OnChanged;
 }
 ```
 
-Layouts setzen den Key in `OnInitialized`:
+Layouts set the key in `OnInitialized`:
 
 ```razor
 @inject ILayoutThemeContext LayoutContext
@@ -37,14 +37,14 @@ Layouts setzen den Key in `OnInitialized`:
 @code {
     protected override void OnInitialized()
     {
-        LayoutContext.Set("admin");   // oder "account", null für Default
+        LayoutContext.Set("admin");   // or "account", null for default
     }
 }
 ```
 
 ## ILayoutThemeProvider
 
-Liefert `LayoutThemeData` (Light- und Dark-Palette als `IReadOnlyDictionary<string, string?>` sowie einen optionalen `LogoStorageKey`) für einen Layout-Key und eine Benutzer-ID.
+Provides `LayoutThemeData` (light and dark palette as `IReadOnlyDictionary<string, string?>` plus optional `LogoStorageKey`) for a layout key and user ID.
 
 ```csharp
 public interface ILayoutThemeProvider
@@ -53,11 +53,11 @@ public interface ILayoutThemeProvider
 }
 ```
 
-Die Standardimplementierung `DefaultLayoutThemeProvider` gibt `LayoutThemeData.Empty` zurück (leere Paletten). SDK-Theme überschreibt diese Registrierung via `TryAddScoped` mit einer datenbankgestützten Implementierung.
+The default implementation `DefaultLayoutThemeProvider` returns `LayoutThemeData.Empty` (empty palettes). SDK-Theme overrides this registration via `TryAddScoped` with a database-backed implementation.
 
 ## IThemeService
 
-Verwaltet den Dark-Mode-Zustand pro Scoped-Session.
+Manages dark mode state per scoped session.
 
 ```csharp
 public interface IThemeService
@@ -70,43 +70,43 @@ public interface IThemeService
 
 ## DarkModeToggle
 
-Fertige AppBar-Komponente ohne Parameter. Injiziert `IThemeService`, abonniert `OnThemeChanged` und rendert einen `MudToggleIconButton` (Sonne / Mond).
+Ready-made AppBar component without parameters. Injects `IThemeService`, subscribes to `OnThemeChanged`, and renders a `MudToggleIconButton` (sun / moon).
 
 ```razor
 <DarkModeToggle />
 ```
 
-::: tip Direkte Nutzung in Layouts
-`AdminLayout` und `AccountLayout` verwenden `DarkModeToggle` nicht direkt als Komponente, sondern setzen einen `MudToggleIconButton` mit denselben Bindings manuell ein, um Zugriff auf den Lokalisierungs-Tooltip zu haben. `DarkModeToggle` ist für eigene Layouts und Shells gedacht.
+::: tip Direct use in layouts
+`AdminLayout` and `AccountLayout` do not use `DarkModeToggle` directly as a component, but set a `MudToggleIconButton` with the same bindings manually to get access to the localization tooltip. `DarkModeToggle` is for own layouts and shells.
 :::
 
 ## LanguageSwitcher
 
-Dropdown-Menü für den Kulturwechsel. Injiziert `ILanguageService` (aus SDK-Localization) und `NavigationManager`. Wechselt die Kultur über `window.location.assign` auf `/bw/set-culture` — kein Blazor-ForceLoad, kein Circuit-Cleanup-Bug.
+Dropdown menu for culture switching. Injects `ILanguageService` (from SDK-Localization) and `NavigationManager`. Switches culture via `window.location.assign` to `/bw/set-culture` — no Blazor ForceLoad, no circuit cleanup bug.
 
 ```razor
 <LanguageSwitcher />
 ```
 
-**Responsive Verhalten:** Empfängt `BwViewportInfo` als `[CascadingParameter]` von `BwViewport`. Auf `xs`/`sm` zeigt die Komponente nur das Globus-Icon; ab `md` zusätzlich den nativen Namen der aktuellen Sprache.
+**Responsive behavior:** Receives `BwViewportInfo` as `[CascadingParameter]` from `BwViewport`. On `xs`/`sm`, shows only the globe icon; from `md` up, also shows the native name of the current language.
 
-::: warning Abhängigkeit
-`LanguageSwitcher` setzt `ILanguageService` voraus, das von `BieberWorks.SDK.Localization` bereitgestellt wird. Ohne dieses Modul ist die Komponente nicht einsetzbar.
+::: warning Dependency
+`LanguageSwitcher` requires `ILanguageService`, provided by `BieberWorks.SDK.Localization`. Without this module, the component is not usable.
 :::
 
 ## IAppBarWidget
 
-Contract für Blazor-Komponenten, die Module in die AppBar einbringen. Wird per DI-Enumeration (`IEnumerable<IAppBarWidget>`) von `AdminLayout` und `AccountLayout` gerendert.
+Contract for Blazor components that modules plug into the AppBar. Rendered via DI enumeration (`IEnumerable<IAppBarWidget>`) by `BwShellLayout` (sorted by `Order` property).
 
 ```csharp
 public interface IAppBarWidget
 {
-    Type ComponentType { get; }  // Blazor ComponentBase ohne Parameter
-    int Order { get; }           // Sortierung, niedrigere Werte zuerst
+    Type ComponentType { get; }  // Blazor ComponentBase without parameters
+    int Order { get; }           // Sorting, lower values first
 }
 ```
 
-**Beispiel — Widget in einem Fachmodul registrieren:**
+**Example — register widget in a domain module:**
 
 ```csharp
 // In IModule.RegisterServices:
@@ -121,31 +121,31 @@ public sealed class MyNotificationWidget : IAppBarWidget
 }
 ```
 
-Die Komponente `NotificationBellComponent` muss in einer Assembly liegen, die der Host über `AddAdditionalAssemblies` eingebunden hat.
+The component `NotificationBellComponent` must be in an assembly that the host has included via `AddAdditionalAssemblies`.
 
 ## BwShellLayout
 
-Gemeinsame responsive Shell-Basis für `AdminLayout` und `AccountLayout`. Nicht direkt für eigene Layouts vorgesehen — Nutzung über die fertigen Shells.
+Shared responsive shell base for `AdminLayout` and `AccountLayout`. Not intended for direct use in own layouts — use via the ready-made shells.
 
-Render-Slots:
+Render slots:
 
-| Parameter | Beschreibung |
+| Parameter | Description |
 |---|---|
-| `AppBarColor` | `Color`-Enum für `MudAppBar` (Default: `Color.Primary`) |
-| `TitleContent` | Titelbereich der AppBar (ab `sm` sichtbar, auf `xs` ausgeblendet) |
-| `AppBarContent` | Aktionsbereich rechts in der AppBar (immer sichtbar) |
-| `DrawerContent` | Inhalt des `MudDrawer` |
-| `BodyContent` | Hauptinhalt (ersetzt `@Body`) |
+| `AppBarColor` | `Color` enum for `MudAppBar` (default: `Color.Primary`) |
+| `TitleContent` | Title area of the AppBar (visible from `sm` up, hidden on `xs`) |
+| `AppBarContent` | Action area on the right in the AppBar (always visible) |
+| `DrawerContent` | Contents of the `MudDrawer` |
+| `BodyContent` | Main content (replaces `@Body`) |
 
 ## BwViewportInfo
 
-Record mit Breakpoint-Snapshot, der von `BwViewport` kaskadiert wird.
+Record with breakpoint snapshot, cascaded by `BwViewport`.
 
 ```csharp
 public sealed record BwViewportInfo(bool IsXs, bool IsSmDown, bool IsMdUp);
 ```
 
-Seitenkomponenten innerhalb von `BwThemeProvider` (das `BwViewport` enthält) können per `[CascadingParameter]` darauf zugreifen:
+Page components within `BwThemeProvider` (which contains `BwViewport`) can access it via `[CascadingParameter]`:
 
 ```razor
 @code {
@@ -156,7 +156,7 @@ Seitenkomponenten innerhalb von `BwThemeProvider` (das `BwViewport` enthält) k�
 
 ## ICookieConsentService / CookieBanner
 
-`ICookieConsentService` verwaltet Cookie-Einwilligungen pro Kategorie (`Necessary`, `Functional`, `Analytics`, `Marketing`). Module registrieren ihre Cookies via `CookieRegistration`.
+`ICookieConsentService` manages cookie consents per category (`Necessary`, `Functional`, `Analytics`, `Marketing`). Modules declare their cookies by implementing `ICookieRegistrationSource` (in `BieberWorks.SDK.UI.Contracts`).
 
 ```csharp
 public interface ICookieConsentService
@@ -169,19 +169,212 @@ public interface ICookieConsentService
 }
 ```
 
-`CookieBanner` ist die zugehörige UI-Komponente, die bei fehlendem Consent angezeigt wird.
+`CookieBanner` is the associated UI component shown when consent is missing.
+
+### Registering module cookies via ICookieRegistrationSource
+
+Implement `ICookieRegistrationSource` and register it as a singleton enumerable:
+
+```csharp
+internal sealed class MyCookieRegistrationSource : ICookieRegistrationSource
+{
+    public IEnumerable<CookieRegistration> GetRegistrations()
+    {
+        yield return new CookieRegistration(
+            Name: "my.cookie",
+            Category: CookieCategory.Functional,
+            Description: "Used for ...",
+            Module: "MyModule"
+        );
+    }
+}
+
+// In IModule.RegisterServices / Program.cs:
+services.TryAddEnumerable(
+    ServiceDescriptor.Singleton<ICookieRegistrationSource, MyCookieRegistrationSource>());
+```
+
+`CookieConsentService` consumes `IEnumerable<ICookieRegistrationSource>` and deduplicates entries by `Name`.
+
+::: warning Deprecated API
+`CookieConsentServiceCollectionExtensions.RegisterCookies()` is marked `[Obsolete]`. Migrate to `ICookieRegistrationSource`. The method will be removed in the next major release.
+:::
+
+## IUserTimeZoneAccessor / BwTime
+
+`IUserTimeZoneAccessor` (in `BieberWorks.SDK.UI.Contracts.TimeZone`) provides UTC/Local display mode switching and consistent timestamp formatting. One instance per Blazor circuit (Scoped).
+
+```csharp
+public interface IUserTimeZoneAccessor
+{
+    TimeZoneDisplayMode DisplayMode { get; }   // Utc (default) or Local
+    string? BrowserTimeZone { get; }           // IANA zone, e.g. "Europe/Berlin"; null until JS resolved
+    event Action? OnChanged;
+    Task InitializeAsync();   // reads bw.tz cookie; idempotent
+    Task SetLocalAsync();     // detects browser IANA zone via JS; persists bw.tz cookie
+    Task SetUtcAsync();       // clears bw.tz cookie
+    string Format(DateTimeOffset value);
+}
+```
+
+**Formatting rules:**
+- UTC mode: `"dd MMM yyyy HH:mm UTC"` (e.g. `"25 Jun 2026 14:30 UTC"`)
+- Local mode: `"dd MMM yyyy HH:mm +02:00"` (offset notation; falls back to UTC if zone not yet resolved)
+
+**`bw.tz` cookie:** classified as `Necessary` — no consent banner required. The cookie stores the IANA zone string and survives page reloads. Cleared when the user switches back to UTC.
+
+### BwTime component
+
+`BwTime` renders a single `DateTimeOffset` as a formatted string that reacts to mode changes. It is the recommended way to display timestamps in module pages.
+
+```razor
+<BwTime Value="@myTimestamp" />
+```
+
+The component calls `InitializeAsync()` in `OnInitializedAsync`, subscribes to `OnChanged`, and disposes the subscription cleanly.
+
+### Toggling display mode
+
+Inject `IUserTimeZoneAccessor` and call `SetLocalAsync()` / `SetUtcAsync()`:
+
+```razor
+@inject IUserTimeZoneAccessor TimeZoneAccessor
+
+<MudToggleIconButton @bind-Toggled="_isLocal"
+    Icon="@Icons.Material.Filled.AccessTime"
+    ToggledIcon="@Icons.Material.Filled.Language"
+    ToggledChanged="OnToggled" />
+
+@code {
+    private bool _isLocal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TimeZoneAccessor.InitializeAsync();
+        _isLocal = TimeZoneAccessor.DisplayMode == TimeZoneDisplayMode.Local;
+    }
+
+    private async Task OnToggled(bool local)
+    {
+        if (local) await TimeZoneAccessor.SetLocalAsync();
+        else       await TimeZoneAccessor.SetUtcAsync();
+    }
+}
+```
 
 ## Component Override System
 
-Das Override-System erlaubt es einem Host, einzelne SDK-Seiten oder Layouts durch eigene Komponenten zu ersetzen, ohne Route-Konflikte zu erzeugen.
+The override system allows a host to replace individual SDK pages or layouts with custom components, without creating route conflicts.
+
+### Registration
+
+All three extension methods delegate to the same `IComponentOverrideRegistry`:
 
 ```csharp
-// Program.cs
+// Program.cs — replace an SDK page with a host-specific page
 builder.Services.OverridePage(
-    sdkType:  typeof(SomeSdkPage),
-    hostType: typeof(MyCustomPage));
+    sdkType:  typeof(BieberWorks.SDK.Localization.UI.MudBlazor.Pages.Admin.TranslationEditorPage),
+    hostType: typeof(MyApp.Pages.Admin.CustomTranslationPage));
+
+// Replace a layout
+builder.Services.OverrideLayout(
+    sdkType:  typeof(SomeSdkLayout),
+    hostType: typeof(MyCustomLayout));
+
+// Replace a non-page component
+builder.Services.OverrideComponent(
+    sdkType:  typeof(SomeSdkComponent),
+    hostType: typeof(MyCustomComponent));
 ```
 
-`BwRouter` (der benutzerdefinierte Router aus SDK-UI) unterdrückt die SDK-Route automatisch und rendert stattdessen die Host-Komponente. Die Host-Komponente braucht keine eigene `@page`-Direktive.
+### Host Component Requirements
 
-Weitere Extension-Methoden: `OverrideLayout(...)`, `OverrideComponent(...)` — alle leiten intern auf `OverridePage` weiter.
+The replacement component (`hostType`) must **not** have a `@page` directive. `BwRouter` resolves the route to the SDK type and then swaps it for the host type at render time. If the host component also declares `@page`, both routes exist and the SDK route is not suppressed.
+
+### BwRouter vs. Standard Router
+
+Use `BwRouter` (from `BieberWorks.SDK.UI.MudBlazor.Routing`) instead of the standard Blazor `Router` component when:
+
+- The host has pages that share the same route as SDK module pages (the host's `@page` should always win), or
+- Any `OverridePage` / `OverrideLayout` / `OverrideComponent` registrations are used.
+
+`BwRouter` consults the `IComponentOverrideRegistry` on every navigation and replaces the resolved component type before rendering. The standard Blazor `Router` ignores the registry.
+
+If none of these conditions apply and you have no route conflicts, the standard `Router` works without issues.
+
+### Host-Assembly Priority
+
+`AddBieberWorksRouting(typeof(Program).Assembly)` registers the host assembly with priority 1000. When `BwRouter` encounters two `@page` directives for the same path — one in the host, one in an SDK module — the host page wins. This is the alternative to `OverridePage` for cases where the host component does declare `@page`.
+
+### Limitations
+
+- **One override per SDK type.** If `OverridePage` is called twice with the same `sdkType`, the second call wins. There is no stacking or chaining.
+- **Resolved at router level, not at render time.** The swap happens when `BwRouter` selects the component to render, not inside the component tree. Re-registration after the application has started has no effect on running circuits.
+- **Assembly must be registered.** The `hostType` component's assembly must be discoverable by the Blazor component system. If using `AddBwModuleAssemblies`, SDK assemblies are auto-discovered. Host assemblies are included via `typeof(Program).Assembly` in `MapRazorComponents<App>()`. Custom RCL assemblies need explicit inclusion.
+
+### Alternative: @page in Host Component
+
+Instead of `OverridePage`, you can declare `@page "/admin/settings"` directly in a host component. `BwRouter` sees the host assembly's route first (higher priority via `AddBieberWorksRouting`) and never reaches the SDK page. The SDK component is not rendered and its DI dependencies are not resolved.
+
+This approach is simpler but requires a `@page` directive on the host component.
+
+
+## BwDataView\<TItem\>
+
+Declarative responsive data component. Desktop (md+) renders a `MudDataGrid`; mobile (xs/sm) renders a `MudCard` list with a bottom-sheet filter drawer and sort menu. Both views are driven by the same `IReadOnlyList<BwColumn<TItem>>` — no duplication between desktop and mobile.
+
+### Column descriptor
+
+```csharp
+new BwColumn<MyDto>
+{
+    Title          = "Email",
+    PropertyName   = nameof(MyDto.Email),   // for grid sort
+    Value          = d => d.Email,           // text fallback
+    CellContent    = d => @<MudLink Href="...">@d.Email</MudLink>,  // desktop cell
+    CardFieldContent = d => @<span>@d.Email</span>,                  // mobile card field (optional)
+    IsCardTitle    = true,
+    Sortable       = true,
+    FilterType     = BwFilterType.Text,
+    FilterDebounce = 400,
+    GetFilterValue = () => _emailFilter,
+    OnFilterChanged = async v => { _emailFilter = v as string; await ReloadAsync(); },
+}
+```
+
+### BwFilterType values
+
+| Value | Mobile drawer control |
+|---|---|
+| `None` | No filter |
+| `Text` | Debounced `MudTextField` |
+| `Select` | `MudSelect` single-value |
+| `Multiselect` | Scrollable `MudCheckBox` list (from `FilterOptions`) |
+| `DateRange` | From / To `MudDatePicker` pair |
+| `Tree` | Caller-supplied `FilterTreeContent` RenderFragment |
+
+### Component parameters
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Columns` | `IReadOnlyList<BwColumn<TItem>>` | Required |
+| `Items` | `IEnumerable<TItem>?` | In-memory (mutually exclusive with `ServerData`) |
+| `ServerData` | `Func<GridState<TItem>, CancellationToken, Task<GridData<TItem>>>?` | Server-side paging |
+| `ToolbarContent` | `RenderFragment?` | Rendered above the data on both viewports |
+| `NoRecordsContent` | `RenderFragment?` | Empty-state slot |
+| `RowActions` | `RenderFragment<TItem>?` | Last column (desktop) / card footer (mobile) |
+| `RowsPerPage` | `int` | Default 25 |
+| `PageSizeOptions` | `int[]?` | Default `[10, 25, 50, 100]` |
+| `GridRef` / `GridRefChanged` | `MudDataGrid<TItem>?` | Two-way binding to expose internal grid |
+
+### Calling ReloadAsync
+
+```csharp
+private BwDataView<MyDto>? _dataView;
+// ...
+await _dataView!.ReloadAsync(); // reloads correct viewport automatically
+```
+
+### CSS
+
+Include `_content/BieberWorks.SDK.UI.MudBlazor/css/bw-dataview.css` in the host's `<head>` (or via `app.css` import). This file is served as a static web asset automatically when the NuGet package is referenced.

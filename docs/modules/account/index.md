@@ -1,31 +1,41 @@
 # SDK-Account
 
-Das Modul `SDK-Account` stellt eine Self-Service-Shell für eingeloggte Benutzer bereit ("Mein Konto"). Das Konzept ist analog zu SDK-Admin: Fachmodule klinken sich über `IAccountSection` in den Navigations-Drawer ein.
+The module `SDK-Account` provides a self-service shell for logged-in users ("My Account"). The concept is analogous to SDK-Admin: domain modules plug in via `IAccountSection`.
 
-## Pakete
+## Packages
 
-| Paket | Inhalt |
+| Package | Contents |
 |---|---|
-| `BieberWorks.SDK.Account.Contracts` | `IAccountPage`, `IAccountSection`, `AccountNavItem` |
-| `BieberWorks.SDK.Account.UI.MudBlazor` | `AccountLayout`, `AccountShell`, `AccountModule` (`IModule` + `IEndpointModule`), `AddBieberWorksAccount()` |
+| `BieberWorks.SDK.Account.Contracts` | `IAccountPage`, `IAccountSection`, `AccountNavItem`, `IAccountNavigationService` and related navigation types |
+| `BieberWorks.SDK.Account` | `AccountModule` (`IModule` + `IEndpointModule` + `IModuleInitializer`), `AccountDbContext` (schema `"account"`), `IAccountNavigationService` impl, `AddBieberWorksAccount()`. Requires `DefaultConnection`. |
+| `BieberWorks.SDK.Account.UI.Blazor.MudBlazor` | `AccountLayout`, `AccountShell`, `AccountUiMudBlazorModule`. UI skin only. `AddBieberWorksAccountUi()` registers MudBlazor services. |
 
-## AccountShell-Konzept
+The host must reference **both** `BieberWorks.SDK.Account` and `BieberWorks.SDK.Account.UI.Blazor.MudBlazor`. `AddBieberWorksModules(config)` discovers `AccountModule` from the impl package and `AccountUiMudBlazorModule` from the skin automatically.
 
-`AccountLayout` ist ein MudBlazor-`LayoutComponentBase`, der `BwShellLayout` (aus SDK-UI) als responsive Basis nutzt. Er:
+## AccountShell concept
 
-- rendert alle registrierten `IAccountSection`-Implementierungen als `MudNavGroup` im Drawer,
-- unterstützt optionale Permission-Checks pro Sektion über `IAccountSection.RequiredPermission` (Policy-Format `perm:{key}`),
-- rendert alle registrierten `IAppBarWidget`-Instanzen (aus SDK-UI) in der AppBar,
-- setzt den Layout-Theme-Key auf `"account"` über `ILayoutThemeContext`.
+`AccountLayout` is a MudBlazor `LayoutComponentBase` using `BwShellLayout` (from SDK-UI) as responsive base. It:
 
-`AccountShell` ist ein leichter Wrapper, der `AccountLayout` als `ChildContent` einschließt — nützlich als `DefaultLayout` in einem Blazor-Router-Scope.
+- renders all registered `IAccountSection` implementations as `MudNavGroup` in the drawer via `IAccountNavigationService`,
+- supports optional permission checks per section via `IAccountSection.RequiredPermission` (policy format `perm:{key}`),
+- renders all registered `IAppBarWidget` instances (from SDK-UI) in the AppBar,
+- sets the layout theme key to `"account"` via `ILayoutThemeContext`.
 
-::: info Unterschied zu AdminLayout
-`AccountLayout` schützt den Body nicht pauschal per Policy — alle Inhalte sind sichtbar, solange keine `RequiredPermission` an der Sektion gesetzt ist. Einzelne Sektionen können optional per Permission ausgeblendet werden. `AdminLayout` hingegen schützt den gesamten Bereich durch `perm:admin:shell:access`.
+`AccountShell` is a light wrapper that wraps `AccountLayout` as `ChildContent` — useful as `DefaultLayout` in a Blazor router scope.
+
+::: info Difference from AdminLayout
+`AccountLayout` does not protect the body globally via policy — all content is visible as long as no `RequiredPermission` is set on the section. Individual sections can optionally be hidden per permission. `AdminLayout`, on the other hand, protects the entire area via `perm:admin:shell:access`.
 :::
 
-## Versions-Referenz
+## Version reference
 
-Aktuelle stabile Version: **v0.0.1**
+The latest stable release and full version history are on the [GitHub Releases page](https://github.com/BieberWorks/SDK-Account/releases).
 
-Paket-IDs: `BieberWorks.SDK.Account.Contracts` und `BieberWorks.SDK.Account.UI.MudBlazor`.
+## Documentation
+
+| Topic | Document |
+|---|---|
+| NuGet references, `Program.cs`, `Routes.razor`, `IModule`-based setup | [Setup & Configuration](setup.md) |
+| Navigation override system, `IAccountNavigationService`, resolve pipeline | [Navigation Overrides](navigation.md) |
+| Implementing `IAccountSection` / `IAccountPage`, permission gating, feature flags | [Custom Pages & Sections](custom-pages.md) |
+| Release history | [Changelog](CHANGES.md) |

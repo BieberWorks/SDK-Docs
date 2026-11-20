@@ -1,42 +1,60 @@
 # IAuditService
 
-`IAuditService` ist das öffentliche Service-Interface aus `BieberWorks.SDK.Audit.Contracts`. Andere Module können es referenzieren, ohne die Implementierungsassembly zu kennen.
+`IAuditService` is the public service interface from `BieberWorks.SDK.Audit.Contracts`. Other modules can reference it without knowing the implementation assembly.
 
 ## Interface
 
-```csharp
-public interface IAuditService
-{
-    /// <summary>Persistiert einen Audit-Eintrag.</summary>
-    Task LogAsync(AuditEntry entry, CancellationToken ct = default);
+The service surface is segregated into three role-specific interfaces. `IAuditService` inherits all three, so existing injections keep working; consumers that only need one capability can inject the narrow interface (each is registered against the same `AuditService` implementation).
 
-    /// <summary>Gibt eine seitenweise, gefilterte Liste von Audit-Einträgen zurück.</summary>
+```csharp
+public interface IAuditWriter
+{
+    /// <summary>Persists an audit entry.</summary>
+    Task LogAsync(AuditEntry entry, CancellationToken ct = default);
+}
+
+public interface IAuditReader
+{
+    /// <summary>Returns a paginated, filtered list of audit entries.</summary>
     Task<PagedResult<AuditEntryDto>> GetAsync(AuditFilter filter, CancellationToken ct = default);
 
     /// <summary>
-    /// Gibt distinkte, sortierte Werte für Action und Resource zurück.
-    /// Wird verwendet, um die Multiselect-Filter-Dropdowns in der Admin-UI zu befüllen.
+    /// Returns distinct, sorted values for action and resource.
+    /// Used to populate multi-select filter dropdowns in the admin UI.
     /// </summary>
     Task<AuditFacets> GetFacetsAsync(CancellationToken ct = default);
+}
 
-    /// <summary>Löscht den Audit-Eintrag mit der angegebenen ID. Gibt false zurück, wenn nicht gefunden.</summary>
+public interface IAuditAdmin
+{
+    /// <summary>Deletes the audit entry with the specified ID. Returns false if not found.</summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
+}
+
+public interface IAuditService : IAuditWriter, IAuditReader, IAuditAdmin;
+```
+
+## AuditEntry (input for LogAsync)
+
+`AuditEntry` is an init-only record — new fields can be added without breaking existing
+construction sites. `Action` and `Resource` are `required`.
+
+```csharp
+public sealed record AuditEntry
+{
+    public string?         UserId     { get; init; }  // Actor; null for system-generated events
+    public required string Action     { get; init; }  // Verb, e.g. "auth:user:registered"
+    public required string Resource   { get; init; }  // Resource type, e.g. "User"
+    public string?         ResourceId { get; init; }  // ID of the resource instance
+    public string?         Details    { get; init; }  // JSON or free text
+    public DateTimeOffset? Timestamp  { get; init; }  // UTC; default: DateTimeOffset.UtcNow
+
+    /// <summary>Maps an <c>IAuditableEvent</c> onto an audit entry.</summary>
+    public static AuditEntry From(IAuditableEvent e);
 }
 ```
 
-## AuditEntry (Eingabe für LogAsync)
-
-```csharp
-public sealed record AuditEntry(
-    string?         UserId,       // Akteur; null bei systemgenerierten Events
-    string          Action,       // Verb, z.B. "auth:user:registered"
-    string          Resource,     // Ressourcentyp, z.B. "User"
-    string?         ResourceId  = null,  // ID der Ressource-Instanz
-    string?         Details     = null,  // JSON oder Freitext
-    DateTimeOffset? Timestamp   = null); // UTC; Standard: DateTimeOffset.UtcNow
-```
-
-## AuditEntryDto (Ausgabe von GetAsync)
+## AuditEntryDto (output from GetAsync)
 
 ```csharp
 public sealed record AuditEntryDto(
@@ -49,99 +67,108 @@ public sealed record AuditEntryDto(
     DateTimeOffset  Timestamp);
 ```
 
-## AuditFilter (Parameter für GetAsync)
+## AuditFilter (parameter for GetAsync)
 
-Alle Felder sind optional. Gesetzte Felder werden mit AND verknüpft.
+All fields are optional. Set fields are combined with AND.
 
 ```csharp
 public sealed record AuditFilter(
     int                     Page       = 1,
     int                     PageSize   = 50,
-    string?                 UserId     = null,  // case-insensitiver contains-Match
-    IReadOnlyList<string>?  Resources  = null,  // exakter IN-Filter
-    DateTimeOffset?         From       = null,  // inklusiv
-    DateTimeOffset?         To         = null,  // inklusiv
-    string?                 Search     = null,  // Freitext-OR über alle Spalten
-    IReadOnlyList<string>?  Actions    = null,  // exakter IN-Filter
-    string?                 ResourceId = null); // case-insensitiver contains-Match
+    string?                 UserId     = null,  // case-insensitive contains-match
+    IReadOnlyList<string>?  Resources  = null,  // exact IN filter
+    DateTimeOffset?         From       = null,  // inclusive
+    DateTimeOffset?         To         = null,  // inclusive
+    string?                 Search     = null,  // free text OR across all columns
+    IReadOnlyList<string>?  Actions    = null,  // exact IN filter
+    string?                 ResourceId = null); // case-insensitive contains-match
 ```
 
-### Filterverhalten im Detail
+### Filter behavior in detail
 
-| Parameter | Typ | Verhalten |
+| Parameter | Type | Behavior |
 |---|---|---|
-| `UserId` | contains | Case-insensitiv, partieller Match (z.B. `"user"` trifft `"user-123"`) |
-| `Resources` | IN-Filter | Exakter Match auf `Resource`-Spalte; mehrere Werte werden per OR verknüpft |
-| `Actions` | IN-Filter | Exakter Match auf `Action`-Spalte; mehrere Werte werden per OR verknüpft |
-| `From` / `To` | Range | Inklusive Grenzen auf `Timestamp` |
-| `Search` | Freitext | Case-insensitiver OR-Match über `UserId`, `Action`, `Resource`, `ResourceId`, `Details` |
-| `ResourceId` | contains | Case-insensitiv, partieller Match |
+| `UserId` | contains | Case-insensitive, partial match (e.g. `"user"` matches `"user-123"`) |
+| `Resources` | IN filter | Exact match on `Resource` column; multiple values are combined with OR |
+| `Actions` | IN filter | Exact match on `Action` column; multiple values are combined with OR |
+| `From` / `To` | Range | Inclusive limits on `Timestamp` |
+| `Search` | Free text | Case-insensitive OR match across `UserId`, `Action`, `Resource`, `ResourceId`, `Details` |
+| `ResourceId` | contains | Case-insensitive, partial match |
 
 ::: info PostgreSQL ILike
-Auf PostgreSQL nutzt die Implementierung `EF.Functions.ILike` für alle contains- und Freitextsuchen — Index-freundlich und nativ case-insensitiv. Auf anderen Providern (z.B. InMemory für Tests) wird auf `ToLower().Contains()` zurückgefallen.
+On PostgreSQL, the implementation uses `EF.Functions.ILike` for all contains and free text searches — index-friendly and natively case-insensitive. On other providers (e.g. InMemory for tests), falls back to `ToLower().Contains()`.
 :::
 
-## AuditFacets (Ausgabe von GetFacetsAsync)
+## AuditFacets (output from GetFacetsAsync)
 
 ```csharp
 public sealed record AuditFacets(
-    IReadOnlyList<string> Actions,    // distinct, sortiert
-    IReadOnlyList<string> Resources); // distinct, sortiert
+    IReadOnlyList<string> Actions,    // distinct, sorted
+    IReadOnlyList<string> Resources); // distinct, sorted
 ```
 
-Wird von der Admin-UI verwendet, um die Dropdown-Filter mit realen Datenbankwerten zu befüllen.
+Used by the admin UI to populate the dropdown filters with real database values.
 
 ## PagedResult\<T\>
 
+The canonical `PagedResult<T>` lives in `BieberWorks.SDK.SharedKernel` (it is shared across
+modules, not Audit-specific). It is an init-only record:
+
 ```csharp
-public sealed record PagedResult<T>(
-    IReadOnlyList<T> Items,
-    int              Total,
-    int              Page,
-    int              PageSize);
+namespace BieberWorks.SDK.SharedKernel;
+
+public sealed record PagedResult<T>
+{
+    public IReadOnlyList<T> Items    { get; init; }
+    public int              Total    { get; init; }
+    public int              Page     { get; init; }
+    public int              PageSize { get; init; }
+}
 ```
 
-## Direkte Nutzung
+## Direct usage
 
-`IAuditService` kann in jeden Service oder Handler injiziert werden, der `Audit.Contracts` referenziert:
+`IAuditService` can be injected into any service or handler that references `Audit.Contracts`:
 
 ```csharp
 public class MyService(IAuditService audit)
 {
     public async Task DoSomethingAsync(string userId, CancellationToken ct)
     {
-        // ... Geschäftslogik ...
+        // ... business logic ...
 
-        await audit.LogAsync(new AuditEntry(
-            UserId:     userId,
-            Action:     "mymodule:something:done",
-            Resource:   "Something",
-            ResourceId: "resource-42",
-            Details:    "Optionaler Kontext"), ct);
+        await audit.LogAsync(new AuditEntry
+        {
+            UserId     = userId,
+            Action     = "mymodule:something:done",
+            Resource   = "Something",
+            ResourceId = "resource-42",
+            Details    = "Optional context",
+        }, ct);
     }
 }
 ```
 
-::: tip Auto-Auditing bevorzugen
-Direktes `LogAsync` ist nur notwendig, wenn kein Domain-Event publiziert werden kann. Für die meisten Fälle ist [Auto-Auditing via IAuditableEvent](./auto-auditing.md) die bevorzugte Methode — kein Boilerplate, keine direkte Abhängigkeit auf `Audit.Contracts`.
+::: tip Prefer auto-auditing
+Direct `LogAsync` is only necessary when a domain event cannot be published. For most cases, [auto-auditing via IAuditableEvent](./auto-auditing.md) is the preferred method — no boilerplate, no direct dependency on `Audit.Contracts`.
 :::
 
-## Audit-Logs abfragen
+## Query audit logs
 
 ```csharp
-// Neueste 20 Einträge für einen bestimmten Benutzer
+// Latest 20 entries for a specific user
 var result = await auditService.GetAsync(new AuditFilter(
     Page:     1,
     PageSize: 20,
     UserId:   "user-123"), ct);
 
-Console.WriteLine($"Gesamt: {result.Total}");
+Console.WriteLine($"Total: {result.Total}");
 foreach (var entry in result.Items)
 {
     Console.WriteLine($"{entry.Timestamp:u}  {entry.Action}  {entry.Resource}/{entry.ResourceId}");
 }
 
-// Alle "delete"-Aktionen auf "User"-Ressourcen in einem Zeitraum
+// All "delete" actions on "User" resources in a time range
 var deleteResult = await auditService.GetAsync(new AuditFilter(
     Actions:   ["user:delete", "auth:user:deleted"],
     Resources: ["User"],
@@ -149,34 +176,47 @@ var deleteResult = await auditService.GetAsync(new AuditFilter(
     To:        DateTimeOffset.UtcNow), ct);
 ```
 
-## REST-Endpunkte
+## REST endpoints
 
-Das Modul registriert drei Endpunkte unter `/api/audit`. Alle erfordern Autorisierung.
+The module registers three endpoints under `/api/audit`. All require authorization.
 
-| Methode | Pfad | Berechtigung | Beschreibung |
+| Method | Path | Permission | Description |
 |---|---|---|---|
-| `GET` | `/api/audit` | `audit:logs:read` | Paginierte, gefilterte Liste |
-| `GET` | `/api/audit/facets` | `audit:logs:read` | Distinkte Actions und Resources |
-| `DELETE` | `/api/audit/{id}` | `audit:logs:delete` | Einzelnen Eintrag löschen |
+| `GET` | `/api/audit` | `audit:logs:read` | Paginated, filtered list |
+| `GET` | `/api/audit/facets` | `audit:logs:read` | Distinct actions and resources |
+| `DELETE` | `/api/audit/{id}` | `audit:logs:delete` | Delete single entry |
 
-### GET /api/audit — Query-Parameter
+### GET /api/audit — query parameters
 
 ```
-GET /api/audit?page=1&pageSize=50&userId=user-123&resource=User,Role&action=created&from=2026-01-01T00:00:00Z&search=admin
+GET /api/audit?page=1&pageSize=50&userId=user-123&resource=User,Role&action=created&resourceId=post-42&from=2026-01-01T00:00:00Z&search=admin
 ```
 
-`resource` und `action` akzeptieren kommagetrennte Werte für den IN-Filter.
+`resource` and `action` accept comma-separated values for the IN filter. `resourceId` is a case-insensitive contains-match on the `ResourceId` column.
 
-## Berechtigungen
+## Permissions
 
-`AuditPermissions` definiert zwei Berechtigungs-Konstanten:
+SDK-Audit declares two permissions, identified by these stable string keys:
 
-```csharp
-public sealed class AuditPermissions : IPermissionContributor
-{
-    public const string LogsRead   = "audit:logs:read";
-    public const string LogsDelete = "audit:logs:delete";
-}
-```
+| Key | Purpose |
+|---|---|
+| `audit:logs:read` | Read and filter audit log entries |
+| `audit:logs:delete` | Delete individual audit log entries |
 
-Sie werden automatisch beim Start über `IPermissionContributor` im Auth-Modul registriert, wenn SDK-Auth und SDK-Audit gemeinsam verwendet werden.
+They are contributed by an internal `AuditPermissions : IPermissionContributor` in the
+`BieberWorks.SDK.Audit` implementation assembly (not part of the contract surface) and are
+automatically registered on startup. The Auth permission catalogue picks them up when SDK-Auth
+and SDK-Audit are used together.
+
+## GDPR / Personal-Data Handling
+
+SDK-Audit registers two GDPR providers automatically (no additional setup required):
+
+| Provider | Interface | Behaviour |
+|---|---|---|
+| `AuditUserDataExporter` | `IUserDataExporter` | Returns all audit entries for the requested user as a JSON array, ordered by timestamp. |
+| `AuditUserDataEraser` | `IUserDataEraser` | Replaces the `UserId` column with the tombstone value `"ERASED"` for all matching rows. The rows themselves are **never deleted** — audit records are forensic evidence. The operation is idempotent. |
+
+::: info Erasure mode is ignored
+`AuditUserDataEraser` always anonymises regardless of the `ErasureMode` requested (hard delete vs. anonymise). This is intentional: audit trails must be retained for compliance.
+:::

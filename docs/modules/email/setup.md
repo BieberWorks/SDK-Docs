@@ -1,14 +1,17 @@
 # Setup — SDK-Email
 
-## NuGet-Pakete installieren
+## NuGet packages
 
 ```xml
-<!-- Host .csproj -->
+<!-- Host .csproj — core email functionality -->
 <PackageReference Include="BieberWorks.SDK.Email" Version="0.*-*" />
+
+<!-- Admin UI with template management (requires SDK-Admin) -->
+<PackageReference Include="BieberWorks.SDK.Email.UI.MudBlazor" Version="0.*-*" />
 ```
 
-::: tip Contracts für andere Module
-Module, die `IEmailSender` injizieren (z. B. Auth für Passwort-Reset):
+::: tip Contracts for other modules
+Modules that inject `IEmailSender`, register `IEmailTemplateDescriptor`, or reference `EmailPermissions`:
 ```xml
 <PackageReference Include="BieberWorks.SDK.Email.Contracts" Version="0.*-*" />
 ```
@@ -16,18 +19,27 @@ Module, die `IEmailSender` injizieren (z. B. Auth für Passwort-Reset):
 
 ## Program.cs
 
-`EmailModule` registriert sich als `IModule` und wird von `AddBieberWorksModules` automatisch erfasst. Kein zusätzlicher Aufruf nötig:
+`EmailModule` implements `IModule` and is automatically discovered by `AddBieberWorksModules`. No explicit call is required for the core functionality.
+
+`EmailUiModule` (in `Email.UI.MudBlazor`) is also auto-discovered and registers the Admin UI section and the live-preview endpoint.
 
 ```csharp
-// Alle Module laden — EmailModule wird automatisch eingeschlossen
+// Loads all modules — EmailModule and EmailUiModule are automatically included.
 builder.Services.AddBieberWorksModules(builder.Configuration);
+
+// ...
+
+// Required for the preview POST endpoint (/admin/email/preview).
+app.MapBieberWorksEndpoints();
 ```
 
-Das Modul liest beim Start `Email:UseSmtp` aus der Konfiguration:
-- `UseSmtp: true` → `SmtpEmailSender` wird als `IEmailSender` registriert
-- `UseSmtp: false` (Standard) → `LoggingEmailSender` wird registriert (kein echter Versand)
+The module reads `Email:UseSmtp` from configuration on startup:
+- `UseSmtp: true` → `SmtpEmailSender` is registered as `IEmailSender`
+- `UseSmtp: false` (default) → `LoggingEmailSender` is registered (no actual send)
 
-## SMTP-Konfiguration in appsettings.json
+`EmailModule` also implements `IModuleInitializer` and applies EF Core migrations for the `email` schema automatically on startup.
+
+## SMTP configuration in appsettings.json
 
 ```json
 {
@@ -43,35 +55,81 @@ Das Modul liest beim Start `Email:UseSmtp` aus der Konfiguration:
 }
 ```
 
-| Property | Standard | Bedeutung |
+| Property | Default | Meaning |
 |---|---|---|
-| `UseSmtp` | `false` | `true` = echter SMTP-Versand; `false` = nur Logging |
-| `Host` | `""` | SMTP-Server-Hostname |
-| `Port` | `587` | SMTP-Port (STARTTLS) |
-| `Username` | `""` | SMTP-Benutzername |
-| `Password` | `""` | SMTP-Passwort |
-| `From` | `""` | Absender-Adresse |
-| `TemplatePath` | `null` | Optionaler Dateisystem-Pfad für Template-Overrides |
+| `UseSmtp` | `false` | `true` = real SMTP send; `false` = logging only |
+| `Host` | `""` | SMTP server hostname |
+| `Port` | `587` | SMTP port (STARTTLS) |
+| `Username` | `""` | SMTP username |
+| `Password` | `""` | SMTP password |
+| `From` | `""` | Sender address |
+| `TemplatePath` | `null` | Optional filesystem path for template overrides |
 
-::: warning Password nicht im Repository
-Das SMTP-Passwort gehört in User Secrets (Entwicklung) oder eine Environment Variable / einen Secret Manager (Produktion). Niemals in `appsettings.json` einchecken.
+::: warning Password not in repository
+The SMTP password belongs in User Secrets (development) or environment variable / secret manager (production). Never check it into `appsettings.json`.
 
 ```bash
-dotnet user-secrets set "Email:Password" "dein-passwort"
+dotnet user-secrets set "Email:Password" "your-password"
 ```
 :::
 
-### Entwicklung ohne SMTP
+## Rate limiting (opt-in)
 
-Für lokale Entwicklung `UseSmtp: false` lassen. Der `LoggingEmailSender` schreibt alle ausgehenden E-Mails als `Information`-Log:
+`EmailModule` can optionally wrap the registered `IEmailSender` with a rate-limiting decorator.
+The decorator is only active when at least one non-zero limit is configured under `Email:RateLimit`.
+When disabled (the default), behaviour is identical to the undecorated sender.
+
+```json
+{
+  "Email": {
+    "RateLimit": {
+      "MaxPerMinuteTotal": 10,
+      "MaxPerHourTotal": 100,
+      "MaxPerHourPerRecipient": 5
+    }
+  }
+}
+```
+
+| Property | Default | Meaning |
+|---|---|---|
+| `MaxPerMinuteTotal` | `0` (off) | Maximum emails sent globally within any 60-second window |
+| `MaxPerHourTotal` | `0` (off) | Maximum emails sent globally within any 60-minute window |
+| `MaxPerHourPerRecipient` | `0` (off) | Maximum emails sent to a single `To` address within any 60-minute window |
+
+When a limit is exceeded, `RateLimitedEmailSender` throws `EmailRateLimitExceededException`.
+Catch it at the call site and surface a user-friendly message.
+
+```csharp
+try
+{
+    await emailSender.SendAsync(message, ct);
+}
+catch (EmailRateLimitExceededException ex)
+{
+    // ex.LimitKind: GlobalPerMinute | GlobalPerHour | PerRecipientPerHour
+    logger.LogWarning("Email send blocked by rate limit: {Kind}", ex.LimitKind);
+    // Return HTTP 429 / show user-friendly message
+}
+```
+
+::: warning IP-based throttling belongs in the consumer, not here
+`IEmailSender` has no knowledge of the caller's IP address.
+IP-level throttling must be implemented at the HTTP request layer using
+ASP.NET Core's built-in `AddRateLimiter` middleware on the endpoint that triggers the email send.
+The email-layer limits above are complementary: they protect the SMTP relay from overall volume
+and per-recipient spam, independent of network topology.
+:::
+
+## Development without SMTP
+
+For local development, leave `UseSmtp: false`. The `LoggingEmailSender` writes all outgoing emails as `Information` log entries:
 
 ```
-[LoggingEmailSender] Would send email to user@example.com with subject 'Passwort zurücksetzen'.
+[LoggingEmailSender] Would send email to user@example.com with subject 'Reset password'.
 ```
 
-## Template-Verzeichnis konfigurieren
-
-Wenn Template-Overrides per Dateisystem bereitgestellt werden sollen:
+## Configure template directory (filesystem overrides)
 
 ```json
 {
@@ -81,4 +139,8 @@ Wenn Template-Overrides per Dateisystem bereitgestellt werden sollen:
 }
 ```
 
-Lege HTML-Dateien im angegebenen Verzeichnis ab (z. B. `PasswordResetEmail.html`). Der `FileSystemEmailTemplateProvider` (Order 100) hat Vorrang vor eingebetteten Ressourcen (Order 1000), aber geringere Priorität als eigene Custom-Provider (Order 0).
+Place HTML files in the specified directory (e.g. `PasswordResetEmail.html`). The `FileSystemEmailTemplateProvider` (order 100) takes precedence over embedded resources (order 1000) but has lower priority than custom providers (order 0) and database overrides (order 2000).
+
+::: info Database overrides take highest priority
+When the Admin UI is in use, DB overrides (`DatabaseEmailTemplateProvider`, order 2000) win over filesystem files. See [Template Management](template-management.md).
+:::

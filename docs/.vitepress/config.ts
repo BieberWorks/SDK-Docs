@@ -1,140 +1,181 @@
 import { defineConfig } from 'vitepress'
+import fs from 'fs'
+import path from 'path'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const docsDir = path.resolve(__dirname, '..')
+
+/** Extract the text of the first `# Heading` in a markdown file. */
+function extractH1(filePath: string): string {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8')
+    for (const line of content.split('\n')) {
+      const m = line.match(/^#\s+(.+)/)
+      if (m) return m[1].trim()
+    }
+  } catch {
+    // file unreadable — fall through
+  }
+  const base = path.basename(filePath, '.md')
+  return base.charAt(0).toUpperCase() + base.slice(1).replace(/-/g, ' ')
+}
+
+/** Return sorted directory names under docs/<area>/ (empty if the area does not exist yet). */
+function areaNames(area: 'modules' | 'services'): string[] {
+  const modulesDir = path.join(docsDir, area)
+  if (!fs.existsSync(modulesDir)) return []
+  return fs
+    .readdirSync(modulesDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort()
+}
+
+/** Build sidebar items for a single module/service directory. */
+function areaSidebarItems(area: 'modules' | 'services', name: string) {
+  const dir = path.join(docsDir, area, name)
+  const files = fs
+    .readdirSync(dir)
+    .filter(
+      (f) =>
+        f.endsWith('.md') &&
+        f !== '.gitkeep' &&
+        f !== 'CHANGES.md'
+    )
+    .sort()
+
+  const items: { text: string; link: string }[] = []
+
+  // index.md always first
+  if (files.includes('index.md')) {
+    items.push({ text: 'Overview', link: `/${area}/${name}/` })
+  }
+
+  for (const file of files) {
+    if (file === 'index.md') continue
+    const stem = file.replace(/\.md$/, '')
+    const text = extractH1(path.join(dir, file))
+    items.push({ text, link: `/${area}/${name}/${stem}` })
+  }
+
+  return items
+}
+
+/** Capitalise the first letter of a string. */
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic nav items for the Modules dropdown
+// ---------------------------------------------------------------------------
+
+const navModuleItems = areaNames('modules').map((name) => ({
+  text: cap(name),
+  link: `/modules/${name}/`,
+}))
+
+const navServiceItems = areaNames('services').map((name) => ({
+  text: cap(name),
+  link: `/services/${name}/`,
+}))
+
+// ---------------------------------------------------------------------------
+// Dynamic sidebar for /modules/
+// ---------------------------------------------------------------------------
+
+const modulesSidebar = areaNames('modules').map((name) => ({
+  text: cap(name),
+  collapsed: name !== 'foundation',
+  items: areaSidebarItems('modules', name),
+}))
+
+// Dynamic sidebar for /services/ (deployable services, separate from modules)
+const servicesSidebar = areaNames('services').map((name) => ({
+  text: cap(name),
+  collapsed: true,
+  items: areaSidebarItems('services', name),
+}))
+
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
 
 export default defineConfig({
   title: 'BieberWorks SDK',
-  description: 'Official documentation for the BieberWorks SDK',
+  description: 'Official documentation for the BieberWorks SDK — modular .NET NuGet ecosystem.',
   base: '/SDK-Docs/',
   ignoreDeadLinks: true,
+
+  markdown: {
+    lineNumbers: true,
+  },
 
   themeConfig: {
     logo: '/logo.svg',
 
     nav: [
-      { text: 'Guide', link: '/guide/getting-started' },
-      { text: 'Modules', link: '/modules/foundation/' },
+      { text: 'Getting Started', link: '/guide/getting-started' },
+      {
+        text: 'Modules',
+        items: navModuleItems,
+      },
+      {
+        text: 'Services',
+        items: [{ text: 'Overview', link: '/services/' }, ...navServiceItems],
+      },
+      {
+        text: 'Guides',
+        items: [
+          { text: 'Getting Started', link: '/guide/getting-started' },
+          { text: 'Templates', link: '/guide/templates' },
+          { text: 'Manuelle Integration', link: '/guide/manual-setup' },
+          { text: 'NuGet Access', link: '/guide/nuget-access' },
+          { text: 'Create a Module', link: '/guide/create-module' },
+          { text: 'Migrations', link: '/guide/migrations' },
+          { text: 'Cross-Module Integration', link: '/guide/cross-module' },
+        ],
+      },
     ],
 
     sidebar: {
       '/guide/': [
         {
-          text: 'Guide',
+          text: 'Guides',
           items: [
             { text: 'Getting Started', link: '/guide/getting-started' },
-            { text: 'Module Integration', link: '/guide/module-integration' },
-          ]
-        }
+            { text: 'Templates', link: '/guide/templates' },
+            { text: 'Manuelle Integration', link: '/guide/manual-setup' },
+            { text: 'NuGet Access', link: '/guide/nuget-access' },
+            { text: 'Create a Module', link: '/guide/create-module' },
+            { text: 'Migrations', link: '/guide/migrations' },
+            { text: 'Cross-Module Integration', link: '/guide/cross-module' },
+          ],
+        },
       ],
-      '/modules/': [
-        {
-          text: 'Foundation',
-          collapsed: false,
-          items: [
-            { text: 'Overview', link: '/modules/foundation/' },
-            { text: 'SharedKernel', link: '/modules/foundation/shared-kernel' },
-            { text: 'IModule & Setup', link: '/modules/foundation/imodule' },
-            { text: 'Messaging', link: '/modules/foundation/messaging' },
-          ]
-        },
-        {
-          text: 'Auth',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/auth/' },
-            { text: 'Setup', link: '/modules/auth/setup' },
-            { text: 'Auth Flows', link: '/modules/auth/auth-flows' },
-            { text: 'Roles & Permissions', link: '/modules/auth/roles-permissions' },
-            { text: 'UI Components', link: '/modules/auth/ui-components' },
-          ]
-        },
-        {
-          text: 'Storage',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/storage/' },
-            { text: 'Setup', link: '/modules/storage/setup' },
-            { text: 'Providers', link: '/modules/storage/providers' },
-            { text: 'Key Strategy & Visibility', link: '/modules/storage/key-strategy' },
-            { text: 'UI Components', link: '/modules/storage/ui-components' },
-          ]
-        },
-        {
-          text: 'Audit',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/audit/' },
-            { text: 'Setup', link: '/modules/audit/setup' },
-            { text: 'Auto-Auditing', link: '/modules/audit/auto-auditing' },
-            { text: 'IAuditService', link: '/modules/audit/audit-service' },
-          ]
-        },
-        {
-          text: 'Localization',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/localization/' },
-            { text: 'Setup', link: '/modules/localization/setup' },
-            { text: 'Usage', link: '/modules/localization/usage' },
-          ]
-        },
-        {
-          text: 'Settings',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/settings/' },
-            { text: 'Setup', link: '/modules/settings/setup' },
-            { text: 'Usage', link: '/modules/settings/usage' },
-          ]
-        },
-        {
-          text: 'Email',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/email/' },
-            { text: 'Setup', link: '/modules/email/setup' },
-            { text: 'Usage', link: '/modules/email/usage' },
-          ]
-        },
-        {
-          text: 'UI',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/ui/' },
-            { text: 'Setup', link: '/modules/ui/setup' },
-            { text: 'Components', link: '/modules/ui/components' },
-          ]
-        },
-        {
-          text: 'Admin',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/admin/' },
-            { text: 'Setup', link: '/modules/admin/setup' },
-            { text: 'Custom Pages', link: '/modules/admin/custom-pages' },
-          ]
-        },
-        {
-          text: 'Account',
-          collapsed: true,
-          items: [
-            { text: 'Overview', link: '/modules/account/' },
-            { text: 'Setup', link: '/modules/account/setup' },
-            { text: 'Custom Pages', link: '/modules/account/custom-pages' },
-          ]
-        },
-      ]
+
+      '/modules/': modulesSidebar,
+
+      '/services/': [
+        { text: 'Services', items: [{ text: 'Overview', link: '/services/' }] },
+        ...servicesSidebar,
+      ],
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/BieberWorks' }
+      { icon: 'github', link: 'https://github.com/BieberWorks' },
     ],
 
     footer: {
       message: 'Proprietary — All rights reserved.',
-      copyright: 'Copyright © BieberWorks'
+      copyright: 'Copyright © BieberWorks',
     },
 
     search: {
-      provider: 'local'
-    }
-  }
+      provider: 'local',
+    },
+  },
 })
