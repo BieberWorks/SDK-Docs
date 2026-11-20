@@ -57,5 +57,6 @@ All packages are released together and share one version, computed from Conventi
 | Server-side cookie sessions: revocation, idle/absolute limits, caching, failure policy, decoupled web hosts, circuits, privacy | [Sessions](14-sessions.md) |
 | Role model, permission system, defining/checking permissions, role & user management, **PreferredCulture / IUserCulturePreferenceService**, domain events | [Roles & Permissions](12-roles-permissions.md) |
 | Self-service and admin-initiated account deletion, guard sequence, erasure preview, cross-module wiring | [Account Deletion](13-account-deletion.md) |
+| Opt-in events for created, changed and deleted users: transactional capture, outbox, profile snapshot, limits, data minimisation | [User Lifecycle Events](19-user-lifecycle-events.md) |
 | Ready-made pages, components, `UserMenu` widget, `IAuthClient`, validation attributes, localization | [UI Components](50-ui-components.md) |
 | Release history | [Changelog](90-changelog.md) |
