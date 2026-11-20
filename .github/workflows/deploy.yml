@@ -54,6 +54,22 @@ jobs:
           echo "}" >> docs/modules-versions.json
           cat docs/modules-versions.json
 
+          # Services live in docs/services/<name>; their repos are SDK-Service-<Name>.
+          echo "{" > docs/services-versions.json
+          FIRST=true
+          for dir in docs/services/*/; do
+            [ -d "$dir" ] || continue
+            SERVICE=$(basename "$dir")
+            REPO="${REPO_BY_MODULE[service-$SERVICE]:-SDK-Service-$SERVICE}"
+            VERSION=$(gh release list --repo "BieberWorks/$REPO" --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "–")
+            [ -z "$VERSION" ] && VERSION="–"
+            if [ "$FIRST" = true ]; then FIRST=false; else echo "," >> docs/services-versions.json; fi
+            printf '  "%s": "%s"' "$SERVICE" "$VERSION" >> docs/services-versions.json
+          done
+          echo "" >> docs/services-versions.json
+          echo "}" >> docs/services-versions.json
+          cat docs/services-versions.json
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -23,9 +23,10 @@ function extractH1(filePath: string): string {
   return base.charAt(0).toUpperCase() + base.slice(1).replace(/-/g, ' ')
 }
 
-/** Return sorted module directory names under docs/modules/. */
-function moduleNames(): string[] {
-  const modulesDir = path.join(docsDir, 'modules')
+/** Return sorted directory names under docs/<area>/ (empty if the area does not exist yet). */
+function areaNames(area: 'modules' | 'services'): string[] {
+  const modulesDir = path.join(docsDir, area)
+  if (!fs.existsSync(modulesDir)) return []
   return fs
     .readdirSync(modulesDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
@@ -33,9 +34,9 @@ function moduleNames(): string[] {
     .sort()
 }
 
-/** Build sidebar items for a single module directory. */
-function moduleSidebarItems(name: string) {
-  const dir = path.join(docsDir, 'modules', name)
+/** Build sidebar items for a single module/service directory. */
+function areaSidebarItems(area: 'modules' | 'services', name: string) {
+  const dir = path.join(docsDir, area, name)
   const files = fs
     .readdirSync(dir)
     .filter(
@@ -50,14 +51,14 @@ function moduleSidebarItems(name: string) {
 
   // index.md always first
   if (files.includes('index.md')) {
-    items.push({ text: 'Overview', link: `/modules/${name}/` })
+    items.push({ text: 'Overview', link: `/${area}/${name}/` })
   }
 
   for (const file of files) {
     if (file === 'index.md') continue
     const stem = file.replace(/\.md$/, '')
     const text = extractH1(path.join(dir, file))
-    items.push({ text, link: `/modules/${name}/${stem}` })
+    items.push({ text, link: `/${area}/${name}/${stem}` })
   }
 
   return items
@@ -72,19 +73,31 @@ function cap(s: string): string {
 // Dynamic nav items for the Modules dropdown
 // ---------------------------------------------------------------------------
 
-const navModuleItems = moduleNames().map((name) => ({
+const navModuleItems = areaNames('modules').map((name) => ({
   text: cap(name),
   link: `/modules/${name}/`,
+}))
+
+const navServiceItems = areaNames('services').map((name) => ({
+  text: cap(name),
+  link: `/services/${name}/`,
 }))
 
 // ---------------------------------------------------------------------------
 // Dynamic sidebar for /modules/
 // ---------------------------------------------------------------------------
 
-const modulesSidebar = moduleNames().map((name) => ({
+const modulesSidebar = areaNames('modules').map((name) => ({
   text: cap(name),
   collapsed: name !== 'foundation',
-  items: moduleSidebarItems(name),
+  items: areaSidebarItems('modules', name),
+}))
+
+// Dynamic sidebar for /services/ (deployable services, separate from modules)
+const servicesSidebar = areaNames('services').map((name) => ({
+  text: cap(name),
+  collapsed: true,
+  items: areaSidebarItems('services', name),
 }))
 
 // ---------------------------------------------------------------------------
@@ -109,6 +122,10 @@ export default defineConfig({
       {
         text: 'Modules',
         items: navModuleItems,
+      },
+      {
+        text: 'Services',
+        items: [{ text: 'Overview', link: '/services/' }, ...navServiceItems],
       },
       {
         text: 'Guides',
@@ -145,6 +162,11 @@ export default defineConfig({
       ],
 
       '/modules/': modulesSidebar,
+
+      '/services/': [
+        { text: 'Services', items: [{ text: 'Overview', link: '/services/' }] },
+        ...servicesSidebar,
+      ],
     },
 
     socialLinks: [
