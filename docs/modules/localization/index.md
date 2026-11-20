@@ -1,4 +1,4 @@
-# SDK-Localization
+# Localization
 
 The module **BieberWorks.SDK.Localization** extends Foundation's localization with a database-backed override layer: texts delivered via `.resx` files in modules can be overridden at runtime per language via the admin UI — without deployment.
 
@@ -8,8 +8,8 @@ The module **BieberWorks.SDK.Localization** extends Foundation's localization wi
 |---|---|---|
 | `BieberWorks.SDK.Localization.Contracts` | `ITranslationAdminService`, `TranslationKeyView`, `ModuleInfo`, `LocalizationScanOptions`, Permissions | other modules (contracts only) |
 | `BieberWorks.SDK.Localization` | `LocalizationModule`, `CachedTranslationStore`, `TranslationAdminService`, `LocalizationDbContext` (schema `localization`) | Host |
-| `BieberWorks.SDK.Localization.UI` | `TranslationEditorPageBase` (MudBlazor-independent base classes) | Host with UI |
-| `BieberWorks.SDK.Localization.UI.MudBlazor` | MudBlazor rendering, `AddLocalizationUi()` | Host with MudBlazor |
+| `BieberWorks.SDK.Localization.UI.Blazor` | `TranslationEditorPageBase` (MudBlazor-independent base classes) | Host with UI |
+| `BieberWorks.SDK.Localization.UI.Blazor.MudBlazor` | MudBlazor rendering, `AddLocalizationUi()` | Host with MudBlazor |
 
 For the current release version see the [GitHub Releases page](https://github.com/BieberWorks/SDK-Localization/releases).
 
@@ -60,6 +60,6 @@ The lookup happens synchronously on the hot path (every label render). With cult
 
 | Topic | Description |
 |---|---|
-| [Setup](setup.md) | NuGet installation, `Program.cs` wiring, assembly registration, connection string, migrations |
-| [Usage](usage.md) | Creating `.resx` files, `IStringLocalizer`, language switch, programmatic API, admin UI, adding languages |
-| [Changelog](CHANGES.md) | Auto-generated release notes |
+| [Setup](01-getting-started.md) | NuGet installation, `Program.cs` wiring, assembly registration, connection string, migrations |
+| [Usage](10-usage.md) | Creating `.resx` files, `IStringLocalizer`, language switch, programmatic API, admin UI, adding languages |
+| [Changelog](90-changelog.md) | Auto-generated release notes |

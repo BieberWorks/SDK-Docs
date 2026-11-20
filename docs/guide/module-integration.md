@@ -18,7 +18,7 @@ Add the module package and (if present) the contracts package to the host `.cspr
 <PackageReference Include="BieberWorks.SDK.<ModuleName>" Version="0.*-*" />
 
 <!-- UI (optional) — only if MudBlazor pages are used -->
-<PackageReference Include="BieberWorks.SDK.<ModuleName>.UI.MudBlazor" Version="0.*-*" />
+<PackageReference Include="BieberWorks.SDK.<ModuleName>.UI.Blazor.MudBlazor" Version="0.*-*" />
 ```
 
 All packages come from GitHub Packages of the `BieberWorks` org. Ensure that `nuget.config` contains the feed with a PAT (scope `read:packages`).
@@ -36,10 +36,10 @@ This is the only mandatory call. Everything else is modularly optional.
 
 ## Step 3 — Ensure Messaging Infrastructure
 
-If the module sends commands/queries via `IAppMessageDispatcher` or registers `IDomainEventProcessor<T>`, messaging must be active:
+If the module sends commands/queries via `IAppMessageDispatcher` or registers `IDomainEventProcessor<T>`, messaging must be active. `AddBieberWorksModules` registers the messaging infrastructure automatically, so no extra call is needed. An explicit call is optional:
 
 ```csharp
-// Program.cs — once for the entire host
+// Program.cs — optional
 builder.Services.AddBieberWorksMessaging();
 ```
 
@@ -65,11 +65,11 @@ services.AddScoped<
 
 ## Step 4 — Register Permissions (if the module defines them)
 
-If the module protects permissions, implement `IPermissionContributor` and register it as a singleton. The Auth module reads all contributors at startup:
+If the module protects permissions, implement `IPermissionContributor` and register it with `AddPermissionContributor<T>()`. The Auth module reads all contributors at startup:
 
 ```csharp
 // In MyModule.RegisterServices()
-services.AddSingleton<IPermissionContributor, MyModulePermissionContributor>();
+services.AddPermissionContributor<MyModulePermissionContributor>();
 ```
 
 ```csharp
@@ -96,7 +96,7 @@ public sealed class MyModulePermissionContributor : IPermissionContributor
 Then assign the permission to the admin role in the Admin UI (`/admin/roles`).
 
 ::: warning Auth Module Required
-`IPermissionContributor` is a contract from `BieberWorks.SDK.Auth.Contracts`. The Auth module must be installed in the host for contributors to be processed.
+`IPermissionContributor` lives in `BieberWorks.SDK.Core.Authorization` (SDK-Foundation), so modules need no reference to Auth. The Auth module must be installed in the host for contributors to be processed.
 :::
 
 ## Step 5 — Activate Auto-Auditing (if domain events should be audited)
@@ -167,41 +167,51 @@ Assemblies with the prefix `BieberWorks.SDK.` are scanned automatically — no e
 
 ## Step 7 — UI Assembly Wiring (if the module contains Razor pages)
 
-If the module provides a `*.UI.MudBlazor` package, its pages must be made known to the Blazor router. **Both** places must be updated:
+If the module provides a `*.UI.Blazor.MudBlazor` package, its pages must be known to the endpoint routing (server) and to the Blazor router (client). The recommended setup is `BwRouter` plus `AddBwModuleAssemblies`, which discover all `BieberWorks.SDK.*` UI assemblies automatically — no per-module assembly list. **Both** places use them:
 
 ### Program.cs
 
 ```csharp
-builder.Services
-    .AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.MyModule.UI.MudBlazor.SomeAnchorType).Assembly,
-        // additional module assemblies...
-    );
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddBwModuleAssemblies(typeof(Program).Assembly);
 ```
 
 ### Routes.razor
 
 ```razor
-@code {
-    private static readonly Assembly[] _moduleAssemblies =
-    [
-        typeof(BieberWorks.SDK.MyModule.UI.MudBlazor.SomeAnchorType).Assembly,
-        // additional...
-    ];
-}
+@using BieberWorks.SDK.UI.Blazor.MudBlazor.Routing
 
 <BwThemeProvider>
-    <Router AppAssembly="@typeof(App).Assembly"
-            AdditionalAssemblies="@_moduleAssemblies">
+    <BwRouter AppAssembly="typeof(App).Assembly">
         <Found Context="routeData">
             <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
-    </Router>
+    </BwRouter>
 </BwThemeProvider>
 ```
+
+`BwRouter` lives in the namespace `BieberWorks.SDK.UI.Blazor.MudBlazor.Routing`. `AppAssembly` is required.
+
+### Host-owned modules with a custom prefix
+
+Modules whose assembly name does not start with `BieberWorks.SDK.` (e.g. `MyApp.Modules.Files.UI.Blazor.MudBlazor`) are not auto-discovered by convention. Pass the prefix on both sides (supported since Foundation 2.3.2 / SDK-UI 1.3.2):
+
+```csharp
+// Program.cs
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddBwModuleAssemblies(typeof(Program).Assembly, additionalUiPrefixes: ["MyApp.Modules"]);
+```
+
+```razor
+<BwRouter AppAssembly="typeof(App).Assembly" AdditionalUiPrefixes="@(["MyApp.Modules"])">
+    ...
+</BwRouter>
+```
+
+`BwRouter.AdditionalModuleAssemblies` merges explicit assembly instances. Setting `ModuleAssemblies` is a full override: the additional parameters are ignored.
 
 ::: warning BwThemeProvider
 `BwThemeProvider` must exist exactly once in `Routes.razor` — not in individual layouts. Otherwise, theme state is reset on every navigation.
@@ -215,6 +225,8 @@ If the module should display admin pages under the admin shell:
 // In MyModule.RegisterServices()
 services.AddSingleton<IAdminSection, MyModuleAdminSection>();
 ```
+
+Place the `IAdminSection` implementation in the module's `*.Presentation` project (e.g. `Auth.Presentation/AdminSection`), not in `*.Contracts`.
 
 ### Account Shell Integration (IAccountSection)
 
@@ -238,9 +250,12 @@ public sealed class MyModule : IModule, IModuleInitializer
         IServiceCollection services,
         IConfiguration configuration)
     {
+        // Convention: <Module>Db first, then DefaultConnection
+        var connectionString = configuration.GetConnectionString("MyModuleDb")
+            ?? configuration.GetConnectionString("DefaultConnection");
+
         services.AddDbContext<MyDbContext>(opts =>
-            opts.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection")));
+            opts.UseNpgsql(connectionString));
         // ...
         return services;
     }
@@ -265,43 +280,32 @@ await app.InitializeBieberWorksModulesAsync();
 ## Complete Program.cs — Reference
 
 ```csharp
-using BieberWorks.SDK.Admin.UI.MudBlazor.Extensions;
-using BieberWorks.SDK.Audit.UI.MudBlazor.Extensions;
-using BieberWorks.SDK.Localization.UI.MudBlazor.Extensions;
-using BieberWorks.SDK.Settings.UI.MudBlazor.Extensions;
-using BieberWorks.SDK.UI.MudBlazor.Extensions;
+using BieberWorks.SDK.Admin.UI.Blazor.MudBlazor.Extensions;
+using BieberWorks.SDK.Audit.UI.Blazor.MudBlazor.Extensions;
+using BieberWorks.SDK.Localization.UI.Blazor.MudBlazor.Extensions;
+using BieberWorks.SDK.Settings.UI.Blazor.MudBlazor.Extensions;
+using BieberWorks.SDK.UI.Blazor.MudBlazor.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Load all IModule automatically (Foundation, Auth, Email, Audit, Localization, Settings, …)
 builder.Services.AddBieberWorksModules(builder.Configuration);
 
-// 2. Messaging infrastructure
-builder.Services.AddBieberWorksMessaging();
+// (Messaging is registered automatically by AddBieberWorksModules.)
 
-// 3. UI packages (order: UI first)
+// 2. UI packages (order: UI first)
 builder.Services.AddBieberWorksUi();
 builder.Services.AddBieberWorksAdmin();
 builder.Services.AddBieberWorksAccount();  // if used
 
-// 4. Optional module UIs
+// 3. Optional module UIs
 builder.Services.AddAuditUi();
 builder.Services.AddLocalizationUi();
 builder.Services.AddSettingsUi();
 
-// 5. Blazor + all module assemblies
 builder.Services
     .AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddAdditionalAssemblies(
-        typeof(BieberWorks.SDK.UI.MudBlazor.Components.BwThemeProvider).Assembly,
-        typeof(BieberWorks.SDK.Admin.UI.MudBlazor.AdminModule).Assembly,
-        typeof(BieberWorks.SDK.Auth.UI.MudBlazor._Imports).Assembly,
-        typeof(BieberWorks.SDK.Audit.UI.MudBlazor._Imports).Assembly,
-        typeof(BieberWorks.SDK.Localization.UI.MudBlazor.AdminSection.LocalizationAdminSection).Assembly,
-        typeof(BieberWorks.SDK.Settings.UI.MudBlazor.AdminSection.SettingsAdminSection).Assembly
-        // + own module assemblies
-    );
+    .AddInteractiveServerComponents();
 
 var app = builder.Build();
 
@@ -313,8 +317,11 @@ await app.InitializeBieberWorksModulesAsync();
 
 // 7. Map endpoints of all IEndpointModule
 app.MapBieberWorksModules();
+
+// 8. Blazor + all module assemblies (auto-discovered)
 app.MapRazorComponents<App>()
-   .AddInteractiveServerRenderMode();
+   .AddInteractiveServerRenderMode()
+   .AddBwModuleAssemblies(typeof(Program).Assembly);
 
 await app.RunAsync();
 ```
@@ -323,16 +330,16 @@ await app.RunAsync();
 
 | # | Task | Applies if |
 |---|---|---|
-| 1 | Add NuGet packages (`*.Contracts` + Impl + optional `*.UI.MudBlazor`) | always |
+| 1 | Add NuGet packages (`*.Contracts` + Impl + optional `*.UI.Blazor.MudBlazor`) | always |
 | 2 | `AddBieberWorksModules` present in host | always |
-| 3 | `AddBieberWorksMessaging` present in host | Module has handlers/processors |
+| 3 | Messaging active (automatic via `AddBieberWorksModules`; explicit `AddBieberWorksMessaging()` is optional) | Module has handlers/processors |
 | 4 | Handler in `Module.cs` registered as `IAppMessageRequestHandler<…>` | Module has command/query handlers |
 | 5 | EventProcessor in `Module.cs` registered as `IDomainEventProcessor<…>` | Module has event processors |
-| 6 | `IPermissionContributor` registered and permission assigned to admin role | Module protects pages/endpoints |
+| 6 | `IPermissionContributor` registered via `AddPermissionContributor<T>()` and permission assigned to admin role | Module protects pages/endpoints |
 | 7 | Domain events implement `IAuditableEvent` | Module should be audited |
 | 8 | `resx` files created; `AdditionalAssemblyPrefixes` configured | Module has localizable texts |
-| 9 | Assembly registered in `Program.cs` (`AddAdditionalAssemblies`) | Module has Razor pages |
-| 10 | Assembly registered in `Routes.razor` (`AdditionalAssemblies`) | Module has Razor pages |
-| 11 | `IAdminSection` registered | Module has admin pages |
+| 9 | `AddBwModuleAssemblies` in `Program.cs` (plus `additionalUiPrefixes` for host-owned prefixes) | Module has Razor pages |
+| 10 | `<BwRouter>` in `Routes.razor` (plus `AdditionalUiPrefixes` for host-owned prefixes) | Module has Razor pages |
+| 11 | `IAdminSection` registered (implementation in `*.Presentation`) | Module has admin pages |
 | 12 | `IAccountSection` registered | Module has account pages |
 | 13 | `IModuleInitializer` implemented; `InitializeBieberWorksModulesAsync` called | Module has DbContext/Migrations |

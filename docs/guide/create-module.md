@@ -12,13 +12,15 @@ Create a new module when you have a bounded context that:
 
 ## Scaffold the Repo
 
-Use the tooling script from the BieberWorks container root. Never create the repo by hand.
+Use `New-BwModuleRepo` from the PowerShell module `BieberWorks.RepoSetup` (see [Templates](/guide/templates)). Never create the repo by hand.
 
 ```powershell
-& "C:\path\to\BieberWorks\tooling\powershell\github\create-repo-module.ps1" -RepoName SDK-MyModule
+New-BwModuleRepo -RepoName SDK-MyModule -Owner BieberWorks
 ```
 
-The script creates the GitHub repo with branches `main`, `staging`, `dev`, CI/release workflows, `Directory.Build.props`, solution file, and local clone.
+`-Owner` is mandatory. The function creates the GitHub repo with branches `main`, `staging` and `dev` (default branch `dev`), CI/release workflows, `Directory.Build.props`, the solution file and a local clone, and scaffolds the internal template `bieberworks-module` (Contracts + Impl + Tests). `tooling\powershell\github\create-repo-module.ps1` is only a thin wrapper around it.
+
+Optional switches (template 0.8.0): `-WithClient` adds the `.Client` project (HTTP client plus contract tests over both transports), `-WithUi` adds `.Presentation`, `.UI.Blazor` and `.UI.Blazor.MudBlazor`, `-NoPersistence` creates a module without a DbContext, `-NoArchTests` omits the architecture test project (included by default) and `-NoDocs` omits the `docs/` scaffold (included by default). See [Templates](/guide/templates#module-template-switches-bieberworks-module-template-0-8-0), [Client Pattern](/guide/client-pattern) and [Testing Conventions](/guide/testing-conventions).
 
 ## Project Structure
 
@@ -26,9 +28,11 @@ The script creates the GitHub repo with branches `main`, `staging`, `dev`, CI/re
 SDK-MyModule/
 ├── src/
 │   ├── MyModule.Contracts/    ← interfaces, DTOs, events, permissions
-│   └── MyModule/              ← implementation, DbContext, migrations, handlers
+│   ├── MyModule/              ← implementation, DbContext, migrations, handlers
+│   └── MyModule.Client/       ← optional (-WithClient): HTTP client
 ├── tests/
-│   └── MyModule.Tests/
+│   ├── MyModule.Tests/
+│   └── MyModule.ArchitectureTests/   ← default, strict mode
 └── docs/
     ├── index.md
     └── setup.md
@@ -45,9 +49,12 @@ SDK-MyModule/
 | Interfaces (`IMyService`) | DbContext, EF entity models |
 | DTOs / request records | Service implementations |
 | Domain events | CQRS handlers |
-| Permission constants and `IPermissionContributor` | Migrations |
-| `IAdminSection` implementation | EF configurations |
-| `IAccountSection` implementation | REST endpoints |
+| Permission constants | Migrations |
+| | EF configurations |
+| | REST endpoints |
+| | `IPermissionContributor` implementation |
+
+`IPermissionContributor` itself comes from `BieberWorks.SDK.Core.Authorization` (Foundation). `IAdminSection` / `IAccountSection` implementations belong in the module's `*.Presentation` project (all SDK modules do this, e.g. `Auth.Presentation/AdminSection`), not in `*.Contracts`.
 
 ## IModule Implementation
 
@@ -157,7 +164,7 @@ Never use `--no-build`. Without it, EF uses the freshly compiled DLL. With it, s
 ## IPermissionContributor — Custom Permissions
 
 ```csharp
-// In MyModule.Contracts:
+// In the module implementation (IPermissionContributor is in BieberWorks.SDK.Core.Authorization):
 public sealed class MyModulePermissions : IPermissionContributor
 {
     public const string ItemsRead   = "mymodule:items:read";
@@ -171,7 +178,7 @@ public sealed class MyModulePermissions : IPermissionContributor
 }
 
 // In RegisterServices:
-services.AddSingleton<IPermissionContributor, MyModulePermissions>();
+services.AddPermissionContributor<MyModulePermissions>();
 ```
 
 ## Domain Events and Auto-Auditing
@@ -192,6 +199,8 @@ public record ItemCreatedEvent(string ItemId, string CreatedByUserId)
 When SDK-Audit is installed in the host, it captures this event automatically via its open-generic handler.
 
 ## IAdminSection — Plug into the Admin Shell
+
+Place the implementation in the module's `*.Presentation` project.
 
 ```csharp
 public sealed class MyModuleAdminSection : IAdminSection
@@ -238,7 +247,7 @@ services.AddSingleton<IAccountSection, MyModuleAccountSection>();
 |---|---|---|
 | Command / Query handler | `services.AddScoped<IAppMessageRequestHandler<TCmd, TResult>, THandler>()` | Scoped |
 | Domain event processor | `services.AddScoped<IDomainEventProcessor<TEvent>, THandler>()` | Scoped |
-| Permission contributor | `services.AddSingleton<IPermissionContributor, TContributor>()` | Singleton |
+| Permission contributor | `services.AddPermissionContributor<TContributor>()` | Singleton |
 | Admin section | `services.AddSingleton<IAdminSection, TSection>()` | Singleton |
 | Account section | `services.AddSingleton<IAccountSection, TSection>()` | Singleton |
 | AppBar widget | `services.AddSingleton<IAppBarWidget>(new TWidget())` | Singleton |

@@ -36,9 +36,9 @@ The Wallet module provides a multi-currency, permission-gated balance system for
 
 | Topic | Document |
 |---|---|
-| Installation, `Program.cs`, connection string, permissions setup, `NullWalletService` | [Getting Started](getting-started.md) |
-| `IWalletService` methods, hold/release lifecycle, `WalletOptions`, sweeper configuration | [Wallet Service API](wallet-service.md) |
-| ISO 4217 catalog, `IWalletCurrencyService`, currency rules, admin UI | [Currencies](currencies.md) |
-| Permission constants, assignment, REST endpoint protection | [Permissions](permissions.md) |
-| GDPR export, anonymise-always erasure, impact assessment (holds blocker) | [GDPR / Privacy](gdpr-privacy.md) |
-| Release history | [Changelog](CHANGES.md) |
+| Installation, `Program.cs`, connection string, permissions setup, `NullWalletService` | [Getting Started](01-getting-started.md) |
+| `IWalletService` methods, hold/release lifecycle, `WalletOptions`, sweeper configuration | [Wallet Service API](10-wallet-service.md) |
+| ISO 4217 catalog, `IWalletCurrencyService`, currency rules, admin UI | [Currencies](11-currencies.md) |
+| Permission constants, assignment, REST endpoint protection | [Permissions](12-permissions.md) |
+| GDPR export, anonymise-always erasure, impact assessment (holds blocker) | [GDPR / Privacy](80-gdpr-privacy.md) |
+| Release history | [Changelog](90-changelog.md) |

@@ -10,7 +10,10 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Do NOT cancel in-progress runs — cancelling mid-deploy leaves orphaned
+  # Pages deployments that make the next run fail with "Deployment failed,
+  # try again later." The sleep-120 debounce already collapses bursts.
+  cancel-in-progress: false
 
 jobs:
   build:

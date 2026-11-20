@@ -1,4 +1,4 @@
-# SDK-Settings
+# Settings
 
 The module **BieberWorks.SDK.Settings** provides database-backed application settings with `IMemoryCache` layer. Settings are defined once (`AppSettingDefinition`), seeded idempotently into the database on module startup, and then read synchronously via `ISettingsService` on the hot path.
 
@@ -8,8 +8,8 @@ The module **BieberWorks.SDK.Settings** provides database-backed application set
 |---|---|---|
 | `BieberWorks.SDK.Settings.Contracts` | `ISettingsService`, `IFeatureFlagService`, `ISettingsAdminService`, `AppSettingDefinition`, `AppSettingDto`, `AppSettingType`, events, permissions | other modules |
 | `BieberWorks.SDK.Settings` | `SettingsModule`, `CachedSettingsStore`, `SettingsAdminService`, `FeatureFlagService`, `SettingsDbContext` (schema `settings`) | host |
-| `BieberWorks.SDK.Settings.UI` | `AppSettingsPageBase`, `FeatureFlagsPageBase` (MudBlazor-independent base classes) | host with UI |
-| `BieberWorks.SDK.Settings.UI.MudBlazor` | MudBlazor rendering, `AddSettingsUi()` | host with MudBlazor |
+| `BieberWorks.SDK.Settings.UI.Blazor` | `AppSettingsPageBase`, `FeatureFlagsPageBase` (MudBlazor-independent base classes) | host with UI |
+| `BieberWorks.SDK.Settings.UI.Blazor.MudBlazor` | MudBlazor rendering, `AddSettingsUi()` | host with MudBlazor |
 
 For the current release version see the [GitHub Releases page](https://github.com/BieberWorks/SDK-Settings/releases).
 
@@ -69,6 +69,6 @@ SDK-Audit captures these events automatically via the open-generic handler — n
 
 | Topic | File |
 |---|---|
-| Setup & registration | [setup.md](setup.md) |
-| Runtime usage (ISettingsService, IFeatureFlagService, ISettingsAdminService, cache) | [usage.md](usage.md) |
-| Changelog | [CHANGES.md](CHANGES.md) |
+| Setup & registration | [01-getting-started.md](01-getting-started.md) |
+| Runtime usage (ISettingsService, IFeatureFlagService, ISettingsAdminService, cache) | [10-usage.md](10-usage.md) |
+| Changelog | [90-changelog.md](90-changelog.md) |

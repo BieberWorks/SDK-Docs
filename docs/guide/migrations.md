@@ -27,10 +27,10 @@ Each module's `__EFMigrationsHistory` table lives in its own PostgreSQL schema. 
 | Module | PostgreSQL Schema | Connection string lookup order |
 |---|---|---|
 | Auth | `auth` | `AuthDb` → `DefaultConnection` |
-| Audit | `audit` | `AuditDb` → `DefaultConnection` |
-| Localization | `localization` | `LocalizationDb` → `DefaultConnection` |
-| Storage | `storage` | `StorageDb` → `DefaultConnection` |
-| Settings | `settings` | `SettingsDb` → `DefaultConnection` |
+| Audit | `audit` | `AuditDb` → `DefaultConnection` → `AuthDb` |
+| Localization | `localization` | `LocalizationDb` → `DefaultConnection` → `AuthDb` |
+| Storage | `storage` | `StorageDb` → `DefaultConnection` → `AuthDb` |
+| Settings | `settings` | `SettingsDb` → `DefaultConnection` → `AuthDb` |
 | Notifications | `notifications` | `NotificationsDb` → `DefaultConnection` |
 
 All modules can share a single PostgreSQL database instance while remaining schema-isolated.

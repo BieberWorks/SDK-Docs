@@ -36,14 +36,14 @@ SDK-Pages is a modular CMS component for static content pages (Imprint, About, F
 
 | Topic | Document |
 |---|---|
-| NuGet setup, `Program.cs`, assembly registration, `appsettings.json`, migrations | [Getting Started](getting-started.md) |
-| `PageEntity`, `PageTranslationEntity`, `PageDto`, culture resolution, v0.0.4 migration guide | [Content Model](content-model.md) |
-| `IPageProvider`, `ManagedPage`, seeding behavior, multi-language providers, `AllowAdminEdit` | [Page Provider](page-provider.md) |
-| Admin routes, list page, create/edit forms, `AllowAdminEdit` banner, section registration | [Admin UI](admin-ui.md) |
-| `PagesOptions`, `PageRouteHelper`, category prefixes, `RouteConflictValidator`, Blazor router limitation | [Routing](routing.md) |
-| `PublicPage.razor`, 404 semantics, `RequiredRole` flow, `PagesAccessDenied` component | [Public Route](public-route.md) |
-| `RequiredRole`, `IRoleProvider`, `IEnumerable` pattern, public access flow, admin UI visibility | [Role-Based Access](role-access.md) |
-| Permission keys, service-layer enforcement, UI gating, authorization policies | [Permissions](permissions.md) |
-| Localization keys, resource files, DB override via SDK-Localization | [Localization](localization.md) |
-| Domain events, `IAuditableEvent`, audit details, seeding exclusion | [Events & Auditing](events-auditing.md) |
-| Release history | [Changelog](CHANGES.md) |
+| NuGet setup, `Program.cs`, assembly registration, `appsettings.json`, migrations | [Getting Started](01-getting-started.md) |
+| `PageEntity`, `PageTranslationEntity`, `PageDto`, culture resolution, v0.0.4 migration guide | [Content Model](10-content-model.md) |
+| `IPageProvider`, `ManagedPage`, seeding behavior, multi-language providers, `AllowAdminEdit` | [Page Provider](11-page-provider.md) |
+| Admin routes, list page, create/edit forms, `AllowAdminEdit` banner, section registration | [Admin UI](50-admin-ui.md) |
+| `PagesOptions`, `PageRouteHelper`, category prefixes, `RouteConflictValidator`, Blazor router limitation | [Routing](12-routing.md) |
+| `PublicPage.razor`, 404 semantics, `RequiredRole` flow, `PagesAccessDenied` component | [Public Route](13-public-route.md) |
+| `RequiredRole`, `IRoleProvider`, `IEnumerable` pattern, public access flow, admin UI visibility | [Role-Based Access](14-role-access.md) |
+| Permission keys, service-layer enforcement, UI gating, authorization policies | [Permissions](15-permissions.md) |
+| Localization keys, resource files, DB override via SDK-Localization | [Localization](16-localization.md) |
+| Domain events, `IAuditableEvent`, audit details, seeding exclusion | [Events & Auditing](17-events-auditing.md) |
+| Release history | [Changelog](90-changelog.md) |

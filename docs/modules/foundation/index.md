@@ -58,11 +58,11 @@ Am I building the host (Program.cs / WebApplication)?
 
 | Topic | File |
 |---|---|
-| SharedKernel types reference | [shared-kernel.md](shared-kernel.md) |
-| IModule system and host setup | [imodule.md](imodule.md) |
-| Messaging (dispatcher, commands, events) | [messaging.md](messaging.md) |
-| Core.Postgres (transactions, outbox, Npgsql) | [core-postgres.md](core-postgres.md) |
-| GDPR data-subject contracts | [gdpr-data-subject-contracts.md](gdpr-data-subject-contracts.md) |
-| Localization (layered, culture endpoint) | [localization.md](localization.md) |
-| Blazor route-override system | [routing.md](routing.md) |
-| Changelog | [CHANGES.md](CHANGES.md) |
+| SharedKernel types reference | [10-shared-kernel.md](10-shared-kernel.md) |
+| IModule system and host setup | [11-imodule.md](11-imodule.md) |
+| Messaging (dispatcher, commands, events) | [12-messaging.md](12-messaging.md) |
+| Core.Postgres (transactions, outbox, Npgsql) | [13-core-postgres.md](13-core-postgres.md) |
+| GDPR data-subject contracts | [80-gdpr-data-subject-contracts.md](80-gdpr-data-subject-contracts.md) |
+| Localization (layered, culture endpoint) | [14-localization.md](14-localization.md) |
+| Blazor route-override system | [15-routing.md](15-routing.md) |
+| Changelog | [90-changelog.md](90-changelog.md) |
