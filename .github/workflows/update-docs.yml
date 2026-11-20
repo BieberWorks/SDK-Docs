@@ -15,12 +15,14 @@ jobs:
       cancel-in-progress: false
     env:
       PAYLOAD_MODULE: ${{ github.event.client_payload.module }}
+      PAYLOAD_KIND: ${{ github.event.client_payload.kind }}
       PAYLOAD_REPO: ${{ github.event.client_payload.repo }}
       PAYLOAD_VERSION: ${{ github.event.client_payload.version }}
     steps:
       - name: Validate payload
         run: |
           [[ "$PAYLOAD_MODULE" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || { echo "::error::invalid module"; exit 1; }
+          [[ -z "$PAYLOAD_KIND" || "$PAYLOAD_KIND" == "service" ]] || { echo "::error::invalid kind"; exit 1; }
           [[ "$PAYLOAD_REPO" =~ ^SDK-[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || { echo "::error::invalid repo"; exit 1; }
           [[ -z "$PAYLOAD_VERSION" || "$PAYLOAD_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]] || { echo "::error::invalid version"; exit 1; }
 
@@ -39,7 +41,14 @@ jobs:
       - name: Copy docs
         run: |
           MODULE="$PAYLOAD_MODULE"
-          TARGET="docs/modules/${MODULE,,}"
+          # kind "service" -> docs/services/<name>, otherwise docs/modules/<name>.
+          # Strip a legacy "service-" prefix from service names.
+          if [ "$PAYLOAD_KIND" = "service" ]; then
+            NAME="${MODULE,,}"
+            TARGET="docs/services/${NAME#service-}"
+          else
+            TARGET="docs/modules/${MODULE,,}"
+          fi
           if [ -d "_module-source/docs" ]; then
             mkdir -p "$TARGET"
             cp -r _module-source/docs/. "$TARGET/"
