@@ -19,7 +19,7 @@ removed from the configuration are **not** deleted; delete them through the faca
 | `Type` | `Confidential` (default, needs a secret) or `Public` (no secret, PKCE only). |
 | `ClientSecretFile` | Path of a secret file. The secret is never part of the configuration; the database stores only a hash (OpenIddict's PBKDF2 hashing). A secret that still matches is left untouched; a changed file rotates the secret at the next start. |
 | `RedirectUris` | Exact matches only. No wildcards, no fragments; https, or http for `localhost`/loopback. Case, trailing slash and query differences do not match. |
-| `PostLogoutRedirectUris` | Exact matches; used by end-session in a later phase. |
+| `PostLogoutRedirectUris` | Exact matches; used by [end-session](./10-usage.md#signing-out-at-the-provider). The end-session permission is granted automatically (existing administered clients get it once at startup). |
 | `ConsentType` | `Implicit` (default) or `Explicit`, see [Consent](#consent). |
 | `Scopes` | Scopes the client may request. Empty or omitted means the defaults `openid profile email`, applied when the client is seeded. A list you give is used as written and must contain `openid`, so a configured client can have fewer scopes (`["openid"]`) or more. `offline_access` enables refresh tokens. |
 | `Audiences` | Audiences of the client's access tokens; empty means `Oidc:DefaultAudiences`. |

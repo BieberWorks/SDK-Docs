@@ -33,6 +33,11 @@ Create further migrations with
 | `RefreshTokenReuseLeewaySeconds` | 10 | A just-rotated refresh token may be presented again within this window. |
 | `TokenRequestsPerMinutePerIp` | 60 | Policy `oidc:token-ip`. |
 | `TokenRequestsPerMinutePerClient` | 120 | Policy `oidc:token-client`. |
+| `EndSessionConfirmPath` | `/connect/logout` | Local path of the sign-out confirmation page that an end-session request without proof of intent is redirected to. The host or the Consent UI package renders it; it posts back to `/connect/endsession` with an antiforgery token. |
+| `EndSessionCompletedPath` | `/` | Local path the browser lands on after a sign-out without `post_logout_redirect_uri`. |
+| `EndSession:RevokeSessionTokens` | `true` | Also revoke the refresh tokens issued in the ended browser session. Access tokens stay valid until `exp`. |
+
+The re-authentication marker of `prompt=login` and `max_age` uses Data Protection: all instances must share one key ring.
 
 Invalid configuration stops the host at startup with the list of problems.
 

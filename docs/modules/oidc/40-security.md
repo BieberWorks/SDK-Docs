@@ -12,6 +12,8 @@
 | Client secrets | Stored as hashes only; read from files; never logged. |
 | Account state | Authorize answers `access_denied` for unknown, locked and unconfirmed accounts alike, and reveals nothing else. |
 | Rate limits | Token endpoint: per client address and per client id, answered with `429` and `Retry-After` before client authentication runs. Login protection is Auth's. |
+| End-session | Signs out at once only with proof of intent (no session, a valid `id_token_hint` of the signed-in user, or a form post with antiforgery token); otherwise a confirmation page. `post_logout_redirect_uri` must be registered at the client, otherwise 400 without redirect. Refresh tokens of the ended session are revoked; access tokens live until `exp`. |
+| Forced login | `prompt=login`, `select_account` and `max_age` are enforced with a data-protected marker (same Data Protection key ring on all instances). Relying parties must verify `auth_time`: `prompt` is not integrity protected in the front channel. |
 | Cache | Userinfo and OpenIddict token responses are `no-store`. |
 | Transport | HTTPS is mandatory (only `Development` may relax it). The issuer is fixed by configuration. The endpoint URLs in the discovery document follow the request, so the host must trust the forwarded `Proto` and `Host` of its proxy only. |
 
@@ -26,6 +28,6 @@ catalog de-duplicates by key).
 ## Known limits of this phase
 
 - Access tokens stay valid until `exp` (default 15 min) after revocation or rotation; resource servers validate offline.
-- Revocation, introspection, end-session and back-channel logout are not implemented yet.
+- Token revocation endpoint, introspection and back-channel logout are not implemented yet (back-channel logout and a relying-party helper package may follow).
 - Expired tokens and authorizations are not pruned yet.
 - Rate limits are per process (in-memory limiter).
