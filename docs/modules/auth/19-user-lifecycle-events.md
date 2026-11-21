@@ -125,7 +125,9 @@ Alert on either and re-queue or replay within `DeadLetterRetentionPeriod` (`auth
 
 ### One outbox dispatcher per host database context
 
-The shared `IOutboxStore` service of the persistence package is a single registration that every module registering its database through `AddBieberWorksNpgsql` overrides, in a module order that is not defined. Auth therefore starts its dispatcher with a scope factory that always hands out the store of the `AuthDbContext`; other modules in the same host are not affected.
+Every module that maps an outbox gets its own store: the persistence package (2.1 and later) registers `IOutboxStore<TContext>` per database context, and `OutboxDispatcher<TContext>` resolves only the store of its own context. Auth registers `IOutboxStore<AuthDbContext>` (through `AddBieberWorksEfOutboxStore<AuthDbContext>()`) when the lifecycle events are on, so other modules in the same host (Oidc, Webhooks, Jobs, ...) cannot redirect the Auth dispatcher to their outbox table, whatever the module order, and the Auth dispatcher never claims their rows. Each dispatcher keeps its own options: the Auth values above (`MaxAttempts`, backoff, retention) apply to `auth.outbox_messages` only.
+
+Auth therefore needs `BieberWorks.SDK.Persistence` and `BieberWorks.SDK.Persistence.Postgres` 2.1.0 or later. This floor is not a declared guarantee: Auth references the packages with the SDK range `2.*-*`, and 2.1.0 is the version that range resolved to when Auth was packed. Make sure your host resolves 2.1.0 or later. Up to 4.7.0 Auth worked around a single, last-registered-wins `IOutboxStore` with its own scope factory; that workaround is gone.
 
 ## Writing a handler
 
