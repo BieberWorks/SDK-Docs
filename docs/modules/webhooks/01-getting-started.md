@@ -4,7 +4,8 @@
 
 ```csharp
 // Program.cs — module self-registers via IModule discovery.
-// Requires BieberWorks.SDK.Persistence.Postgres for AddBieberWorksNpgsql/AddBieberWorksOutbox.
+// Requires BieberWorks.SDK.Persistence.Postgres >= 2.1.0 (AddBieberWorksNpgsql, AddBieberWorksEfOutboxStore,
+// AddBieberWorksOutbox); the module calls them itself.
 ```
 
 Configuration keys (`appsettings.json`):
@@ -38,6 +39,18 @@ This version requires `BieberWorks.SDK.Persistence` / `.Persistence.Postgres` 2.
 `AddOutboxNextAttemptOnUtc` (nullable column `webhooks.outbox_messages."NextAttemptOnUtc"`, additive). The module applies it
 at startup via `MigrateAsync`. Update Auth, Jobs and Webhooks together in a host: a module without its migration fails at
 startup (pending model changes) when it runs against Persistence 2.x.
+
+### Outbox store per DbContext (Persistence 2.1)
+
+Since 0.1.1 the module requires `BieberWorks.SDK.Persistence` / `.Persistence.Postgres` **2.1.0 or later**. The fan-out
+dispatcher (`OutboxDispatcher<WebhooksDbContext>`) resolves `IOutboxStore<WebhooksDbContext>`, which the module registers via
+`AddBieberWorksNpgsql` / `AddBieberWorksEfOutboxStore<WebhooksDbContext>()`. Other modules in the same host (Storage, Jobs, Auth,
+…) register their own `IOutboxStore<TContext>` and can no longer replace it.
+
+Before, the store was registered as non-generic `IOutboxStore` and the last module registered in the host won: depending on the
+module order the webhooks dispatcher failed every poll (EventId 5000, no fan-out at all) or processed another module's outbox
+table. Keep Persistence and Persistence.Postgres on the same version. Do not register a non-generic `IOutboxStore` for the
+webhooks context yourself; a custom store must implement `IOutboxStore<WebhooksDbContext>`.
 
 ## Emitting a webhook-eligible domain event
 
