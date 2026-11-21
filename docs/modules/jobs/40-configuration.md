@@ -19,6 +19,15 @@
 | `DefaultBaseDelay` | 30s | Default backoff base delay. |
 | `MaxBackoffCap` | 1h | Hard cap on computed backoff delay. |
 
+## `Jobs:Outbox` (lifecycle-event dispatcher, `OutboxOptions`)
+
+| Option | Default | Meaning |
+|---|---|---|
+| `Enabled` | `true` | `false` registers no outbox dispatcher for `JobsDbContext`; lifecycle events then stay in `jobs.outbox_messages`. |
+| any `OutboxOptions` property | Persistence default | Bound onto the options of the Jobs dispatcher only, e.g. `PollInterval` (`00:00:10`), `BatchSize` (50), `MaxAttempts` (10), `BaseRetryDelay`, `MaxRetryDelay`, `LeaseDuration`, `RetentionPeriod` (7 days), `DeadLetterRetentionPeriod`. TimeSpan values use the `hh:mm:ss` format, as in `Jobs:Dispatcher`. |
+
+Independent of `UseExternalScheduler`. See [Scheduling](20-scheduling.md#lifecycle-event-delivery).
+
 ## Connection string
 
 Resolved from `JobsDb`, falling back to `DefaultConnection` (same convention as other modules).
