@@ -43,3 +43,12 @@ genuine "this already happened" domain events. The due-job scheduling query itse
 (`NextRunAtUtc <= now`) is a time-based state transition, not an event, and is served by a
 dedicated leasing query against `job_definitions`/`job_executions`, structurally similar to
 `OutboxDispatcher<TContext>` but not the same mechanism.
+
+### Upgrading with Persistence 2.0
+
+`BieberWorks.SDK.Persistence` 2.0 adds a nullable `NextAttemptOnUtc` column (retry scheduling and
+lease for the outbox dispatcher) to every outbox table. Jobs ships the matching EF migration
+`AddOutboxNextAttemptOnUtc` for `jobs.outbox_messages` (additive, existing rows become immediately
+due). Apply the migration before (or together with) deploying the new version. Update Auth, Jobs and
+Webhooks together: mixing Persistence 2.0 with a module version that lacks the migration fails at
+startup with a pending-model-change error or a missing-column error.
