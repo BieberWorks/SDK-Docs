@@ -123,6 +123,16 @@ A dead-lettered row means an event, possibly a delete tombstone, was not deliver
 
 Alert on either and re-queue or replay within `DeadLetterRetentionPeriod` (`auth.outbox_messages` with `Status = 2`), after that the row and its payload are gone. Every failed attempt before that is logged at `Warning` level (event id 5003) with the time of the next attempt.
 
+To re-queue dead-lettered rows, resetting `Status` alone is not enough: each claim increments `AttemptCount`, so a row that still holds `MaxAttempts` reaches `MaxAttempts + 1` on the next claim and is dead-lettered again immediately. Reset the attempt state as well:
+
+```sql
+UPDATE auth.outbox_messages
+SET "Status" = 0, "AttemptCount" = 0, "NextAttemptOnUtc" = NULL, "ProcessedOnUtc" = NULL
+WHERE "Status" = 2;
+```
+
+`Status` 0 is pending, `NextAttemptOnUtc = NULL` makes the row due immediately, and clearing `ProcessedOnUtc` removes the row from the dead-letter retention cleanup. Fix the cause of the failure first (see `LastError`), and narrow the `WHERE` clause if only some rows should be replayed.
+
 ### One outbox dispatcher per host database context
 
 Every module that maps an outbox gets its own store: the persistence package (2.1 and later) registers `IOutboxStore<TContext>` per database context, and `OutboxDispatcher<TContext>` resolves only the store of its own context. Auth registers `IOutboxStore<AuthDbContext>` (through `AddBieberWorksEfOutboxStore<AuthDbContext>()`) when the lifecycle events are on, so other modules in the same host (Oidc, Webhooks, Jobs, ...) cannot redirect the Auth dispatcher to their outbox table, whatever the module order, and the Auth dispatcher never claims their rows. Each dispatcher keeps its own options: the Auth values above (`MaxAttempts`, backoff, retention) apply to `auth.outbox_messages` only.

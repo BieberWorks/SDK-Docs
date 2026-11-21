@@ -71,6 +71,72 @@ The Auth module provides the following permissions (`AuthPermissions`):
 | `auth:roles:read` | View role list and details |
 | `auth:roles:manage` | Create, edit, delete roles, assign permissions |
 
+### External permissions (declared in configuration)
+
+A service that does not run in the same process can still have its permissions assigned to roles here. Declare the keys in
+configuration; they join the catalog (role editor, role administration API) and are validated like any other key:
+
+```json
+{
+  "BieberWorks": {
+    "Auth": {
+      "ExternalPermissions": {
+        "Permissions": [
+          { "Key": "forum:posts:moderate", "DisplayName": "Moderate posts", "Module": "Forum", "Group": "Posts" }
+        ]
+      }
+    }
+  }
+}
+```
+
+| Field | Rule |
+|---|---|
+| `Key` | Lower case, at least two colon-separated segments (`forum:posts:moderate`), at most 128 characters, never `*`, unique |
+| `DisplayName` | Required, at most 100 characters |
+| `Module` | Label in the role editor, default `External` |
+| `Group`, `Description` | Optional |
+
+Rules that are enforced at startup (a violation stops the host, so a wrong declaration never goes unnoticed):
+
+- The options are validated with `ValidateOnStart`.
+- An external key must not equal a key of a module running in the same process, and its namespace (text before the first colon) must not be the namespace of such a module. Namespaces of services that do not run here (for example `forum` in the identity service) are allowed.
+
+The catalog is built once per process, so a change to the list takes effect after a restart. There are no wildcard namespaces
+(`forum:*`): every key is declared explicitly.
+
+The token carries the permission keys of the user's roles as `perm` claims. A consuming service checks them against **its own**
+catalog, so the same key must be declared there as well.
+
+### Permission key validation
+
+Keys that are **newly added** to a role are validated by `IRoleManagementService.SetRolePermissionsAsync`. Keys the role already
+holds are never re-validated, so roles with legacy keys stay editable and the legacy keys can always be removed.
+
+| Key | Lenient (default) | Strict |
+|---|---|---|
+| `*`, empty, malformed (not `{module}:{action}` format, longer than 128 characters) | rejected | rejected |
+| well-formed, but not in the catalog | accepted, logged as a warning | rejected |
+
+Rejected keys throw `InvalidPermissionKeysException` (`InvalidKeys`, `Reason`: `Wildcard`, `Malformed` or `Unknown`).
+
+```json
+{ "BieberWorks": { "Auth": { "PermissionValidation": { "Mode": "Strict" } } } }
+```
+
+The mode only affects `IRoleManagementService`. The [role administration API](20-admin-api.md) always validates strictly.
+
+::: warning Upgrade notes
+Before this version `SetRolePermissionsAsync` stored whatever it was given, including `*`. It now throws for `*` and for malformed
+keys in every mode. `SetUserRolesAsync` (user management) additionally applies the assignment rules of the administration API:
+a caller can only add or remove roles whose permissions it holds itself (roles with `*` only with full access), cannot add
+roles to itself, and the last user with full access cannot lose that role. The failure is a `RoleAssignmentRejectedException` (it derives from
+`InvalidOperationException`, so existing `catch` blocks keep working; `Code` and `Error` carry the rule, the message starts with the code, for example
+`Auth.Admin.LastAdministrator`). `PUT /api/admin/users/{userId}/roles` answers it with 403 (permission rules) or 409 (state rules) problem details
+containing `code`. Calls without an authenticated principal
+(in-process code such as seeding) skip the caller rules but not the last-administrator rule.
+:::
+
 ### Checking permissions
 
 #### In Minimal API endpoints
@@ -173,6 +239,9 @@ public interface IRoleManagementService
     Task SetRolePermissionsAsync(string roleId, IEnumerable<string> permissionKeys, CancellationToken ct = default);
 }
 ```
+
+For HTTP access from other services (for example the identity service managing roles for a forum), see the
+[role administration API](20-admin-api.md) and its `IRoleAdministration` facade.
 
 ::: warning System Roles
 `Admin` and `Customer` are system roles. Renaming and deleting system roles throws an `InvalidOperationException`. Permission assignment is allowed for system roles.
@@ -284,6 +353,8 @@ The Auth module publishes the following domain events (all in `Auth.Contracts.Do
 | `RoleCreatedEvent` | New role created |
 | `RoleUpdatedEvent` | Role updated |
 | `RoleDeletedEvent` | Role deleted |
+| `RolePermissionsChangedEvent` | Permissions of a role changed (added / removed keys) |
+| `UserRolesChangedEvent` | Roles of a user changed (added / removed roles) |
 | `UserLockStateChangedEvent` | User locked/unlocked |
 
 ::: tip Auto-Auditing

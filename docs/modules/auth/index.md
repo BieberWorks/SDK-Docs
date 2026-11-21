@@ -8,7 +8,8 @@ The Auth module provides complete authentication and authorization infrastructur
 - **ASP.NET Core Identity** with PostgreSQL backend (schema `auth`) and dedicated `AuthDbContext` including automatic migration
 - **Permission System** — cross-module permissions assigned to roles; fine-grained protection via `[RequiresPermission]` or `.RequirePermission()`
 - **Server-Side Cookie Sessions** — every cookie sign-in is a row in `auth.UserSessions`: sign-out, lock, password and 2FA changes end sessions, roles are live, absolute and idle limits are enforced, open Blazor circuits are revalidated
-- **Role Management** — CRUD for roles including permission assignment via `IRoleManagementService`
+- **Role Management** — CRUD for roles including permission assignment via `IRoleManagementService`; permissions of other services can be declared in configuration
+- **Role Administration API** — opt-in internal HTTP API and `IRoleAdministration` facade for roles, permissions and role assignments, with escalation, last-administrator and self-protection rules
 - **User Management** — Admin endpoints for locking/unlocking users, role assignment, and account deletion (`UserManagementModule`); self-service account deletion with password reauth and cross-module impact gate
 - **Email Flows** — confirmation email and password reset via the email-template pipeline; optional integration with `SDK-Email`
 - **Two-Factor Authentication** — email OTP second factor with single-use recovery codes (enable / disable / verify / regenerate)
@@ -28,7 +29,7 @@ The Auth module provides complete authentication and authorization infrastructur
 | `BieberWorks.SDK.Auth.Management` | Separate `IModule` for admin REST endpoints under `/api/admin/users` and `/api/admin/roles` | When admin user/role management via REST is needed |
 | `BieberWorks.SDK.Auth.UI.Blazor` | Abstract Blazor base classes (framework-agnostic logic, `ComponentBase` derivations) | Transitively — referenced by `.UI.Blazor.MudBlazor` |
 | `BieberWorks.SDK.Auth.UI.Blazor.MudBlazor` | Ready-made MudBlazor Razor components and pages | When using the built-in Auth pages in the host |
-| `BieberWorks.SDK.Auth.Client` | `HttpAuthClient` — HTTP implementation of `IAuthClient` for WASM/MAUI-Hybrid | When an external client (not in-proc) calls the Auth API |
+| `BieberWorks.SDK.Auth.Client` | `HttpAuthClient` — HTTP implementation of `IAuthClient` for WASM/MAUI-Hybrid; `AddAuthRoleAdminClient` for the [role administration API](20-admin-api.md) | When an external client (not in-proc) calls the Auth API |
 | `BieberWorks.SDK.Auth.Client.Server` | Server-side credential sources (HttpContext, Blazor circuit) and `AddBieberWorksAuthForwarding()` for forwarding the user credential via `AuthForwardingHandler` (see [Auth forwarding](15-auth-forwarding.md)) | In a web host calling a protected backend API |
 | `BieberWorks.SDK.Auth.Bff` | Backend-for-frontend for Blazor Server hosts: opaque session cookie, server-side token vault with refresh, antiforgery-protected login/logout, circuit token hook, replaceable session store (see [BFF](17-bff.md)) | In a Blazor Server frontend that signs in against a separate identity service |
 | `BieberWorks.SDK.Auth.Bff.Postgres` | PostgreSQL session store and shared Data Protection key ring for `Auth.Bff` | When BFF sessions must survive restarts or be shared by several hosts |
@@ -57,6 +58,7 @@ All packages are released together and share one version, computed from Conventi
 | Server-side cookie sessions: revocation, idle/absolute limits, caching, failure policy, decoupled web hosts, circuits, privacy | [Sessions](14-sessions.md) |
 | Role model, permission system, defining/checking permissions, role & user management, **PreferredCulture / IUserCulturePreferenceService**, domain events | [Roles & Permissions](12-roles-permissions.md) |
 | Self-service and admin-initiated account deletion, guard sequence, erasure preview, cross-module wiring | [Account Deletion](13-account-deletion.md) |
+| Role administration over HTTP and as a `Result` facade: routes, wire format, error codes, protection rules, rate limits, client | [Role Administration API](20-admin-api.md) |
 | Opt-in events for created, changed and deleted users: transactional capture, outbox, profile snapshot, limits, data minimisation | [User Lifecycle Events](19-user-lifecycle-events.md) |
 | Ready-made pages, components, `UserMenu` widget, `IAuthClient`, validation attributes, localization | [UI Components](50-ui-components.md) |
 | Release history | [Changelog](90-changelog.md) |
