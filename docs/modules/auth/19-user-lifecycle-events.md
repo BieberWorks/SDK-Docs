@@ -18,8 +18,11 @@ Two things are involved:
         "IncludeEmail": false,
         "PollInterval": "00:00:05",
         "BatchSize": 50,
-        "MaxAttempts": 120,
-        "RetentionPeriod": "3.00:00:00"
+        "MaxAttempts": 300,
+        "BaseRetryDelay": "00:00:05",
+        "MaxRetryDelay": "00:05:00",
+        "RetentionPeriod": "3.00:00:00",
+        "DeadLetterRetentionPeriod": "30.00:00:00"
       }
     }
   }
@@ -32,13 +35,33 @@ Two things are involved:
 | `IncludeEmail` | `false` | Puts the e-mail address into the event profile, and so into the outbox row. Off because most receivers do not need personal data they could not justify. |
 | `PollInterval` | 5 s | Pause between two polls of the outbox. |
 | `BatchSize` | 50 | Messages per poll. |
-| `MaxAttempts` | 120 | Publish attempts before a message is dead-lettered. The dispatcher retries on every poll without backoff, so the default tolerates about ten minutes of failing downstream (important for the delete tombstone). |
+| `MaxAttempts` | 300 | Publish attempts before a message is dead-lettered. With the default backoff the window is about 24.5 hours of failing downstream (important for the delete tombstone). |
+| `BaseRetryDelay` | 5 s | Delay before the first retry; it doubles with every further failure (`BaseRetryDelay * 2^(n-1)`). `00:00:00` turns the backoff off (retry on every poll). Must not be negative. |
+| `MaxRetryDelay` | 5 min | Upper bound of the retry delay. At least `BaseRetryDelay`, at most 1 day: the cap bounds how long a recovered downstream may still wait for a message such as the delete tombstone. |
 | `RetentionPeriod` | 3 days | How long **processed** rows stay (they hold the profile snapshot). At most 30 days; the start fails otherwise. |
+| `DeadLetterRetentionPeriod` | 30 days | How long **dead-lettered** rows stay for inspection or replay. At most 90 days. Dead-lettered rows carry the profile snapshot (with `IncludeEmail` also the e-mail address), possibly of an already deleted user, so the cap is a GDPR trade-off between the replay window and data minimisation. |
 
-The values are validated at start, and only while the feature is enabled.
+The values are validated at start, and only while the feature is enabled. The outbox of the persistence package validates the resulting dispatcher options at start as well. All time-based values are effectively rounded up to the next `PollInterval`.
+
+### Retry window
+
+A failed publish is retried after 5 s, 10 s, 20 s, 40 s, 80 s, 160 s and then every 5 minutes. A message is dead-lettered after `MaxAttempts` attempts:
+
+| `MaxAttempts` | Window before dead-letter (default delays) |
+|---|---|
+| 10 | about 20 minutes |
+| 50 | about 3.7 hours |
+| 300 (default) | about 24.5 hours |
+| 600 | about 49.5 hours |
+
+The attempt count is stored when the dispatcher claims a message, so a crash or hang during the publish counts as an attempt too. A claimed message is invisible to other dispatchers for the lease of the persistence outbox (5 minutes), so several host instances do not deliver the same row at the same time. A graceful shutdown during a publish costs no attempt; the message is retried after the lease.
 
 ::: warning Migration
 Version 4.6.0 adds the migration `AddUserLifecycleOutbox`: one new table `auth.outbox_messages` with two indexes. It is additive and applied by the module at start, also for hosts that keep the feature off.
+:::
+
+::: warning Upgrading to 4.7.0
+Version 4.7.0 references `BieberWorks.SDK.Persistence` 2.x and adds the migration `AddOutboxNextAttemptOnUtc`: one nullable column `NextAttemptOnUtc` in `auth.outbox_messages` (retry time and claim lease). It is additive; existing pending rows are due immediately. The persistence 2.x outbox model changes for **every** module that maps the outbox, so update Auth, Jobs and Webhooks together: an older module with Persistence 2.x fails the host start with pending model changes. The default `MaxAttempts` rose from 120 to 300, and dead-lettered rows now have their own retention (`DeadLetterRetentionPeriod`, 30 days).
 :::
 
 ## Events
@@ -91,7 +114,14 @@ Names, roles, credentials, two-factor and security fields, actor ids and IP addr
 
 ### Retention and personal data
 
-Processed **and dead-lettered** rows are removed after `RetentionPeriod` (counted from `ProcessedOnUtc`, which the dispatcher also sets when it dead-letters). Keep it short: the rows hold the profile snapshot. A dead-lettered row means an event, possibly a delete tombstone, was not delivered. The dispatcher logs this at `Error` level (event id 5004, `Outbox message ... dead-lettered`): alert on it and re-queue or replay within `RetentionPeriod` (`auth.outbox_messages` with `Status = 2`), after that the row and its payload are gone.
+Processed rows are removed after `RetentionPeriod`, dead-lettered rows after `DeadLetterRetentionPeriod` (both counted from `ProcessedOnUtc`, which the dispatcher also sets when it dead-letters). Keep both short: the rows hold the profile snapshot.
+
+A dead-lettered row means an event, possibly a delete tombstone, was not delivered. Two signals report it:
+
+- the log entry of the outbox dispatcher at `Error` level, event id **5004** (`Outbox message {MessageId} ({EventType}, enqueued {OccurredOnUtc}) dead-lettered after {AttemptCount} attempts for context AuthDbContext.`), without payload;
+- the counter `bieberworks.persistence.outbox.dead_lettered` of the meter `BieberWorks.SDK.Persistence`, tag `context` = `AuthDbContext`. The observability module collects it through its `BieberWorks.SDK.*` meter wildcard.
+
+Alert on either and re-queue or replay within `DeadLetterRetentionPeriod` (`auth.outbox_messages` with `Status = 2`), after that the row and its payload are gone. Every failed attempt before that is logged at `Warning` level (event id 5003) with the time of the next attempt.
 
 ### One outbox dispatcher per host database context
 
@@ -103,4 +133,4 @@ The shared `IOutboxStore` service of the persistence package is a single registr
 services.AddScoped<IDomainEventProcessor<UserDeletedLifecycleEvent>, ErasePersonalDataOnUserDeleted>();
 ```
 
-The handler runs inside the dispatcher's scope. If it throws, the message is retried and, after `MaxAttempts`, dead-lettered.
+The handler runs inside the dispatcher's scope. If it throws, the message is retried with backoff and, after `MaxAttempts`, dead-lettered.
