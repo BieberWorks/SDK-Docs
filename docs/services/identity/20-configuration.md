@@ -67,7 +67,7 @@ user, client and scope set. Tokens are signed with RS256.
   appears in the answer of create and rotate only. The routes are not part of the OpenAPI document and are meant for the internal
   network (see [operations](50-operations.md#exposure)). The management UI (`Oidc.Admin.*`) is not part of this image.
 * **Audit events are not persisted.** The provider publishes events for client creation, change, secret rotation, deletion and
-  consent decisions, but this host has no audit module, so they are only logged. Persistence waits for a central audit service.
+  consent decisions, and the role administration API publishes the role events (role created, updated, deleted, permissions changed, user roles changed), but this host has no audit module, so they are only logged. Persistence waits for a central audit service.
 * **Sign-out and end-session** are available (see [operations](50-operations.md#sign-out-and-end-session)). Defaults: `Oidc:EndSessionConfirmPath=/connect/logout`, `Oidc:EndSessionCompletedPath=/signed-out`, `Oidc:EndSession:RevokeSessionTokens=true`. Relying parties must verify `auth_time`; all instances need the same Data Protection key ring.
 
 The host runs as **one instance**: the sign-in ticket store and the Blazor circuits live in process memory (see
@@ -101,6 +101,10 @@ The catalog of events, the payload and the rules for receivers are in [User even
 | `Database:RetryCount` / `MaxRetryDelay` | `1` / `00:00:01` | Retry budget of failed database calls (the Auth module alone retries 6 times for over a minute) |
 | `Database:RefuseNewerSchema` | `false` | Stop the start when the database has migrations this build does not know (rollback against a newer schema); otherwise it is logged as an error |
 | `RateLimiting:Policies:<key>:PermitLimit` / `Window` / `LockoutDuration` | Auth defaults | Override a rate limit, see [operations](50-operations.md) |
+| `BieberWorks:Auth:AdminApi:Enabled` | `true` (identity default; the Auth module default is `false`) | Maps the role administration API under `/api/v1/auth`, see [usage](10-usage.md#managing-roles-for-other-services). **Upgrading existing hosts:** this adds write endpoints, so keep `/api/v1/auth/*` internal in the proxy or allowlist; set `BieberWorks__Auth__AdminApi__Enabled=false` to switch it off. Clients with the scope `perm` get a token for role management when an administrator signs in: grant `perm` to trusted clients only. Existing roles keep unknown keys, `Strict` applies to newly added keys only, and there is no database migration |
+| `BieberWorks:Auth:PermissionValidation:Mode` | `Strict` (identity default; the Auth module default is `Lenient`) | `Strict` rejects permission keys that are not in the catalogue when they are newly added to a role; `Lenient` only logs a warning. A malformed key or `*` is rejected in both modes. The role administration API is always strict |
+| `BieberWorks:Auth:ExternalPermissions:Permissions` | `[]` | Permissions of other services that roles of this instance may carry, see [usage](10-usage.md#declaring-permissions-of-other-services). Read once at start; a change needs a restart |
+| `RateLimiting:Policies:auth-admin-read-by-actor` / `auth-admin-write-by-actor` | 300 per minute / 30 per minute per acting user | Limits of the role administration API (reads, writes) |
 | `RateLimiting:DefaultRetryAfter` | `00:01:00` | `Retry-After` of a 429 when the limiter could not tell the wait |
 | `OpenApi:Enabled` / `RequireAuthorization` | `true` / `false` | Serve `/openapi/v1.json`, optionally only to authenticated callers |
 | `ServiceHost:InfoRequiresAuthorization` | `false` | Same for `/info` |

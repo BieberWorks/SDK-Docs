@@ -10,12 +10,20 @@ on an internal network:
 
 | Public | Internal only |
 | --- | --- |
-| `/auth/*` (sign-in pages), `/`, `/_blazor`, `/_framework/*`, `/_content/*`, `/bw/set-culture`, exactly `/api/auth/finalize-login`, `/connect/*` (authorize, consent page, token, userinfo), `/.well-known/*` | `/api/*` (all other API routes, **including the client administration API `/api/v1/oidc/*`**), `/info`, `/openapi`, `/metrics`, `/health`, `/internal/*` |
+| `/auth/*` (sign-in pages), `/`, `/_blazor`, `/_framework/*`, `/_content/*`, `/bw/set-culture`, exactly `/api/auth/finalize-login`, `/connect/*` (authorize, consent page, token, userinfo), `/.well-known/*` | `/api/*` (all other API routes, **including the client administration API `/api/v1/oidc/*` and the role administration API `/api/v1/auth/*`**), `/info`, `/openapi`, `/metrics`, `/health`, `/internal/*` |
 
-There is no `/admin`. The client administration API creates and rotates client secrets and returns them in the response; keep it on
+There is no `/admin`. The role administration API (`/api/v1/auth/roles`, `/permissions`, `/users/{id}/roles`) hands out permissions and is protected like the client administration API: bearer tokens only, internal network only. The client administration API creates and rotates client secrets and returns them in the response; keep it on
 a trusted internal network (behind the proxy's internal router or an address allowlist) and treat the transport as sensitive: a
 plain-http hop inside a container network is acceptable only when that network is trusted, otherwise re-encrypt to the service.
 Bearer tokens only; the session cookie never works there.
+
+**Release notes for existing hosts.** This release adds write endpoints under `/api/v1/auth/*` (roles, role permissions, user role assignments).
+
+* Make sure your proxy or allowlist keeps `/api/v1/auth/*` internal before you roll out; an exposed route would let a stolen administrator token change roles.
+* To switch the API off, set `BieberWorks__Auth__AdminApi__Enabled=false`.
+* A client that is allowed the scope `perm` receives, for an administrator, a token that can manage roles. Grant `perm` to trusted clients only.
+* Existing roles keep unknown permission keys. Strict validation applies only to keys that are newly added to a role.
+* There is no database migration.
 A working reference is the compose project `docker-compose.oidc-p2.yml` of the Sandbox repository: Traefik with a public and an
 internal router (the lists above), TLS with a self-signed development certificate, a rate limit on `/auth/*` and `/_blazor`, a key ring
 volume and `ServiceHost:ReverseProxy` for the proxy address; `services/oidc-p2-smoke.ps1` checks the exposure and the flows against it.
@@ -134,6 +142,8 @@ is not a letter or digit replaced by `-`:
 | `auth:register-ip` | `auth-register-ip` | 10 per 15 min per client address |
 | `auth:forgot-password-ip` | `auth-forgot-password-ip` | 10 per 15 min per client address |
 | `auth:confirmation-request-ip` / `-identifier` | `auth-confirmation-request-ip` / `-identifier` | 20 per 15 min / 3 per hour |
+| `auth-admin-read-by-actor` | `auth-admin-read-by-actor` | 300 per minute per acting user |
+| `auth-admin-write-by-actor` | `auth-admin-write-by-actor` | 30 per minute per acting user |
 
 ```
 RateLimiting__Policies__auth-register-ip__PermitLimit=100
