@@ -243,9 +243,14 @@ Changes of accounts become the service events `identity.user-created`, `identity
 * **Delivery guarantee.** The Auth module writes the event into `auth.outbox_messages` in the transaction of the change; its
   dispatcher hands it to the bridge, which queues it in the service outbox (`servicekit.service_outbox`) under the id of the
   event. A crash or an outage of the service database between the steps delays an event, it does not lose it. The Auth
-  dispatcher retries a failed hand-over up to `BieberWorks:Auth:LifecycleEvents:MaxAttempts` (default 120) and then dead-letters the row
-  (`Status = 2` in `auth.outbox_messages`, stamped with `ProcessedOnUtc` since SDK-Persistence 1.0.2). Dead-lettered rows keep their payload until the retention
-  removes them after `RetentionPeriod` (default 3 days): look for them, fix the cause, then reset the `Status` to `0` to deliver them before that.
+  dispatcher retries a failed hand-over with exponential backoff (5 seconds doubling up to 5 minutes) up to
+  `BieberWorks:Auth:LifecycleEvents:MaxAttempts` (default 300, about 24.5 hours) and then dead-letters the row (`Status = 2` in
+  `auth.outbox_messages`, stamped with `ProcessedOnUtc`), logs event id 5004 at `Error` and counts it in
+  `bieberworks.persistence.outbox.dead_lettered` (tag `context=AuthDbContext`): alert on either. Dead-lettered rows keep their payload until
+  the retention removes them after `DeadLetterRetentionPeriod` (default 30 days): look for them, fix the cause, then re-queue them before that.
+  Reset the attempt counter and the lease together with the status, otherwise the dispatcher dead-letters the row again without trying:
+  `UPDATE auth.outbox_messages SET "Status" = 0, "AttemptCount" = 0, "NextAttemptOnUtc" = NULL, "ProcessedOnUtc" = NULL WHERE "Status" = 2;`
+  (add a filter on `"Id"` or `"EventType"` to re-queue only some rows).
 * **Personal data at rest.** The profile snapshot sits in `auth.outbox_messages` until `BieberWorks:Auth:LifecycleEvents:RetentionPeriod`
   (default 3 days, at most 30) after processing, and in `servicekit.service_outbox` until delivered. The service transport clears the payload of a
   delivered entry; entries that were **dead-lettered there keep their payload** for `ServiceTransport:Postgres:DeadRetention`
