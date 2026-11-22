@@ -17,6 +17,15 @@
 | Cache | Userinfo and OpenIddict token responses are `no-store`. |
 | Transport | HTTPS is mandatory (only `Development` may relax it). The issuer is fixed by configuration. The endpoint URLs in the discovery document follow the request, so the host must trust the forwarded `Proto` and `Host` of its proxy only. |
 
+## Client administration API
+
+The routes under `/api/v1/oidc` return client secrets, so they need more than a permission. Every route requires a bearer access token
+with the scope `perm` (a token without a scope claim, such as one from the old login, or with `openid roles` only gets 403), the
+permission `oidc:clients:manage` of its user and, when `Oidc:AdminApi:AllowedClients` is set, an allowed `client_id` (else `azp`).
+An empty allowlist lets every client with the scope `perm` call the API for an administrator; the provider warns at start. The list is
+read at start (a change needs a restart). Removing an administrator takes effect when the issued access token expires. See
+[Clients](30-clients.md#access-token-requirements).
+
 ## Permission catalog in admin-only hosts
 
 `AddOidcAdminPresentation()` (called by the admin UI module) contributes `oidc:clients:manage` to the Core.Authorization

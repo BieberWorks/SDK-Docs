@@ -96,10 +96,25 @@ Mapped by the `Oidc` module (`IEndpointModule`) under `/api/v1/oidc`:
 | `GET /scopes` | Scopes a client may be given | `string[]` |
 
 Rules: **bearer tokens only** (a session cookie is answered with 401, so the API cannot be driven from a browser session);
-policy `perm:oidc:clients:manage`, which means the access token carries the scope `perm` and its user the permission `oidc:clients:manage`;
-401 without a token, 403 without the permission; errors are `ProblemDetails` with `code` set to the error code and status 400, 403,
+policy `perm:oidc:clients:manage` **and** the scope `perm` in the access token (enforced on the whole route group), which means the user needs the permission `oidc:clients:manage`;
+401 without a token, 403 without the permission or without the scope; errors are `ProblemDetails` with `code` set to the error code and status 400, 403,
 404 or 409; every answer is `Cache-Control: no-store`. The routes are **not** for the public internet: they return secrets in
 clear text. Publish them only on an internal network or behind an internal proxy router, and prefer a TLS hop to the service.
+
+### Access token requirements
+
+- The access token must carry the scope `perm` (claim `scope`, `scp` or `oi_scp`, compared case-sensitively). A token without any scope claim
+  (for example one from the old login `/api/auth/login`, or a service token) and a token that only has `openid roles` answer **403**, even
+  when its user is an administrator. A session cookie stays 401.
+- `Oidc:AdminApi:AllowedClients` (list of client ids, default empty) restricts the API to tokens issued to those clients. The client is read
+  from the claim `client_id`, else `azp`; a token without a client claim, or with two different values, is refused with 403. Empty means every
+  client that is allowed the scope `perm` may call the API for an administrator, and the provider logs a warning at start. The list is read
+  once when the routes are mapped: **a change needs a restart**. Entries must be non-empty, free of whitespace, at most 100 characters and unique.
+- An administrator who is removed keeps the rights of an already issued access token until it expires (15 minutes by default).
+
+```json
+{ "Oidc": { "AdminApi": { "AllowedClients": [ "admin-shell" ] } } }
+```
 
 Service-account tokens (`/api/v1/auth/service-token`) do not satisfy the policy in this version; the caller is a signed-in user with
 the permission (for example an administrator signing in to an admin console with the client scope `perm`).

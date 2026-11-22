@@ -36,6 +36,7 @@ Create further migrations with
 | `EndSessionConfirmPath` | `/connect/logout` | Local path of the sign-out confirmation page that an end-session request without proof of intent is redirected to. The host or the Consent UI package renders it; it posts back to `/connect/endsession` with an antiforgery token. |
 | `EndSessionCompletedPath` | `/` | Local path the browser lands on after a sign-out without `post_logout_redirect_uri`. |
 | `EndSession:RevokeSessionTokens` | `true` | Also revoke the refresh tokens issued in the ended browser session. Access tokens stay valid until `exp`. |
+| `AdminApi:AllowedClients` | empty | Client ids (`client_id`, else `azp`) allowed to call the admin API; the scope `perm` is always required. Empty = every client with `perm`, logged as a warning at start. Read at start. |
 
 The re-authentication marker of `prompt=login` and `max_age` uses Data Protection: all instances must share one key ring.
 
