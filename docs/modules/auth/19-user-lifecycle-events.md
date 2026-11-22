@@ -80,6 +80,19 @@ The domain events live in `BieberWorks.SDK.Auth.Contracts.Lifecycle`, so a monol
 - A deleted event is a **tombstone**. It has no profile; an update for the same user that arrives after it is to be ignored.
 - The events deliberately do not implement `IAuditableEvent`. The semantic events (`UserRegisteredEvent`, `UserLockStateChangedEvent`, `UserRolesChangedEvent`, ...) are audited already; auditing these as well would record every operation twice.
 
+### How an account gets deleted
+
+Every deletion writes the tombstone, whichever way it is started, because all of them go through the same
+`DeleteUserCommand`: the administration API (`DELETE /api/v1/auth/users/{userId}`, initiator `admin`, see
+[Role Administration API](20-admin-api.md)), the self-service route (`DELETE /api/v1/auth/me`, initiator `self`) and the user
+management UI. A deletion directly in the database writes nothing; do not delete accounts with SQL.
+
+The command refuses to delete the **last active administrator** (an account holding a wildcard role that can sign in; locked or
+unconfirmed administrators are not counted) and runs the impact gate of the other modules first. The administrator count and the
+delete run in one serializable transaction and the administrators are counted again before the commit, so two administrators
+deleting each other at the same moment cannot both succeed (see [Role Administration API](20-admin-api.md)). The tombstone is
+written in the same transaction: a rolled-back deletion leaves no event.
+
 ### What counts as a change
 
 Only the fields below cause an `updated` event. Everything else (`LastLoginAt`, security stamp, concurrency stamp, failed-access counter, password hash, two-factor fields) never does, so a sign-in or a password change writes nothing.
