@@ -55,8 +55,10 @@ that `max_age=0` terminates. A replayed URL (for example via the back button) af
 
 Ending the local session of a relying party does not end the session at the provider. To sign the user out there, redirect
 the browser to `end_session_endpoint` (`/connect/endsession`) with `id_token_hint`, `client_id`, `post_logout_redirect_uri`
-and `state`. The `post_logout_redirect_uri` must be registered at the client (`PostLogoutRedirectUris`); an unregistered one
-gets a 400 and no redirect. Without it the browser lands on `Oidc:EndSessionCompletedPath`.
+and `state`. The `client_id` is optional when a valid `id_token_hint` is sent; without a hint it is required for
+`post_logout_redirect_uri`. The `post_logout_redirect_uri` must be registered at the client of the hint or at the given
+`client_id` (`PostLogoutRedirectUris`); an unregistered one gets a 400 and no redirect.
+Without it the browser lands on `Oidc:EndSessionCompletedPath`.
 
 * ASP.NET Core relying party: keep the ID token (`SaveTokens = true` or server-side), set `SignedOutCallbackPath`, then call
   `SignOutAsync(CookieScheme)` and `SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, new() { RedirectUri = ... })`;
