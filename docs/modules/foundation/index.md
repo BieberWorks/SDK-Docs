@@ -65,4 +65,5 @@ Am I building the host (Program.cs / WebApplication)?
 | GDPR data-subject contracts | [80-gdpr-data-subject-contracts.md](80-gdpr-data-subject-contracts.md) |
 | Localization (layered, culture endpoint) | [14-localization.md](14-localization.md) |
 | Blazor route-override system | [15-routing.md](15-routing.md) |
+| Delegated access tokens (scope and client requirements) | [17-core-authorization-tokens.md](17-core-authorization-tokens.md) |
 | Changelog | [90-changelog.md](90-changelog.md) |
