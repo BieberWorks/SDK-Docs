@@ -94,8 +94,8 @@ ticket store, which this version does not provide.
 The user entry of the app bar has a sign-out button. It posts a form with an antiforgery token to `/connect/endsession`, which
 ends the Auth session, deletes the `bw.auth` cookie, revokes the refresh tokens issued in that browser session and lands on
 `/signed-out` (`Oidc:EndSessionCompletedPath`). Relying parties sign the user out at the provider by redirecting the browser to
-`end_session_endpoint` (`/connect/endsession`) with `id_token_hint`, `client_id`, `post_logout_redirect_uri` (registered at the
-client) and `state`; see the usage chapter of the OpenID Connect module. A request without proof of intent (no valid hint of the
+`end_session_endpoint` (`/connect/endsession`) with `id_token_hint`, `post_logout_redirect_uri` (registered at the
+client) and `state`. `client_id` is optional when a valid `id_token_hint` is sent and required for `post_logout_redirect_uri` without a hint; see the usage chapter of the OpenID Connect module. A request without proof of intent (no valid hint of the
 signed-in user, no antiforgery token) is redirected to the confirmation page `/connect/logout` (`Oidc:EndSessionConfirmPath`),
 which asks the user. The legacy `GET /api/auth/signout` stays an internal route and `/auth/logout` stays closed.
 Access tokens already issued stay valid until they expire (15 minutes by default).
