@@ -23,9 +23,32 @@ The HTTP API is **off by default**; updating the package adds no endpoints to an
 { "BieberWorks": { "Auth": { "AdminApi": { "Enabled": true } } } }
 ```
 
-The caller needs an access token with the scope `perm` (so the permission claims reach the token) and the permission of the
-route. Changes to roles take effect for a user when the access token is renewed (the token lifetime, 15 minutes by default);
-there is no session revocation.
+## Access token requirements
+
+Every route needs an access token that was issued through OpenID Connect and carries the scope `perm`, plus the permission of
+the route. The scope is checked on the whole route group, before the permission; a token without it is answered with 403 and
+no body.
+
+- Tokens without a `scope` claim get 403. That includes the token of the legacy `POST /api/auth/login` and service tokens, even
+  when their user holds `*`. A token with only `openid roles` gets 403 as well, although the `role` claim would grant access
+  by role. Scope names are compared case-sensitively.
+- The scope is required at the HTTP entry only. The in-process facade (used by the Blazor admin UI with a cookie session) has no
+  scope and still checks the permissions in every handler.
+- **Allowed clients.** `BieberWorks:Auth:AdminApi:AllowedClients` limits the API to the listed OAuth clients. The check uses the
+  `client_id` claim, else `azp`, compared case-sensitively; a token without either, or with two different values, is refused.
+
+  ```json
+  { "BieberWorks": { "Auth": { "AdminApi": { "Enabled": true, "AllowedClients": ["admin-shell"] } } } }
+  ```
+
+  The list is empty by default, which lets **every** client that was granted the scope `perm` call the API for an
+  administrator; the host logs a warning at start while the API is enabled and the list is empty. Entries must not be empty,
+  contain white space or control characters, exceed 100 characters or repeat; a malformed list stops the host at start.
+- `Enabled` and `AllowedClients` are read once when the endpoints are mapped. A change needs a restart.
+
+Changes to roles take effect for a user when the access token is renewed (the token lifetime, 15 minutes by default); there is
+no session revocation. An administrator who is removed or locked out keeps the rights of an access token that was already
+issued until it expires.
 
 ## Routes
 
@@ -102,16 +125,16 @@ the handlers check the permission again, so the same rule holds for the in-proce
 |---|---|---|
 | `Auth.Admin.RequestInvalid` | 400 | Body missing or malformed, a stamp or key list missing, too many keys |
 | `Auth.Admin.RequestTooLarge` | 413 | Body larger than 64 KB |
-| `Auth.Admin.RoleNameInvalid` | 400 | Name empty or longer than 100 characters |
-| `Auth.Admin.DescriptionInvalid` | 400 | Description longer than 500 characters |
+| `Auth.Admin.RoleNameInvalid` | 400 | Name empty, longer than 100 characters, or containing control, format, line or paragraph separator, private-use, unassigned or lone surrogate characters (it is stored in Unicode form C) |
+| `Auth.Admin.DescriptionInvalid` | 400 | Description longer than 500 characters or containing the same kinds of characters as a name, except that tab, line feed and carriage return are allowed |
 | `Auth.Admin.PermissionInvalid` | 400 | A key is `*` or malformed; `keys` lists them |
 | `Auth.Admin.PermissionUnknown` | 400 | A key is not in the catalog; `keys` lists them |
-| `Auth.Admin.Forbidden` | 403 | The caller lacks the permission |
+| `Auth.Admin.Forbidden` | 403 | The caller lacks the permission (inside the handlers; a token without the scope or client is answered by the middleware with 403 and no body) |
 | `Auth.Admin.PermissionNotHeld` | 403 | The caller tried to add or remove a permission it does not hold |
 | `Auth.Admin.RoleNotAssignable` | 403 | The role holds more than the caller does |
 | `Auth.Admin.SelfModificationForbidden` | 403 | The caller tried to change its own assignments |
 | `Auth.Admin.RoleNotFound`, `Auth.Admin.UserNotFound` | 404 | Unknown id |
-| `Auth.Admin.RoleNameTaken` | 409 | Name already used (case-insensitive) |
+| `Auth.Admin.RoleNameTaken` | 409 | Name already used (case-insensitive; also when two requests create the same name at once) |
 | `Auth.Admin.SystemRoleProtected` | 409 | System roles cannot be renamed or deleted |
 | `Auth.Admin.WildcardRoleProtected` | 409 | See protection rules |
 | `Auth.Admin.LastAdministrator` | 409 | Nobody would be left with full access |
@@ -127,7 +150,7 @@ handlers.
 2. **Wildcard roles** (a role that carries `*`) cannot have their permissions edited. Renaming or deleting one needs a caller with full access. The API cannot create a wildcard role: `*` is always invalid.
 3. **Grant only what you hold.** A caller without full access can add or remove only permission keys it holds itself. It can assign, remove, **rename or delete** a role only if the role's permissions are a subset of its own (`Auth.Admin.RoleNotAssignable` otherwise); roles with `*` only with full access. Changing only the description of a role is not restricted by this rule.
 4. **Self-protection.** A caller cannot change its own role assignments.
-5. **Last administrator.** Removing a wildcard role from the last user who holds one, or deleting the last wildcard role that has members, is refused. Roles are counted; a wildcard stored directly as a user claim is not.
+5. **Last administrator.** Removing a wildcard role from the last user who holds one, or deleting the last wildcard role that has members, is refused. Only accounts that can sign in are counted (not locked out, e-mail confirmed when `SignIn:RequireConfirmedEmail` is on). Roles are counted; a wildcard stored directly as a user claim is not.
    - *Deleting a wildcard role* checks and deletes in one **serializable transaction**. Two administrators deleting "the other" role at the same moment cannot both succeed: PostgreSQL aborts one, the execution strategy retries it, and the retry is refused with `Auth.Admin.LastAdministrator`. This relies on the retry strategy that `AuthModule` enables for its `AuthDbContext` (`EnableRetryOnFailure`); a host that replaces the context options without it would see the aborted request fail with a database error instead of the refusal, but never an empty administrator set.
    - *Removing a role from a user* checks before and again after the write (read-then-write). If two administrators remove each other at the same moment, the second change is put back and refused. If putting it back fails, the call fails with an unexpected error and a **critical** log entry says that the role assignment must be repaired by hand.
 6. **Strict validation.** Newly added keys must be well-formed and in the catalog, whatever `PermissionValidation:Mode` says. Keys a role already holds are not re-validated and can be removed.
