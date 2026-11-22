@@ -22,8 +22,20 @@ Bearer tokens only; the session cookie never works there.
 * Make sure your proxy or allowlist keeps `/api/v1/auth/*` internal before you roll out; an exposed route would let a stolen administrator token change roles.
 * To switch the API off, set `BieberWorks__Auth__AdminApi__Enabled=false`.
 * A client that is allowed the scope `perm` receives, for an administrator, a token that can manage roles. Grant `perm` to trusted clients only.
+* The scope `perm` is **enforced** on both administration APIs (`/api/v1/auth/*` and `/api/v1/oidc/*`). A token without it is answered with 403, even when its user is an administrator: this covers tokens that carry only the scope `roles` and tokens of the plain login `/api/auth/login` or of service accounts, which carry no scope at all.
 * Existing roles keep unknown permission keys. Strict validation applies only to keys that are newly added to a role.
 * There is no database migration.
+
+**Release notes for 0.10.0 (behaviour change compared with 0.9.x).**
+
+* Clients of the administration APIs need the scope `perm`. Until 0.9.x a token with `roles` or from the plain login `/api/auth/login` was accepted, although the documentation required `perm`; now such tokens get 403. Sign admin tools in through OpenID Connect with `perm`.
+* Optional allowlists restrict the APIs to named clients (the `client_id` of the token). Set `BieberWorks__Auth__AdminApi__AllowedClients__0` (role administration API) and `Oidc__AdminApi__AllowedClients__0` (client administration API), then `__1`, `__2` for more clients; the configuration keys are `BieberWorks:Auth:AdminApi:AllowedClients` and `Oidc:AdminApi:AllowedClients`. The two keys are independent.
+* An empty list means open: every client that is allowed the scope `perm` can call the API for an administrator, and the service logs a warning at start for each empty list. The image sets no client ids because they depend on your deployment.
+* The allowlists are read when the routes are mapped; a change needs a restart.
+* A removed administrator keeps the rights of an issued access token until it expires (15 minutes by default).
+* The last-administrator protection counts only accounts that can sign in (not locked out, e-mail confirmed when required).
+* There is no database migration.
+
 A working reference is the compose project `docker-compose.oidc-p2.yml` of the Sandbox repository: Traefik with a public and an
 internal router (the lists above), TLS with a self-signed development certificate, a rate limit on `/auth/*` and `/_blazor`, a key ring
 volume and `ServiceHost:ReverseProxy` for the proxy address; `services/oidc-p2-smoke.ps1` checks the exposure and the flows against it.

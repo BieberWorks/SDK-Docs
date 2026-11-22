@@ -46,6 +46,13 @@ Auth module documentation (role administration API). In this image:
 
 * Bearer tokens only (a session cookie is answered with 401); the access token needs the scope `perm` and the permission of the
   route (`auth:roles:read`, `auth:roles:manage`, `auth:users:read`, `auth:users:manage`; the administrator role has them).
+  The scope is enforced: a token without it is answered with 403, also for an administrator. That covers tokens with only the
+  scope `roles`, tokens of the plain login `/api/auth/login` and service-account tokens. Sign admin tools in through OpenID
+  Connect with `perm`.
+* Optionally restrict the API to named clients with `BieberWorks:Auth:AdminApi:AllowedClients` (the `client_id` of the token;
+  environment variable `BieberWorks__Auth__AdminApi__AllowedClients__0`). Empty means every client allowed `perm` can call it,
+  and the service logs a warning at start. A change needs a restart. The client administration API has its own list,
+  `Oidc:AdminApi:AllowedClients`, see [configuration](20-configuration.md#operations-settings).
 * The routes are not part of the OpenAPI document and are internal only (see [operations](50-operations.md#exposure)).
 * Validation is strict: a role can only get permissions that are in the catalogue (own modules plus the declared external
   permissions). `*` can never be assigned through the API.
