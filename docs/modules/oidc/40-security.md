@@ -19,12 +19,25 @@
 
 ## Client administration API
 
-The routes under `/api/v1/oidc` return client secrets, so they need more than a permission. Every route requires a bearer access token
-with the scope `perm` (a token without a scope claim, such as one from the old login, or with `openid roles` only gets 403), the
-permission `oidc:clients:manage` of its user and, when `Oidc:AdminApi:AllowedClients` is set, an allowed `client_id` (else `azp`).
-An empty allowlist lets every client with the scope `perm` call the API for an administrator; the provider warns at start. The list is
-read at start (a change needs a restart). Removing an administrator takes effect when the issued access token expires. See
-[Clients](30-clients.md#access-token-requirements).
+The routes under `/api/v1/oidc` return client secrets, so they are **off by default** (`Oidc:AdminApi:Enabled=false`: the routes
+are not mapped and answer 404). When enabled, every route requires a bearer access token with the scope `identity.admin` (configurable
+with `Oidc:AdminApi:RequiredScope`; a token without a scope claim, with `openid roles` only or with only the old scope `perm` gets 403),
+the permission `oidc:clients:manage` of its user and, when `Oidc:AdminApi:AllowedClients` is set, an allowed `client_id` (else `azp`).
+An empty allowlist lets every client with the admin scope call the API for an administrator; the provider warns at start. The list is
+read at start (a change needs a restart).
+
+The permission is checked **live**: only the user id (`sub`) is taken from the token, and activity, roles and permissions are read from
+the user store (`IUserClaimsReader`) on every request (once per request, cached for that request only). Claims such as `perm` or
+`role` inside the token never grant anything. A revoked role, a locked account or a deleted account is therefore refused (403) with
+the very next request, even with a still valid access token. The check fails closed: no `sub`, an unknown or inactive user and a missing
+permission all deny; an unreachable user store fails the request instead of allowing it. The in-process facade (`IOidcClientAdmin`) uses
+the same live check inside every handler. See [Clients](30-clients.md#access-token-requirements).
+
+## Data minimization
+
+Dead rows are pruned on a schedule ([Operations](50-operations.md#pruning)), and the data of a deleted account is removed with the
+`UserAccountDeletionRequestedEvent` ([Operations](50-operations.md#account-deletion)). Access tokens that were already issued stay
+valid until `exp`; the refresh path reads the user again, so a deleted or locked account cannot renew them.
 
 ## Permission catalog in admin-only hosts
 
@@ -38,5 +51,5 @@ catalog de-duplicates by key).
 
 - Access tokens stay valid until `exp` (default 15 min) after revocation or rotation; resource servers validate offline.
 - Token revocation endpoint, introspection and back-channel logout are not implemented yet (back-channel logout and a relying-party helper package may follow).
-- Expired tokens and authorizations are not pruned yet.
 - Rate limits are per process (in-memory limiter).
+- Rate limiting of the admin API does not yet take the live permission check into account (planned for a later release).

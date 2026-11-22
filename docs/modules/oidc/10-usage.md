@@ -99,9 +99,21 @@ sign a user out.
 | `roles` | `roles` (array) | `role` (one claim per role) |
 | `perm` | - | `perm` (one claim per permission) |
 | `offline_access` | enables the refresh token | - |
+| `identity.admin` | - | no claim; the scope itself opens the [administration API](./30-clients.md#admin-api) (together with a live permission check) |
 
 Claims are recomputed from `IUserClaimsReader` at every code exchange and every refresh, so role changes appear with the next
 refresh. A locked or unconfirmed account gets no token and its userinfo calls fail.
+
+## Stored data and cleanup
+
+The provider stores tokens (refresh tokens, authorization codes, reference tokens) and authorizations (one per sign-in session plus
+the permanent consent grants of explicit-consent clients) in its own schema. Two mechanisms keep this data in bounds:
+
+- **Pruning.** A background service removes dead rows on a schedule, see [Operations](./50-operations.md#pruning). Live tokens and
+  valid consents are never touched.
+- **Account deletion.** When the user store deletes an account it publishes `UserAccountDeletionRequestedEvent`; the provider
+  removes every token, authorization and consent of that `sub` at once (see [Operations](./50-operations.md#account-deletion)).
+  A host that runs the privacy orchestrator of `BieberWorks.SDK.Legal` gets the same removal through `IUserDataEraser`.
 
 ## Audience
 

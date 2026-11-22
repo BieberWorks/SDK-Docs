@@ -36,7 +36,12 @@ Create further migrations with
 | `EndSessionConfirmPath` | `/connect/logout` | Local path of the sign-out confirmation page that an end-session request without proof of intent is redirected to. The host or the Consent UI package renders it; it posts back to `/connect/endsession` with an antiforgery token. |
 | `EndSessionCompletedPath` | `/` | Local path the browser lands on after a sign-out without `post_logout_redirect_uri`. |
 | `EndSession:RevokeSessionTokens` | `true` | Also revoke the refresh tokens issued in the ended browser session. Access tokens stay valid until `exp`. |
-| `AdminApi:AllowedClients` | empty | Client ids (`client_id`, else `azp`) allowed to call the admin API; the scope `perm` is always required. Empty = every client with `perm`, logged as a warning at start. Read at start. |
+| `AdminApi:Enabled` | `false` | Maps the admin API under `/api/v1/oidc`. Off = not mapped (404). Read at start. |
+| `AdminApi:RequiredScope` | `identity.admin` | The one scope an access token needs for the admin API (no whitespace). Read at start. |
+| `AdminApi:AllowedClients` | empty | Client ids (`client_id`, else `azp`) allowed to call the admin API; the required scope is always needed. Empty = every client with the scope, logged as a warning at start (when enabled). Read at start. |
+| `Pruning:Enabled` | `true` | Background removal of dead token and authorization rows, see [Operations](./50-operations.md#pruning). |
+| `Pruning:Interval` | `06:00:00` | Time between runs (at least one minute). |
+| `Pruning:Threshold` | unset | Minimum age of removable rows. Unset = larger of the refresh token lifetime and one day; an explicit value must not be shorter than the refresh token lifetime. |
 
 The re-authentication marker of `prompt=login` and `max_age` uses Data Protection: all instances must share one key ring.
 
