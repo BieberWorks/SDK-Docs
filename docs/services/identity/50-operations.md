@@ -17,6 +17,32 @@ a trusted internal network (behind the proxy's internal router or an address all
 plain-http hop inside a container network is acceptable only when that network is trusted, otherwise re-encrypt to the service.
 Bearer tokens only; the session cookie never works there.
 
+Older notes below name the scope `perm`; since 0.11.0 the scope is `identity.admin`.
+
+**Release notes for 0.11.0 (behaviour changes compared with 0.10.x; read before you upgrade).** Auth 4.10 and Oidc 0.5 are inside.
+
+1. **New administration scope `identity.admin`.** Both administration APIs (`/api/v1/auth/*`, `/api/v1/oidc/*`) now need the scope
+   `identity.admin` instead of `perm`; a token with only `perm` gets 403. Add `identity.admin` to the allowed scopes of every client
+   that signs in an administrator: clients from `Oidc:Clients` are seeded again at start; clients created through the API need a
+   `PUT /api/v1/oidc/clients/{clientId}` with the scope added. Administrators sign in again to get a token with the scope. To keep
+   the old scope for a while set `BieberWorks__Auth__AdminApi__RequiredScope=perm` and `Oidc__AdminApi__RequiredScope=perm`.
+2. **Rights are read live.** The administration APIs ignore the `role` and `perm` claims of the token and read roles, permissions
+   and the lock state from the user store on every call. A token of a service principal without a user account gets 403.
+3. **Allowlists are mandatory outside Development.** If `BieberWorks:Auth:AdminApi:AllowedClients` or `Oidc:AdminApi:AllowedClients`
+   is empty while the API is enabled, the start is refused (exit code 1, the message names the keys). List the administration clients
+   (`BieberWorks__Auth__AdminApi__AllowedClients__0=...`), or accept an open API explicitly with `Identity__AdminApi__AllowOpen=true`.
+4. **The client administration API is opt-in in the module and switched on in the image** (`Oidc:AdminApi:Enabled=true`). Set it to
+   `false` to remove the routes.
+5. **New: account administration** (`GET /api/v1/auth/users?email=`, `PUT .../users/{id}/lock`, `DELETE .../users/{id}`, permissions
+   `auth:users:lock` and `auth:users:delete`; the administrator role has them) and **self-deletion** `DELETE /api/v1/auth/me`
+   (`BieberWorks:Auth:SelfServiceApi:Enabled=true` in the image; the password-less way stays closed until
+   `BieberWorks:Auth:SelfServiceApi:AllowedClients` names a client). Switch self-deletion off with
+   `BieberWorks__Auth__SelfServiceApi__Enabled=false`.
+6. **New: Oidc cleanup.** Expired tokens and authorizations are pruned every 6 hours (first run 30 to 120 seconds after start; the
+   first run can delete many old rows at once, so upgrade at low load or start with `Oidc__Pruning__Enabled=false`), and an account
+   deletion removes the tokens, authorizations and consents of that user.
+7. There is no database migration.
+
 **Release notes for existing hosts.** This release adds write endpoints under `/api/v1/auth/*` (roles, role permissions, user role assignments).
 
 * Make sure your proxy or allowlist keeps `/api/v1/auth/*` internal before you roll out; an exposed route would let a stolen administrator token change roles.
@@ -283,6 +309,72 @@ Changes of accounts become the service events `identity.user-created`, `identity
   `auth.outbox_messages` until the retention removes them (the dispatcher only runs while the feature is on, so delete them by hand if needed).
 * **Not captured:** `ExecuteUpdate`, `ExecuteDelete`, raw SQL and direct changes in the database. No replay of existing accounts.
 * **Schema change.** The Auth update adds the table `auth.outbox_messages` (additive migration). A rollback to an older image against the new schema logs the unknown migration (see below).
+
+## Oidc data retention and account deletion
+
+Oidc 0.5 prunes expired and revoked rows of `oidc."OpenIddictTokens"` and `oidc."OpenIddictAuthorizations"` every 6 hours
+(`Oidc:Pruning:Enabled`, `Interval`, `Threshold`; the threshold follows the refresh token lifetime, never below one day), counts
+failures (`bieberworks.oidc.pruning.failures`) and tries again at the next run. Without it the tables grow with every sign-in.
+Deleting an account (administrator, self-service or `DeleteUserCommand`) removes the tokens, authorizations and permanent consents
+of that subject in the same flow. Delete through the API, never with SQL: otherwise the Oidc rows stay and no tombstone
+`identity.user-deleted` reaches the consumers.
+
+## Backup and restore
+
+Status: written from the module documentation. The procedure has **not yet been rehearsed** against this image (the drill is
+still open), so treat the steps as a starting point and rehearse them once before you rely on them.
+
+What belongs to a backup (all of it, from the same point in time):
+
+* **Database.** The schemas `auth`, `oidc` and `servicekit` (users, roles, clients, tokens, consents, outbox and inbox). One
+  `pg_dump` of the database covers them, for example `pg_dump --format=custom --file=identity.dump "$CONNECTION"`.
+* **Secrets.** The signing key files (`BieberWorks:Auth:JwtSigning:Keys:*:PrivateKeyFile`, EC and RSA), `Oidc:EncryptionKeyFile`,
+  the `ClientSecretFile` of confidential clients and the database password. Without the signing keys every issued token is
+  useless; without the encryption key the stored authorization codes and refresh tokens cannot be read (users sign in again).
+* **Key ring.** The volume at `Identity:DataProtection:KeyRingPath`. Without it all sessions end and open forms fail; nothing else is lost.
+
+Restore into an empty database: stop the service, create the database, run
+`pg_restore --clean --if-exists --no-owner --dbname="$CONNECTION" identity.dump`, mount the same secrets and the key ring, and
+start the service of **the same or a newer version**; the start applies missing migrations. With `Database__RefuseNewerSchema=true`
+a start against a schema that is newer than the image is refused instead of logged. Check `/health`, sign in, and refresh one
+refresh token that was issued before the backup. Whatever was issued or changed after the backup is gone. Re-apply deletions that
+happened since, so that erased users do not come back.
+
+## Key rotation
+
+Status: written from the module documentation, **not yet rehearsed** against this image.
+
+* **Signing keys (ES256 for the plain login, RS256 for OpenID Connect).** Keys are listed in `BieberWorks:Auth:JwtSigning:Keys`;
+  `ActiveKid` names the EC key that signs, `ActiveRsaKid` the RSA key (at least 3072 bit, with a private part). Rotate one family
+  at a time: (1) add the new key (public and private part, the private part as a file secret) next to the old one; (2) set
+  `ActiveKid` or `ActiveRsaKid` to the new kid and restart: new tokens are signed with it and the JWKS lists both; (3) keep the old
+  key (the public part is enough) at least for the access token lifetime (15 minutes) plus the consumers'
+  `ServiceHost:Jwt:AutomaticRefreshInterval` (10 minutes by default); (4) remove the old key and restart. Tokens signed with the
+  removed key are rejected from then on. After a compromise remove the key at once and restart the consumers. Details: the
+  ServiceKit operations guide, section signing key rotation.
+* **`Oidc:EncryptionKeyFile` cannot be rotated.** There is one key and no overlap. Replacing it makes every stored authorization
+  code and refresh token unreadable, so all users sign in again (access tokens stay valid until they expire). Do it only after a
+  leak, in a maintenance window.
+* **Data protection key ring.** Rotates itself every 90 days; old keys stay in the ring. Never delete the volume.
+* **Client secrets.** `POST /api/v1/oidc/clients/{clientId}/secret/rotate` for clients created through the API; for configured
+  clients replace the `ClientSecretFile` and restart.
+
+## Production checklist
+
+* `ServiceHost:ReverseProxy` names the real proxy address or network, so that sign-in throttling and cookies see the browser's
+  address and scheme; `Oidc:Issuer` is the public https address.
+* `AllowedHosts` is set to the public host names (the image default is `*`).
+* `BieberWorks:Auth:AdminApi:AllowedClients` and `Oidc:AdminApi:AllowedClients` list the administration clients, those clients
+  hold the scope `identity.admin`, and `Identity:AdminApi:AllowOpen` stays unset. `BieberWorks:Auth:SelfServiceApi:AllowedClients`
+  stays empty unless you need the password-less self-deletion.
+* The proxy keeps `/api/*`, `/info`, `/openapi`, `/metrics`, `/health` and `/internal/*` internal. `/info` and `/openapi/v1.json`
+  are anonymous by default; set `ServiceHost__InfoRequiresAuthorization=true` and `OpenApi__RequireAuthorization=true` if they are reachable.
+* Observability: export logs and metrics (`Observability__Otlp__*`) to a backend with a **retention period** you can defend. Admin
+  and consent actions are only logged in this version, so the logs are the audit trail.
+* Remove `Auth:Bootstrap:Password` (and `SeedAdmin`) after the first start.
+* Persistent volume for the key ring, secrets under `/run/secrets`, one instance per database.
+* Container: `init: true` (or `docker run --init`), a memory limit (for example `mem_limit: 512m`), a log size limit.
+* A backup and a restore that you have tried once (see above), and a copy of the secrets outside the host.
 
 ## Rolling back
 
